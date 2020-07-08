@@ -30,7 +30,7 @@ if (rex::isBackend() && rex::getUser()) {
             file_put_contents($log, '');
 
             $input = rex_path::media(rex_request('video', 'string'));
-            $output = rex_path::media(pathinfo($input, PATHINFO_FILENAME));
+            $output = rex_path::media('web_' . pathinfo($input, PATHINFO_FILENAME));
             $command = trim($this->getConfig('command')) . " ";
 
             preg_match_all('/OUTPUT.(.*) /m', $command, $matches, PREG_SET_ORDER, 0);

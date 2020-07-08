@@ -12,10 +12,8 @@ $result = $sql->getArray('select * from ' . rex::getTable('media') . ' where fil
 if (rex_post('formsubmit', 'string') == '1' && !$csrfToken->isValid()) {
     echo rex_view::error(rex_i18n::msg('csrf_token_invalid'));
 } elseif (rex_post('formsubmit', 'string') == '1') {
-
-    dump($_POST);
+//    dump($_POST);
 //    echo rex_view::success($this->i18n('converted'));
-
 }
 
 
@@ -24,6 +22,7 @@ if ($result > 0) {
     $n = [];
 
     foreach ($result as $key => $item) {
+        if (substr($item['filename'], 0, 4) == 'web_') continue;
         $n['field'][] = '<label><input class="mycheckbox" id="v' . $key . '" type="radio" name="video" value="' . $item['filename'] . '" data-video="' . $item['filename'] . '"> ' . $item['filename'] . '</label>';
     }
 
