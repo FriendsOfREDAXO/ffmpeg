@@ -1,12 +1,5 @@
 <?php
 
-/** @var rex_addon $this */
-
-if (rex::isBackend() && is_object(rex::getUser())) {
-    rex_perm::register('demo_addon[]');
-    rex_perm::register('demo_addon[config]');
-}
-
 if (rex::isBackend() && rex::getUser()) {
 
     if (is_null(rex_session('ffmpeg_uid', 'string', null))) {
