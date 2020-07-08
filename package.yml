@@ -6,7 +6,7 @@ supportpage: https://github.com/FriendsOfREDAXO/
 # Seiten
 pages:
     mediapool/ffmpeg:
-        title: 'Video '
+        title: 'Video-Konverter'
         perm: ffmpeg[]
         icon: rex-icon fa-compress
 
