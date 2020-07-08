@@ -110,9 +110,9 @@ if (rex::isBackend() && rex::getUser()) {
             } else {
                 if ($this->getConfig('delete') == 1) {
                     $getContent .= sprintf("Source file %s deletion was not possible", $inputFile) . PHP_EOL;
-                    $getContent .= sprintf("Destination file %s rex_mediapool register was not successful", $outputFile) . PHP_EOL;
-                    $getContent .= 'Please execute a mediapool sync by hand' . PHP_EOL;
                 }
+                $getContent .= sprintf("Destination file %s rex_mediapool register was not successful", $outputFile) . PHP_EOL;
+                $getContent .= 'Please execute a mediapool sync by hand' . PHP_EOL;
             }
 
             exit(json_encode(['log' => $getContent]));
