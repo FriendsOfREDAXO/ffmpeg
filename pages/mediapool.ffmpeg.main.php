@@ -25,7 +25,7 @@ if ($result > 0) {
         if (substr($item['filename'], 0, 4) == 'web_') continue;
         $n['field'][] = '<label><input class="mycheckbox" id="v' . $key . '" type="radio" name="video" value="' . $item['filename'] . '" data-video="' . $item['filename'] . '"> ' . $item['filename'] . '</label>';
     }
-
+    $content .= '<h3>'. $this->i18n('ffmpeg_convert_info') . '</h3>';
     $content .= '<fieldset><legend>' . $this->i18n('legend_video') . '</legend>';
 
     $formElements = [];
