@@ -9,8 +9,8 @@ ffmpeg_command = FFMpeg Command
 
 ffmpeg_config_save = Einstellungen speichern
 ffmpeg_config_saved = Einstellungen wurden gespeichert!
-ffmpeg_execute = Video convertieren
+ffmpeg_execute = Video konvertieren
 
 # Benennung für die Addonrechte, sichtbar innerhalb der REDAXO-Administration unter Benutzer > Rollen > Allgemein
-#perm_general_ffmpeg[] = ffmpeg[] - Rechte für Demo-Addon
-#perm_general_ffmpeg[config] = ffmpeg[config] - Rechte für Demo-Addon-Konfiguration
+#perm_general_ffmpeg[] = ffmpeg[] - Rechte für Video-Konverter
+#perm_general_ffmpeg[config] = ffmpeg[config] - Video-Konverter (Settings)
