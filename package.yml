@@ -1,0 +1,32 @@
+package: ffmpeg
+version: '1.0.0'
+author: Friends Of REDAXO
+supportpage: https://github.com/FriendsOfREDAXO/
+
+# Seiten
+pages:
+    mediapool/ffmpeg:
+        title: 'Video '
+        perm: ffmpeg[]
+        icon: rex-icon fa-compress
+
+        subpages:
+            main:
+                title: 'translate:ffmpeg_main'
+                perm: ffmpeg[]
+            config:
+                title: 'translate:ffmpeg_video_config'
+                perm: ffmpeg[config]
+                icon: rex-icon fa-wrench
+
+requires:
+    redaxo: '^5.5'
+    packages:
+        media_manager: '^2.0.1'
+    php:
+        version: '>=5.6'
+        extensions: [gd, xml]
+
+installer_ignore:
+    - node_modules
+    - .env
