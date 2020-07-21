@@ -6,6 +6,7 @@ Video-Converter für REDAXO cms
 
 ## Features
 - Konvertierung von Video-Material mittels ffmpeg serverseitig
+- Übernahme des konvertierten Videos in den Medienpool mit präfix web_
 - Einstellungsseite um das ffmpeg-Kommando anzupassen 
 - Löschen der Original-Datei (optional) 
 
