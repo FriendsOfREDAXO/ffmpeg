@@ -13,9 +13,17 @@ Video-Converter für REDAXO cms
 - Idee und Konzept: KLXM Crossmedia GmbH 
 - Developer: Joachim Dörr (@joachimdoerr), Thomas Skerbis (@skerbis)
 
+## Based on: 
+[PHP-FFmpeg-Command-Execution](https://github.com/Pedroxam/PHP-FFmpeg-Command-Execution)
+
+
 ## LIZENZ 
 MIT 
 
 ## Hinweise: 
 - FFMPEG muss auf dem Server zur Verfügung stehen 
 - shell_exec muss für PHP zulässig sein 
+
+## Tipp
+
+Tipp: Zum Erzeugen von ffmpeg-Befehlen kann man <a href="https://www.mrfdev.com/ffmpeg-command-generator">diese Website</a> verwenden.
