@@ -24,6 +24,3 @@ MIT
 - FFMPEG muss auf dem Server zur Verfügung stehen 
 - shell_exec muss für PHP zulässig sein 
 
-## Tipp
-
-Tipp: Zum Erzeugen von ffmpeg-Befehlen kann man <a href="https://www.mrfdev.com/ffmpeg-command-generator">diese Website</a> verwenden.
