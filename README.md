@@ -2,7 +2,7 @@
 
 Video-Converter für REDAXO cms 
 
-![Screenshot](https://github.com/skerbis/ffmpeg/blob/assets/shot.png?raw=true)
+![Screenshot](https://github.com/KLXM/ffmpeg/blob/assets/shot.png?raw=true)
 
 ## Features
 - Konvertierung von Video-Material mittels ffmpeg serverseitig
