@@ -1,8 +1,8 @@
 # REDAXO-AddOn: ffmpeg
 
-Video-Converter für REDAXO cms 
+ffmpeg Video-Converter für REDAXO cms 
 
-![Screenshot](https://github.com/KLXM/ffmpeg/blob/assets/shot.png?raw=true)
+![Screenshot](https://github.com/FriendsOfREDAXO/ffmpeg/blob/assets/shot.png?raw=true)
 
 ## Features
 - Konvertierung von Video-Material mittels ffmpeg serverseitig
@@ -12,7 +12,8 @@ Video-Converter für REDAXO cms
 
 ## Credits 
 - Idee und Konzept: KLXM Crossmedia GmbH 
-- Developer: Joachim Dörr (@joachimdoerr), Thomas Skerbis (@skerbis)
+- Lead: Thomas Skerbis (@skerbis)
+- Danke an: Joachim Dörr (@joachimdoerr)
 
 ## Based on: 
 [PHP-FFmpeg-Command-Execution](https://github.com/Pedroxam/PHP-FFmpeg-Command-Execution)
