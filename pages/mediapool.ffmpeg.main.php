@@ -26,26 +26,25 @@ if ($result > 0) {
         $n['field'][] = '<label><input class="mycheckbox" id="v' . $key . '" type="radio" name="video" value="' . $item['filename'] . '" data-video="' . $item['filename'] . '"> ' . $item['filename'] . '</label>';
     }
     $content .= '<h3>'. $this->i18n('ffmpeg_convert_info') . '</h3>';
-    $content .= '<fieldset><legend>' . $this->i18n('legend_video') . '</legend>';
     if(count($n['field'])>0)
     {
+    $content .= '<fieldset><legend>' . $this->i18n('legend_video') . '</legend>';
+   
     $formElements = [];
     $n['label'] = '<label></label>';
     $n['field'] = implode('<br>', $n['field']);
     $formElements[] = $n;
-    }
     $fragment = new rex_fragment();
     $fragment->setVar('elements', $formElements, false);
     $content .= $fragment->parse('core/form/container.php');
-
+    
     $content .= '</fieldset>';
-
     // Save-Button
     $formElements = [];
     $n = [];
     $n['field'] = '<button class="btn btn-save rex-form-aligned btn-start" id="start" type="submit" name="save" value="' . $this->i18n('execute') . '">' . $this->i18n('execute') . '</button>';
     $formElements[] = $n;
-
+    
     $fragment = new rex_fragment();
     $fragment->setVar('elements', $formElements, false);
     $buttons = $fragment->parse('core/form/submit.php');
@@ -78,7 +77,7 @@ if ($result > 0) {
 
     echo $output;
 
-} else {
+} } else {
     // empty nothing to convert.
 }
 
