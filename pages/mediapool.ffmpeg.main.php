@@ -27,12 +27,13 @@ if ($result > 0) {
     }
     $content .= '<h3>'. $this->i18n('ffmpeg_convert_info') . '</h3>';
     $content .= '<fieldset><legend>' . $this->i18n('legend_video') . '</legend>';
-
+    if(count($n['field'])>0)
+    {
     $formElements = [];
     $n['label'] = '<label></label>';
     $n['field'] = implode('<br>', $n['field']);
     $formElements[] = $n;
-
+    }
     $fragment = new rex_fragment();
     $fragment->setVar('elements', $formElements, false);
     $content .= $fragment->parse('core/form/container.php');
