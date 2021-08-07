@@ -20,7 +20,7 @@ if (rex_post('formsubmit', 'string') == '1' && !$csrfToken->isValid()) {
 if ($result > 0) {
 
     $n = [];
-
+    $n['field']=[];
     foreach ($result as $key => $item) {
         if (substr($item['filename'], 0, 4) == 'web_') continue;
         $n['field'][] = '<label><input class="mycheckbox" id="v' . $key . '" type="radio" name="video" value="' . $item['filename'] . '" data-video="' . $item['filename'] . '"> ' . $item['filename'] . '</label>';
