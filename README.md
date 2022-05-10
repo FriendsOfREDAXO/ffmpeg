@@ -1,4 +1,4 @@
-# REDAXO-AddOn: ffmpeg
+# REDAXO-AddOn: video_converter
 
 ffmpeg Video-Converter für REDAXO cms 
 
