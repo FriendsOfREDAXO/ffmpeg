@@ -29,8 +29,7 @@ OUTPUT.ext = Output mit Dateiendung
 
 Konvertierte Video erhalten automatisch das Prefix `web_`
 
-Tipps: Wer mit ffmpeg-Befehlen nicht vertraut ist, findet unter <a href = "http://www.mackinger.at/ffmpeg/" target = "_blank"> dieses Tool </ a> verwenden, um einige ffmpeg-Befehle zu generieren.
-
+Tipps: Wer mit ffmpeg-Befehlen nicht vertraut ist, findet unter [http://www.mackinger.at/ffmpeg]("http://www.mackinger.at/ffmpeg/) eine gute Hilfe. 
 
 
 ## Credits 
