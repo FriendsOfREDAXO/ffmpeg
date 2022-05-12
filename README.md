@@ -26,10 +26,11 @@ Man kann die Qualität und das Format selbst einstellen. Auch kürzen der Videos
 
 Beispiel 
 ```
-ffmpeg -i INPUT -vcodec h264 OUTPUT.mp4
+ffmpeg -y -i INPUT -vcodec h264 OUTPUT.mp4
 ```
 INPUT = Datei aus Auswahl 
-OUTPUT.ext = Output mit Dateiendung 
+OUTPUT.ext = Output mit Dateiendung
+y = Bestätige jede Frage mit yes
 
 Konvertierte Videos erhalten automatisch das Prefix `web_`
 
