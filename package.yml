@@ -1,4 +1,4 @@
-package: video_converter
+package: ffmpeg
 version: '1.0.0-dev'
 author: Friends Of REDAXO
 supportpage: https://github.com/FriendsOfREDAXO/
