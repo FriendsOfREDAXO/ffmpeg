@@ -1,8 +1,12 @@
-# REDAXO-AddOn: video_converter
+# REDAXO-AddOn: FFMPEG Video Converter
 
 ffmpeg Video-Converter für REDAXO cms 
 
 ![Screenshot](https://github.com/FriendsOfREDAXO/ffmpeg/blob/assets/shot.png?raw=true)
+
+## Voraussetzungen
+- exec sollte für PHP erlaubt sein
+- ffmpeg muss auf dem Server zur Verfügung stehen
 
 ## Features
 - Konvertierung von Video-Material mittels ffmpeg serverseitig
@@ -27,7 +31,7 @@ ffmpeg -i INPUT -vcodec h264 OUTPUT.mp4
 INPUT = Datei aus Auswahl 
 OUTPUT.ext = Output mit Dateiendung 
 
-Konvertierte Video erhalten automatisch das Prefix `web_`
+Konvertierte Videos erhalten automatisch das Prefix `web_`
 
 Tipps: Wer mit ffmpeg-Befehlen nicht vertraut ist, findet unter [http://www.mackinger.at/ffmpeg](http://www.mackinger.at/ffmpeg/) eine gute Hilfe. 
 
