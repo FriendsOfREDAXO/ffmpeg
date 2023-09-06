@@ -5,6 +5,7 @@ if (rex::isBackend() && rex::getUser()) {
     if (is_null(rex_session('ffmpeg_uid', 'string', null))) {
         rex_set_session('ffmpeg_uid', uniqid());
     }
+   $log = $this->getDataPath('log' . rex_session('ffmpeg_uid', 'string', '') . '.txt');
 
     if (rex_be_controller::getCurrentPagePart(2) == 'ffmpeg') {
         rex_view::addJsFile($this->getAssetsUrl('js/script.js'));
@@ -13,13 +14,6 @@ if (rex::isBackend() && rex::getUser()) {
     if (rex_request::get('ffmpeg_video', 'boolean', false)) {
 
         if (rex_request::get('start', 'boolean', false)) {
-
-            $log = $this->getDataPath('log' . rex_session('ffmpeg_uid', 'string', '') . '.txt');
-
-            if (!rex_file::exists($log)) {
-                rex_dir::create(dirname($log)); // Create directory if it doesn't exist
-            }
-
             rex_file::put($log, ''); // Create or clear log file
 
             $input = rex_path::media(rex_request::get('video', 'string'));
@@ -43,10 +37,10 @@ if (rex::isBackend() && rex::getUser()) {
 
             exit();
         }
+        $log = $this->getDataPath('log' . rex_session('ffmpeg_uid', 'string', '') . '.txt');
 
         if (rex_request::get('progress', 'boolean', false)) {
 
-            $log = $this->getDataPath('log' . rex_session('ffmpeg_uid', 'string', '') . '.txt');
             $getContent = rex_file::get($log);
 
             preg_match("/Duration: (.*?), start:/ms", $getContent, $matches);
