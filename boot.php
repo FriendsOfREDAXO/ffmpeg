@@ -5,6 +5,7 @@ if (rex::isBackend() && rex::getUser()) {
     if (is_null(rex_session('ffmpeg_uid', 'string', null))) {
         rex_set_session('ffmpeg_uid', uniqid());
     }
+   $log = $this->getDataPath('log' . rex_session('ffmpeg_uid', 'string', '') . '.txt');
 
     if (rex_be_controller::getCurrentPagePart(2) == 'ffmpeg') {
         rex_view::addJsFile($this->getAssetsUrl('js/script.js'));
@@ -13,16 +14,9 @@ if (rex::isBackend() && rex::getUser()) {
     if (rex_request::get('ffmpeg_video', 'boolean', false)) {
 
         if (rex_request::get('start', 'boolean', false)) {
+            rex_file::put($log, ''); // Create or clear log file
 
-            $log = $this->getDataPath('log' . rex_session('ffmpeg_uid', 'string', '') . '.txt');
-
-            if (!file_exists($log)) {
-                mkdir(dirname($log), 0755, true); // $path is a file
-            }
-
-            file_put_contents($log, '');
-
-            $input = rex_path::media(rex_request('video', 'string'));
+            $input = rex_path::media(rex_request::get('video', 'string'));
             $output = rex_path::media('web_' . pathinfo($input, PATHINFO_FILENAME));
             $command = trim($this->getConfig('command')) . " ";
 
@@ -35,7 +29,7 @@ if (rex::isBackend() && rex::getUser()) {
 
             $command = str_ireplace(['INPUT', 'OUTPUT'], [$input, $output], $command);
 
-            if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
+            if (str_starts_with(PHP_OS, 'WIN')) {
                 pclose(popen("start /B " . $command . " 1> $log 2>&1", "r")); // windows
             } else {
                 shell_exec($command . " 1> $log 2>&1 >/dev/null &"); //linux
@@ -43,11 +37,11 @@ if (rex::isBackend() && rex::getUser()) {
 
             exit();
         }
+        $log = $this->getDataPath('log' . rex_session('ffmpeg_uid', 'string', '') . '.txt');
 
         if (rex_request::get('progress', 'boolean', false)) {
 
-            $log = $this->getDataPath('log' . rex_session('ffmpeg_uid', 'string', '') . '.txt');
-            $getContent = file_get_contents($log);
+            $getContent = rex_file::get($log);
 
             preg_match("/Duration: (.*?), start:/ms", $getContent, $matches);
             if (!empty($rawDuration = $matches[1])) $ar = array_reverse(explode(":", $rawDuration));
@@ -92,23 +86,23 @@ if (rex::isBackend() && rex::getUser()) {
             if (!is_null($inputFile) && !is_null($outputFile)) {
                 // 1. delete
                 if ($this->getConfig('delete') == 1) {
-                    $result = rex_mediapool_deleteMedia(pathinfo($inputFile, PATHINFO_BASENAME));
+                    rex_mediapool_deleteMedia(pathinfo($inputFile, PATHINFO_BASENAME));
                     rex_unset_session('ffmpeg_input_video_file');
-                    $getContent .= sprintf("Source file %s deletion was successful", $inputFile) . PHP_EOL;
+                    rex_file::put($log, sprintf("Source file %s deletion was successful", $inputFile) . PHP_EOL); // Append to the log
                 }
                 // 2. add media
-                $result = rex_mediapool_syncFile(pathinfo($outputFile, PATHINFO_BASENAME), 0, '');
+                rex_mediapool_syncFile(pathinfo($outputFile, PATHINFO_BASENAME), 0, '');
                 rex_unset_session('ffmpeg_output_video_file');
-                $getContent .= sprintf("Destination file %s was successful add to rex_mediapool", $outputFile) . PHP_EOL;
+                rex_file::put($log, sprintf("Destination file %s was successfully added to rex_mediapool", $outputFile) . PHP_EOL); // Append to the log
             } else {
                 if ($this->getConfig('delete') == 1) {
-                    $getContent .= sprintf("Source file %s deletion was not possible", $inputFile) . PHP_EOL;
+                    rex_file::put($log, sprintf("Source file %s deletion was not possible", $inputFile) . PHP_EOL); // Append to the log
                 }
-                $getContent .= sprintf("Destination file %s rex_mediapool register was not successful", $outputFile) . PHP_EOL;
-                $getContent .= 'Please execute a mediapool sync by hand' . PHP_EOL;
+                rex_file::put($log, sprintf("Destination file %s rex_mediapool registration was not successful", $outputFile) . PHP_EOL); // Append to the log
+                rex_file::put($log, 'Please execute a mediapool sync by hand' . PHP_EOL); // Append to the log
             }
 
-            exit(json_encode(['log' => $getContent]));
+            exit(json_encode(['log' => rex_file::get($log)]));
         }
     }
 }
