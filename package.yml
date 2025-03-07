@@ -5,14 +5,22 @@ supportpage: https://github.com/FriendsOfREDAXO/ffmpeg
 
 # Seiten
 pages:
-    mediapool/ffmpeg:
+    ffmpeg:
         title: 'Video-Konverter'
         perm: ffmpeg[]
         icon: rex-icon fa-video-camera
-
         subpages:
             main:
                 title: 'translate:ffmpeg_main'
+                perm: ffmpeg[]
+            optimized:
+                title: 'translate:ffmpeg_optimized' 
+                perm: ffmpeg[]
+            poster:
+                title: 'translate:ffmpeg_poster'
+                perm: ffmpeg[]
+            trimmed:
+                title: 'translate:ffmpeg_trimmed'
                 perm: ffmpeg[]
             config:
                 title: 'translate:ffmpeg_video_config'
