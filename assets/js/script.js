@@ -2,8 +2,7 @@
     var doProgress;
 
     function SetProgressStart() {
-        doProgress = setInterval(
-            showProgress, 2000);
+        doProgress = setInterval(showProgress, 2000);
     }
 
     function scrolllog() {
@@ -11,9 +10,10 @@
     }
 
     function showProgress() {
+        console.log("Checking progress...");
         $.ajax({
             type: 'get',
-            url: './index.php?ffmpeg_video=1&progress=1',
+            url: 'index.php?page=ffmpeg/main&ffmpeg_video=1&progress=1',
             dataType: 'json',
         })
             .fail(function (jqXHR, textStatus) {
@@ -24,32 +24,41 @@
                 clearInterval(doProgress);
             })
             .done(function (data) {
+                console.log("Progress response:", data);
                 $('#log pre').html(data.log);
-
                 scrolllog();
 
-                if (data.log.indexOf("Overwrite ?") >= 0) {
+                if (data.log && data.log.indexOf("Overwrite ?") >= 0) {
                     $('#start').removeClass('disabled');
                     clearInterval(doProgress);
+                } else if (data.progress === "error") {
+                    $('#prog').html('Fehler');
+                    $('#prog').css('width', '100%');
+                    $('#prog').addClass('progress-bar-danger');
+                    $('#start').removeClass('disabled');
+                    clearInterval(doProgress);
+                } else if (data.progress === "done") {
+                    $('#prog').html('100%');
+                    $('#prog').css('width', '100%');
+                    $('#start').removeClass('disabled');
+                    clearInterval(doProgress);
+                    showFinalDone();
+                } else if (typeof data.progress === 'number') {
+                    $('#prog').css('width', data.progress + '%');
+                    $('#prog').html(data.progress + '%');
                 } else {
-                    if (data.progress === "done") {
-                        $('#prog').html('100%');
-                        $('#prog').css('width', '100%');
-                        $('#start').removeClass('disabled');
-                        clearInterval(doProgress);
-                        showFinalDone();
-                    } else {
-                        $('#prog').css('width', data.progress + '%');
-                        $('#prog').html(data.progress + '%');
-                    }
+                    // Fallback für unbekannten Statuswert
+                    $('#prog').html('Verarbeitung...');
+                    $('#prog').css('width', '50%');
                 }
             });
     }
 
     function showFinalDone() {
+        console.log("Finalizing...");
         $.ajax({
             type: 'get',
-            url: './index.php?ffmpeg_video=1&done=1',
+            url: 'index.php?page=ffmpeg/main&ffmpeg_video=1&done=1',
             dataType: 'json',
         })
             .fail(function (jqXHR, textStatus) {
@@ -57,7 +66,20 @@
                 $('#log pre').html("Request failed: " + textStatus);
             })
             .done(function (data) {
+                console.log("Done response:", data);
                 $('#log pre').html(data.log);
+                
+                // Show success message
+                if (typeof rex !== 'undefined' && rex.infoPool) {
+                    rex.infoPool.add({
+                        type: 'success',
+                        title: 'FFmpeg',
+                        message: 'Vorgang erfolgreich abgeschlossen!'
+                    });
+                } else {
+                    alert('Vorgang erfolgreich abgeschlossen!');
+                }
+                
                 // Reload page to show updated video list
                 setTimeout(function() {
                     window.location.reload();
@@ -82,7 +104,7 @@
         });
 
         // Video selection - Direct handler
-        $('input[name=video]').on('change', function() {
+        $(document).on('change', '.video-select', function() {
             console.log("Video selected:", $(this).val()); // Debug-Ausgabe
             
             if ($('input[name=video]:checked').length > 0) {
@@ -92,34 +114,54 @@
             }
         });
 
-        // Handle tabs
-        $('.nav-tabs a').on('click', function (e) {
-            e.preventDefault();
-            $(this).tab('show');
-        });
-
         // Delete optimized video
-        $('.delete-optimized').on('click', function(e) {
+        $(document).on('click', '.delete-optimized', function(e) {
             e.preventDefault();
-            if (!confirm('Sind Sie sicher, dass Sie dieses optimierte Video löschen möchten?')) {
+            if (!confirm('Sind Sie sicher, dass Sie diese Datei löschen möchten?')) {
                 return;
             }
             
             const filename = $(this).data('filename');
             $.ajax({
                 type: 'get',
-                url: './index.php?ffmpeg_video=1&delete_optimized=1&filename=' + filename,
+                url: 'index.php?page=ffmpeg/main&ffmpeg_video=1&delete_optimized=1&filename=' + filename,
                 dataType: 'json',
             })
                 .done(function(data) {
                     if (data.success) {
+                        if (typeof rex !== 'undefined' && rex.infoPool) {
+                            rex.infoPool.add({
+                                type: 'success',
+                                title: 'FFmpeg',
+                                message: 'Datei erfolgreich gelöscht!'
+                            });
+                        } else {
+                            alert('Datei erfolgreich gelöscht!');
+                        }
+                        
                         window.location.reload();
                     } else {
-                        alert('Fehler beim Löschen: ' + data.message);
+                        if (typeof rex !== 'undefined' && rex.infoPool) {
+                            rex.infoPool.add({
+                                type: 'error',
+                                title: 'FFmpeg',
+                                message: 'Fehler beim Löschen: ' + data.message
+                            });
+                        } else {
+                            alert('Fehler beim Löschen: ' + data.message);
+                        }
                     }
                 })
                 .fail(function() {
-                    alert('Fehler beim Löschen des Videos');
+                    if (typeof rex !== 'undefined' && rex.infoPool) {
+                        rex.infoPool.add({
+                            type: 'error',
+                            title: 'FFmpeg',
+                            message: 'Fehler beim Löschen der Datei'
+                        });
+                    } else {
+                        alert('Fehler beim Löschen der Datei');
+                    }
                 });
         });
 
@@ -160,7 +202,7 @@
         }
         
         // Video preview
-        $('.video-preview-link').on('click', function(e) {
+        $(document).on('click', '.video-preview-link', function(e) {
             e.preventDefault();
             const videoUrl = $(this).data('video');
             const $modal = $('#video-preview-modal');
@@ -170,8 +212,8 @@
             $modal.modal('show');
         });
 
-        // Start operation - Direkter Event-Handler zum Button
-        $('#start').on('click', function (e) {
+        // Start operation
+        $(document).on('click', '#start', function (e) {
             e.preventDefault();
             console.log("Start button clicked"); // Debug-Ausgabe
             
@@ -189,11 +231,19 @@
             console.log("Operation type:", operationType); // Debug-Ausgabe
 
             if (video === undefined) {
-                alert('Bitte wählen Sie eine Video-Datei aus!');
+                if (typeof rex !== 'undefined' && rex.infoPool) {
+                    rex.infoPool.add({
+                        type: 'error',
+                        title: 'FFmpeg',
+                        message: 'Bitte wählen Sie eine Video-Datei aus!'
+                    });
+                } else {
+                    alert('Bitte wählen Sie eine Video-Datei aus!');
+                }
                 return false;
             }
 
-            let url = './index.php?ffmpeg_video=1&start=1&video=' + video + '&operation=' + operationType;
+            let url = 'index.php?page=ffmpeg/main&ffmpeg_video=1&start=1&video=' + video + '&operation=' + operationType;
             
             // Add operation-specific parameters
             if (operationType === 'trim') {
@@ -208,6 +258,14 @@
             console.log("Request URL:", url); // Debug-Ausgabe
             
             $button.addClass('disabled');
+            
+            // Reset progress bar
+            $('#prog').removeClass('progress-bar-danger');
+            $('#prog').css('width', '0%');
+            $('#prog').html('0%');
+            
+            // Clear log
+            $('#log pre').html('');
 
             $.ajax({
                 type: 'get',
@@ -218,12 +276,30 @@
                     $('.log').show();
                     $('.progress-section').show();
                     $('#log pre').html("Request failed: " + textStatus);
+                    
+                    $button.removeClass('disabled');
+                    
+                    if (typeof rex !== 'undefined' && rex.infoPool) {
+                        rex.infoPool.add({
+                            type: 'error',
+                            title: 'FFmpeg',
+                            message: 'Fehler beim Starten des Vorgangs: ' + textStatus
+                        });
+                    } else {
+                        alert('Fehler beim Starten des Vorgangs: ' + textStatus);
+                    }
                 })
                 .done(function (msg) {
                     console.log("Request succeeded"); // Debug-Ausgabe
                     $('.log').show();
                     $('.progress-section').show();
                     $('.progress').show();
+                    
+                    // Sofortiges Feedback
+                    $('#log pre').html('Vorgang gestartet...');
+                    $('#prog').css('width', '5%');
+                    $('#prog').html('5%');
+                    
                     SetProgressStart();
                 });
 
