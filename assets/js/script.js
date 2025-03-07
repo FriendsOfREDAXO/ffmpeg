@@ -66,8 +66,12 @@
     }
 
     $(document).ready(function () {
+        console.log("FFMPEG Script loaded"); // Debug-Ausgabe
+
         // Toggle between operation types
         $('.operation-select').on('click', function() {
+            console.log("Operation selected:", $(this).data('operation')); // Debug-Ausgabe
+            
             $('.operation-select').removeClass('active');
             $(this).addClass('active');
             
@@ -75,14 +79,12 @@
             $('.operation-options').hide();
             $('#' + operationType + '-options').show();
             $('input[name=operation_type]').val(operationType);
-            
-            // Reset previous selections
-            $('input[name=video]').prop('checked', false);
-            $('#start').addClass('disabled');
         });
 
-        // Video selection
-        $(document).on('change', 'input[name=video]', function() {
+        // Video selection - Direct handler
+        $('input[name=video]').on('change', function() {
+            console.log("Video selected:", $(this).val()); // Debug-Ausgabe
+            
             if ($('input[name=video]:checked').length > 0) {
                 $('#start').removeClass('disabled');
             } else {
@@ -168,16 +170,23 @@
             $modal.modal('show');
         });
 
-        // Start operation
-        $('#start').on('click', function () {
+        // Start operation - Direkter Event-Handler zum Button
+        $('#start').on('click', function (e) {
+            e.preventDefault();
+            console.log("Start button clicked"); // Debug-Ausgabe
+            
             const $button = $(this);
             
             if ($button.hasClass('disabled')) {
+                console.log("Button is disabled"); // Debug-Ausgabe
                 return false;
             }
 
             let video = $('input[name=video]:checked').val();
             let operationType = $('input[name=operation_type]').val();
+
+            console.log("Selected video:", video); // Debug-Ausgabe
+            console.log("Operation type:", operationType); // Debug-Ausgabe
 
             if (video === undefined) {
                 alert('Bitte wählen Sie eine Video-Datei aus!');
@@ -196,6 +205,8 @@
                 url += '&timestamp=' + timestamp;
             }
 
+            console.log("Request URL:", url); // Debug-Ausgabe
+            
             $button.addClass('disabled');
 
             $.ajax({
@@ -209,6 +220,7 @@
                     $('#log pre').html("Request failed: " + textStatus);
                 })
                 .done(function (msg) {
+                    console.log("Request succeeded"); // Debug-Ausgabe
                     $('.log').show();
                     $('.progress-section').show();
                     $('.progress').show();
