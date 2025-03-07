@@ -1,14 +1,14 @@
 package: ffmpeg
-version: '1.0.1'
+version: '2.0.0'
 author: Friends Of REDAXO
-supportpage: https://github.com/FriendsOfREDAXO/
+supportpage: https://github.com/FriendsOfREDAXO/ffmpeg
 
 # Seiten
 pages:
     mediapool/ffmpeg:
         title: 'Video-Konverter'
         perm: ffmpeg[]
-        icon: rex-icon fa-compress
+        icon: rex-icon fa-video-camera
 
         subpages:
             main:
@@ -18,15 +18,19 @@ pages:
                 title: 'translate:ffmpeg_video_config'
                 perm: ffmpeg[config]
                 icon: rex-icon fa-wrench
+
 default_config:
-    command: 'ffmpeg -y -i INPUT -vcodec h264   OUTPUT.mp4'
+    command: 'ffmpeg -y -i INPUT -vcodec h264 -crf 23 -preset veryfast OUTPUT.mp4'
+    poster_quality: 'jpeg_medium'
+    trim_preset: 'veryfast'
+    inherit_meta: '1'
 
 requires:
-    redaxo: '^5.5'
+    redaxo: '^5.10'
     packages:
         media_manager: '^2.0.1'
     php:
-        version: '>=5.6'
+        version: '>=7.3'
         extensions: [gd, xml]
 
 installer_ignore:
