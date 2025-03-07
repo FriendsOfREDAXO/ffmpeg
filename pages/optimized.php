@@ -11,6 +11,7 @@ $sql = rex_sql::factory();
 // Get all video files from media pool
 $sql = rex_sql::factory();
 $result = $sql->getArray('SELECT * FROM ' . $media_table . ' WHERE filetype LIKE \'video/%\' ORDER BY updatedate DESC');
+$result = $sql->getArray('SELECT * FROM ' . $media_table . ' WHERE filetype LIKE \'video/%\' ORDER BY updatedate DESC');
 
 // Get already optimized videos (with web_ prefix)
 $optimized_videos = $sql->getArray('SELECT * FROM ' . $media_table . ' WHERE filename LIKE \'web_%\' AND filetype LIKE \'video/%\' ORDER BY updatedate DESC');
