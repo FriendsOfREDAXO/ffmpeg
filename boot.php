@@ -5,15 +5,15 @@ if (rex::isBackend() && rex::getUser()) {
     if (is_null(rex_session('ffmpeg_uid', 'string', null))) {
         rex_set_session('ffmpeg_uid', uniqid());
     }
-    $log = $this->getDataPath('log' . rex_session('ffmpeg_uid', 'string', '') . '.txt');
+    $log = rex_addon::get('ffmpeg')->getDataPath('log' . rex_session('ffmpeg_uid', 'string', '') . '.txt');
 
-    if (rex_be_controller::getCurrentPagePart(1) == 'ffmpeg') {
-        rex_view::addJsFile($this->getAssetsUrl('js/script.js'));
-        rex_view::addCssFile($this->getAssetsUrl('css/style.css'));
+    if (rex_be_controller::getCurrentPage() == 'ffmpeg/main') {
+        rex_view::addJsFile(rex_url::addonAssets('ffmpeg', 'js/script.js'));
+        rex_view::addCssFile(rex_url::addonAssets('ffmpeg', 'css/style.css'));
         
         // jQuery UI für Slider
-       # rex_view::addJsFile('https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js');
-       # rex_view::addCssFile('https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.css');
+        rex_view::addJsFile('https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js');
+        rex_view::addCssFile('https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.css');
     }
 
     if (rex_request::get('ffmpeg_video', 'boolean', false)) {
@@ -23,6 +23,10 @@ if (rex::isBackend() && rex::getUser()) {
 
             $input = rex_path::media(rex_request::get('video', 'string'));
             $operation = rex_request::get('operation', 'string', 'convert');
+            
+            // Debug-Log starten
+            rex_file::put($log, "Starting FFmpeg operation: " . $operation . PHP_EOL);
+            rex_file::put($log, "Input file: " . $input . PHP_EOL);
             
             // Get original video metadata if available
             $originalMeta = [];
@@ -37,13 +41,15 @@ if (rex::isBackend() && rex::getUser()) {
                         $originalMeta[$field['name']] = $mediaObj->getValue($field['name']);
                     }
                 }
+            } else {
+                rex_file::put($log, "ERROR: Input file does not exist: " . $input . PHP_EOL);
             }
             
             // Set up appropriate command and output based on operation type
             switch ($operation) {
                 case 'convert':
                     $output = rex_path::media('web_' . pathinfo($input, PATHINFO_FILENAME));
-                    $command = trim($this->getConfig('command')) . " ";
+                    $command = trim(rex_addon::get('ffmpeg')->getConfig('command')) . " ";
                     
                     preg_match_all('/OUTPUT.(.*) /m', $command, $matches, PREG_SET_ORDER, 0);
                     if (count($matches) > 0) {
@@ -99,7 +105,7 @@ if (rex::isBackend() && rex::getUser()) {
                 default:
                     // Fallback to convert if unknown operation
                     $output = rex_path::media('web_' . pathinfo($input, PATHINFO_FILENAME));
-                    $command = trim($this->getConfig('command')) . " ";
+                    $command = trim(rex_addon::get('ffmpeg')->getConfig('command')) . " ";
                     
                     preg_match_all('/OUTPUT.(.*) /m', $command, $matches, PREG_SET_ORDER, 0);
                     if (count($matches) > 0) {
@@ -121,7 +127,8 @@ if (rex::isBackend() && rex::getUser()) {
             }
             
             // Debug-Log
-            rex_file::put($log, "Command: $command" . PHP_EOL . PHP_EOL);
+            rex_file::put($log, "Output file: " . rex_session('ffmpeg_output_video_file', 'string', '') . PHP_EOL);
+            rex_file::put($log, "Command: " . $command . PHP_EOL . PHP_EOL);
             
             // Execute command based on OS
             if (str_starts_with(PHP_OS, 'WIN')) {
@@ -133,7 +140,7 @@ if (rex::isBackend() && rex::getUser()) {
             exit();
         }
         
-        $log = $this->getDataPath('log' . rex_session('ffmpeg_uid', 'string', '') . '.txt');
+        $log = rex_addon::get('ffmpeg')->getDataPath('log' . rex_session('ffmpeg_uid', 'string', '') . '.txt');
 
         if (rex_request::get('progress', 'boolean', false)) {
             $getContent = rex_file::get($log);
@@ -213,10 +220,16 @@ if (rex::isBackend() && rex::getUser()) {
             $outputFile = rex_session('ffmpeg_output_video_file', 'string', null);
             $operation = rex_session('ffmpeg_operation', 'string', 'convert');
             $originalMeta = rex_session('ffmpeg_original_meta', 'array', []);
+            
+            // Debug-Ausgabe für Fehlersuche
+            rex_file::put($log, "=== FINALIZATION ===\n", FILE_APPEND);
+            rex_file::put($log, "Input file: $inputFile\n", FILE_APPEND);
+            rex_file::put($log, "Output file: $outputFile\n", FILE_APPEND);
+            rex_file::put($log, "Operation: $operation\n", FILE_APPEND);
 
             if (!is_null($inputFile) && !is_null($outputFile)) {
                 // 1. Delete original if configured and operation is convert
-                if ($operation == 'convert' && $this->getConfig('delete') == 1) {
+                if ($operation == 'convert' && rex_addon::get('ffmpeg')->getConfig('delete') == 1) {
                     rex_mediapool_deleteMedia(pathinfo($inputFile, PATHINFO_BASENAME));
                     rex_unset_session('ffmpeg_input_video_file');
                     rex_file::put($log, sprintf("Source file %s deletion was successful", $inputFile) . PHP_EOL, FILE_APPEND);
@@ -224,20 +237,49 @@ if (rex::isBackend() && rex::getUser()) {
                 
                 // 2. Add media to mediapool
                 if (file_exists($outputFile)) {
-                    $syncResult = rex_mediapool_syncFile(pathinfo($outputFile, PATHINFO_BASENAME), 0, '');
-                    rex_file::put($log, sprintf("Media sync result: %s", print_r($syncResult, true)) . PHP_EOL, FILE_APPEND);
+                    rex_file::put($log, "Output file exists: " . $outputFile . PHP_EOL, FILE_APPEND);
                     
-                    if ($syncResult['ok'] == 1) {
-                        rex_file::put($log, sprintf("File %s was successfully added to rex_mediapool", $outputFile) . PHP_EOL, FILE_APPEND);
+                    // 2.1 Manuell versuchen, die Datei in den Medienpool zu importieren
+                    $filename = pathinfo($outputFile, PATHINFO_BASENAME);
+                    $category_id = 0; // "Keine Kategorie"
+                    
+                    try {
+                        // 2.1.1 Datei in den Medienpool-Ordner kopieren (falls sie noch nicht dort ist)
+                        if (!file_exists(rex_path::media($filename))) {
+                            rex_file::put($log, "Copying file to media directory: $filename" . PHP_EOL, FILE_APPEND);
+                            copy($outputFile, rex_path::media($filename));
+                        }
                         
-                        // 3. Copy metadata from original to the new file
-                        if (!empty($originalMeta) && $this->getConfig('inherit_meta') == 1) {
-                            $newMedia = rex_media::get(pathinfo($outputFile, PATHINFO_BASENAME));
+                        // 2.1.2 Eintrag in der Datenbank erstellen (falls sie noch nicht existiert)
+                        $sql = rex_sql::factory();
+                        $media = $sql->getArray('SELECT * FROM ' . rex::getTable('media') . ' WHERE filename = :filename', [':filename' => $filename]);
+                        
+                        if (empty($media)) {
+                            rex_file::put($log, "Creating media entry in database for: $filename" . PHP_EOL, FILE_APPEND);
                             
-                            if ($newMedia) {
-                                $sql = rex_sql::factory();
-                                $sql->setTable(rex::getTable('media'));
-                                $sql->setWhere(['filename' => $newMedia->getFileName()]);
+                            $fileInfo = pathinfo($filename);
+                            $fileType = rex_file::mimeType($outputFile);
+                            $fileSize = filesize($outputFile);
+                            
+                            $sql->setTable(rex::getTable('media'));
+                            $sql->setValue('filename', $filename);
+                            $sql->setValue('originalname', $filename);
+                            $sql->setValue('filetype', $fileType);
+                            $sql->setValue('filesize', $fileSize);
+                            $sql->setValue('category_id', $category_id);
+                            $sql->setValue('updateuser', rex::getUser()->getLogin());
+                            $sql->setValue('updatedate', date('Y-m-d H:i:s'));
+                            $sql->setValue('createuser', rex::getUser()->getLogin());
+                            $sql->setValue('createdate', date('Y-m-d H:i:s'));
+                            
+                            $sql->insert();
+                            rex_file::put($log, "Media entry created successfully" . PHP_EOL, FILE_APPEND);
+                            
+                            // 3. Copy metadata from original to the new file
+                            if (!empty($originalMeta) && rex_addon::get('ffmpeg')->getConfig('inherit_meta') == 1) {
+                                $mediaId = $sql->getLastId();
+                                
+                                rex_file::put($log, "Copying metadata to new file (ID: $mediaId)" . PHP_EOL, FILE_APPEND);
                                 
                                 $updateData = [];
                                 foreach ($originalMeta as $key => $value) {
@@ -248,24 +290,38 @@ if (rex::isBackend() && rex::getUser()) {
                                 }
                                 
                                 if (!empty($updateData)) {
+                                    $sql = rex_sql::factory();
+                                    $sql->setTable(rex::getTable('media'));
+                                    $sql->setWhere(['id' => $mediaId]);
                                     $sql->setValues($updateData);
                                     $sql->update();
-                                    rex_file::put($log, "Metadata from original video was copied to the new file" . PHP_EOL, FILE_APPEND);
+                                    rex_file::put($log, "Metadata copied successfully" . PHP_EOL, FILE_APPEND);
                                 }
                             }
+                            
+                            // 4. Generiere Cachefile für Media Manager
+                            rex_media_manager::deleteCacheByFilename($filename);
+                            
+                            // 5. Update Medienpool-Cache
+                            rex_media_cache::delete($filename);
+                        } else {
+                            rex_file::put($log, "Media already exists in database: $filename" . PHP_EOL, FILE_APPEND);
                         }
-                    } else {
-                        rex_file::put($log, sprintf("Error syncing file %s: %s", $outputFile, print_r($syncResult, true)) . PHP_EOL, FILE_APPEND);
+                        
+                        rex_file::put($log, "File $filename was successfully added to rex_mediapool" . PHP_EOL, FILE_APPEND);
+                    } catch (Exception $e) {
+                        rex_file::put($log, "Error adding file to mediapool: " . $e->getMessage() . PHP_EOL, FILE_APPEND);
                     }
                 } else {
-                    rex_file::put($log, sprintf("Output file %s does not exist", $outputFile) . PHP_EOL, FILE_APPEND);
+                    rex_file::put($log, "ERROR: Output file does not exist: " . $outputFile . PHP_EOL, FILE_APPEND);
                 }
                 
+                rex_unset_session('ffmpeg_output_video_file');
                 rex_unset_session('ffmpeg_output_video_file');
                 rex_unset_session('ffmpeg_operation');
                 rex_unset_session('ffmpeg_original_meta');
             } else {
-                if ($operation == 'convert' && $this->getConfig('delete') == 1) {
+                if ($operation == 'convert' && rex_addon::get('ffmpeg')->getConfig('delete') == 1) {
                     rex_file::put($log, sprintf("Source file %s deletion was not possible", $inputFile) . PHP_EOL, FILE_APPEND);
                 }
                 rex_file::put($log, sprintf("Destination file %s rex_mediapool registration was not successful", $outputFile) . PHP_EOL, FILE_APPEND);
