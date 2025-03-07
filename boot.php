@@ -7,7 +7,12 @@ if (rex::isBackend() && rex::getUser()) {
     }
     $log = rex_addon::get('ffmpeg')->getDataPath('log' . rex_session('ffmpeg_uid', 'string', '') . '.txt');
 
-    if (rex_be_controller::getCurrentPage() == 'ffmpeg/main') {
+    // Immer sicherstellen, dass Datenpfad existiert
+    if (!is_dir(rex_addon::get('ffmpeg')->getDataPath())) {
+        mkdir(rex_addon::get('ffmpeg')->getDataPath(), 0755, true);
+    }
+
+    if (rex_be_controller::getCurrentPagePart(1) == 'ffmpeg') {
         rex_view::addJsFile(rex_url::addonAssets('ffmpeg', 'js/script.js'));
         rex_view::addCssFile(rex_url::addonAssets('ffmpeg', 'css/style.css'));
         
@@ -19,122 +24,201 @@ if (rex::isBackend() && rex::getUser()) {
     if (rex_request::get('ffmpeg_video', 'boolean', false)) {
 
         if (rex_request::get('start', 'boolean', false)) {
-            rex_file::put($log, ''); // Create or clear log file
-
-            $input = rex_path::media(rex_request::get('video', 'string'));
-            $operation = rex_request::get('operation', 'string', 'convert');
+            rex_file::put($log, "=== NEW FFMPEG PROCESS STARTED ===\n");
+            rex_file::put($log, "Time: " . date('Y-m-d H:i:s') . "\n");
+            rex_file::put($log, "PHP version: " . phpversion() . "\n");
+            rex_file::put($log, "OS: " . PHP_OS . "\n");
             
-            // Debug-Log starten
-            rex_file::put($log, "Starting FFmpeg operation: " . $operation . PHP_EOL);
-            rex_file::put($log, "Input file: " . $input . PHP_EOL);
-            
-            // Get original video metadata if available
-            $originalMeta = [];
-            if (file_exists($input)) {
-                $mediaObj = rex_media::get(rex_request::get('video', 'string'));
-                if ($mediaObj) {
-                    // Get meta info for the original video
-                    $sql = rex_sql::factory();
-                    $metaFields = $sql->getArray('SELECT * FROM ' . rex::getTable('metainfo_field') . ' WHERE name LIKE \'med_%\'');
+            try {
+                $input = rex_path::media(rex_request::get('video', 'string'));
+                $operation = rex_request::get('operation', 'string', 'convert');
+                
+                // Debug-Log starten
+                rex_file::put($log, "Starting FFmpeg operation: " . $operation . "\n", FILE_APPEND);
+                rex_file::put($log, "Input file: " . $input . "\n", FILE_APPEND);
+                
+                // Check file read permissions
+                if (file_exists($input)) {
+                    if (is_readable($input)) {
+                        rex_file::put($log, "Input file exists and is readable\n", FILE_APPEND);
+                    } else {
+                        rex_file::put($log, "ERROR: Input file exists but is not readable!\n", FILE_APPEND);
+                    }
                     
-                    foreach ($metaFields as $field) {
-                        $originalMeta[$field['name']] = $mediaObj->getValue($field['name']);
+                    // Try to get file size as additional check
+                    $filesize = @filesize($input);
+                    if ($filesize !== false) {
+                        rex_file::put($log, "Input file size: " . $filesize . " bytes\n", FILE_APPEND);
+                    } else {
+                        rex_file::put($log, "WARNING: Cannot get file size!\n", FILE_APPEND);
+                    }
+                } else {
+                    rex_file::put($log, "ERROR: Input file does not exist: " . $input . "\n", FILE_APPEND);
+                }
+                
+                // Get original video metadata if available
+                $originalMeta = [];
+                if (file_exists($input)) {
+                    $mediaObj = rex_media::get(rex_request::get('video', 'string'));
+                    if ($mediaObj) {
+                        // Get meta info for the original video
+                        $sql = rex_sql::factory();
+                        $metaFields = $sql->getArray('SELECT * FROM ' . rex::getTable('metainfo_field') . ' WHERE name LIKE \'med_%\'');
+                        
+                        foreach ($metaFields as $field) {
+                            $originalMeta[$field['name']] = $mediaObj->getValue($field['name']);
+                        }
                     }
                 }
-            } else {
-                rex_file::put($log, "ERROR: Input file does not exist: " . $input . PHP_EOL);
-            }
-            
-            // Set up appropriate command and output based on operation type
-            switch ($operation) {
-                case 'convert':
-                    $output = rex_path::media('web_' . pathinfo($input, PATHINFO_FILENAME));
-                    $command = trim(rex_addon::get('ffmpeg')->getConfig('command')) . " ";
-                    
-                    preg_match_all('/OUTPUT.(.*) /m', $command, $matches, PREG_SET_ORDER, 0);
-                    if (count($matches) > 0) {
-                        $file = (trim($matches[0][0]));
-                        rex_set_session('ffmpeg_input_video_file', $input);
-                        rex_set_session('ffmpeg_output_video_file', $output . '.' . pathinfo($file, PATHINFO_EXTENSION));
-                        rex_set_session('ffmpeg_operation', 'convert');
-                        rex_set_session('ffmpeg_original_meta', $originalMeta);
-                    } else {
-                        // Fallback, wenn kein Match gefunden wurde
-                        rex_set_session('ffmpeg_input_video_file', $input);
-                        rex_set_session('ffmpeg_output_video_file', $output . '.mp4');
-                        rex_set_session('ffmpeg_operation', 'convert');
-                        rex_set_session('ffmpeg_original_meta', $originalMeta);
-                    }
-                    
-                    $command = str_ireplace(['INPUT', 'OUTPUT'], [$input, $output], $command);
-                    break;
-                    
-                case 'trim':
-                    $startTime = rex_request::get('start_time', 'string', '00:00:00');
-                    $endTime = rex_request::get('end_time', 'string', '00:00:10');
-                    
-                    // Create unique filename with time info
-                    $timeInfo = str_replace(':', '', $startTime) . '-' . str_replace(':', '', $endTime);
-                    $output = rex_path::media('trim_' . pathinfo($input, PATHINFO_FILENAME) . '_' . $timeInfo);
-                    
-                    // Build ffmpeg command for trim
-                    $command = 'ffmpeg -y -i ' . $input . ' -ss ' . $startTime . ' -to ' . $endTime . ' -c:v libx264 -c:a aac ' . $output . '.mp4';
-                    
-                    rex_set_session('ffmpeg_input_video_file', $input);
-                    rex_set_session('ffmpeg_output_video_file', $output . '.mp4');
-                    rex_set_session('ffmpeg_operation', 'trim');
-                    rex_set_session('ffmpeg_original_meta', $originalMeta);
-                    break;
-                    
-                case 'poster':
-                    $timestamp = rex_request::get('timestamp', 'string', '00:00:05');
-                    
-                    // Create unique filename with timestamp
-                    $timeInfo = str_replace(':', '', $timestamp);
-                    $output = rex_path::media('poster_' . pathinfo($input, PATHINFO_FILENAME) . '_' . $timeInfo);
-                    
-                    // Build ffmpeg command for poster extraction
-                    $command = 'ffmpeg -y -i ' . $input . ' -ss ' . $timestamp . ' -frames:v 1 ' . $output . '.jpg';
-                    
-                    rex_set_session('ffmpeg_input_video_file', $input);
-                    rex_set_session('ffmpeg_output_video_file', $output . '.jpg');
-                    rex_set_session('ffmpeg_operation', 'poster');
-                    rex_set_session('ffmpeg_original_meta', $originalMeta);
-                    break;
                 
-                default:
-                    // Fallback to convert if unknown operation
-                    $output = rex_path::media('web_' . pathinfo($input, PATHINFO_FILENAME));
-                    $command = trim(rex_addon::get('ffmpeg')->getConfig('command')) . " ";
-                    
-                    preg_match_all('/OUTPUT.(.*) /m', $command, $matches, PREG_SET_ORDER, 0);
-                    if (count($matches) > 0) {
-                        $file = (trim($matches[0][0]));
+                // Set up appropriate command and output based on operation type
+                switch ($operation) {
+                    case 'convert':
+                        $output = rex_path::media('web_' . pathinfo($input, PATHINFO_FILENAME));
+                        $command = trim(rex_addon::get('ffmpeg')->getConfig('command')) . " ";
+                        
+                        preg_match_all('/OUTPUT.(.*) /m', $command, $matches, PREG_SET_ORDER, 0);
+                        if (count($matches) > 0) {
+                            $file = (trim($matches[0][0]));
+                            $outputFile = $output . '.' . pathinfo($file, PATHINFO_EXTENSION);
+                            rex_set_session('ffmpeg_input_video_file', $input);
+                            rex_set_session('ffmpeg_output_video_file', $outputFile);
+                            rex_set_session('ffmpeg_operation', 'convert');
+                            rex_set_session('ffmpeg_original_meta', $originalMeta);
+                        } else {
+                            // Fallback, wenn kein Match gefunden wurde
+                            $outputFile = $output . '.mp4';
+                            rex_set_session('ffmpeg_input_video_file', $input);
+                            rex_set_session('ffmpeg_output_video_file', $outputFile);
+                            rex_set_session('ffmpeg_operation', 'convert');
+                            rex_set_session('ffmpeg_original_meta', $originalMeta);
+                        }
+                        
+                        // Check output directory permissions
+                        $outputDir = dirname($outputFile);
+                        if (is_dir($outputDir)) {
+                            if (is_writable($outputDir)) {
+                                rex_file::put($log, "Output directory is writable\n", FILE_APPEND);
+                            } else {
+                                rex_file::put($log, "ERROR: Output directory is not writable: " . $outputDir . "\n", FILE_APPEND);
+                            }
+                        } else {
+                            rex_file::put($log, "ERROR: Output directory doesn't exist: " . $outputDir . "\n", FILE_APPEND);
+                        }
+                        
+                        $command = str_ireplace(['INPUT', 'OUTPUT'], [$input, $output], $command);
+                        break;
+                        
+                    case 'trim':
+                        $startTime = rex_request::get('start_time', 'string', '00:00:00');
+                        $endTime = rex_request::get('end_time', 'string', '00:00:10');
+                        
+                        // Create unique filename with time info
+                        $timeInfo = str_replace(':', '', $startTime) . '-' . str_replace(':', '', $endTime);
+                        $output = rex_path::media('trim_' . pathinfo($input, PATHINFO_FILENAME) . '_' . $timeInfo);
+                        $outputFile = $output . '.mp4';
+                        
+                        // Build ffmpeg command for trim
+                        $command = 'ffmpeg -y -i ' . escapeshellarg($input) . ' -ss ' . $startTime . ' -to ' . $endTime . ' -c:v libx264 -c:a aac ' . escapeshellarg($outputFile);
+                        
                         rex_set_session('ffmpeg_input_video_file', $input);
-                        rex_set_session('ffmpeg_output_video_file', $output . '.' . pathinfo($file, PATHINFO_EXTENSION));
-                        rex_set_session('ffmpeg_operation', 'convert');
+                        rex_set_session('ffmpeg_output_video_file', $outputFile);
+                        rex_set_session('ffmpeg_operation', 'trim');
                         rex_set_session('ffmpeg_original_meta', $originalMeta);
+                        break;
+                        
+                    case 'poster':
+                        $timestamp = rex_request::get('timestamp', 'string', '00:00:05');
+                        
+                        // Create unique filename with timestamp
+                        $timeInfo = str_replace(':', '', $timestamp);
+                        $output = rex_path::media('poster_' . pathinfo($input, PATHINFO_FILENAME) . '_' . $timeInfo);
+                        $outputFile = $output . '.jpg';
+                        
+                        // Build ffmpeg command for poster extraction
+                        $command = 'ffmpeg -y -i ' . escapeshellarg($input) . ' -ss ' . $timestamp . ' -frames:v 1 ' . escapeshellarg($outputFile);
+                        
+                        rex_set_session('ffmpeg_input_video_file', $input);
+                        rex_set_session('ffmpeg_output_video_file', $outputFile);
+                        rex_set_session('ffmpeg_operation', 'poster');
+                        rex_set_session('ffmpeg_original_meta', $originalMeta);
+                        break;
+                    
+                    default:
+                        // Fallback to convert if unknown operation
+                        $output = rex_path::media('web_' . pathinfo($input, PATHINFO_FILENAME));
+                        $command = trim(rex_addon::get('ffmpeg')->getConfig('command')) . " ";
+                        
+                        preg_match_all('/OUTPUT.(.*) /m', $command, $matches, PREG_SET_ORDER, 0);
+                        if (count($matches) > 0) {
+                            $file = (trim($matches[0][0]));
+                            $outputFile = $output . '.' . pathinfo($file, PATHINFO_EXTENSION);
+                            rex_set_session('ffmpeg_input_video_file', $input);
+                            rex_set_session('ffmpeg_output_video_file', $outputFile);
+                            rex_set_session('ffmpeg_operation', 'convert');
+                            rex_set_session('ffmpeg_original_meta', $originalMeta);
+                        } else {
+                            // Fallback, wenn kein Match gefunden wurde
+                            $outputFile = $output . '.mp4';
+                            rex_set_session('ffmpeg_input_video_file', $input);
+                            rex_set_session('ffmpeg_output_video_file', $outputFile);
+                            rex_set_session('ffmpeg_operation', 'convert');
+                            rex_set_session('ffmpeg_original_meta', $originalMeta);
+                        }
+                        
+                        $command = str_ireplace(['INPUT', 'OUTPUT'], [$input, $output], $command);
+                        break;
+                }
+                
+                // Test if ffmpeg is available
+                $testCommand = 'ffmpeg -version';
+                $testOutput = [];
+                $testReturnVar = 0;
+                
+                exec($testCommand, $testOutput, $testReturnVar);
+                
+                if ($testReturnVar !== 0) {
+                    rex_file::put($log, "ERROR: ffmpeg command not found. Make sure ffmpeg is installed and in your PATH\n", FILE_APPEND);
+                } else {
+                    rex_file::put($log, "ffmpeg found: " . implode("\n", array_slice($testOutput, 0, 1)) . "\n", FILE_APPEND);
+                }
+                
+                // Debug-Log
+                rex_file::put($log, "Output file: " . $outputFile . "\n", FILE_APPEND);
+                rex_file::put($log, "Command to execute: " . $command . "\n\n", FILE_APPEND);
+                
+                // Execute command based on OS
+                if (str_starts_with(PHP_OS, 'WIN')) {
+                    $winCmd = "start /B " . $command . " 1>> " . escapeshellarg($log) . " 2>&1";
+                    rex_file::put($log, "Windows command: " . $winCmd . "\n\n", FILE_APPEND);
+                    
+                    // For Windows, try to use exec instead of popen if available
+                    if (function_exists('exec') && !in_array('exec', explode(',', ini_get('disable_functions')))) {
+                        rex_file::put($log, "Using exec for Windows\n", FILE_APPEND);
+                        exec($winCmd, $execOutput, $execReturnVar);
+                        rex_file::put($log, "exec return code: " . $execReturnVar . "\n", FILE_APPEND);
                     } else {
-                        // Fallback, wenn kein Match gefunden wurde
-                        rex_set_session('ffmpeg_input_video_file', $input);
-                        rex_set_session('ffmpeg_output_video_file', $output . '.mp4');
-                        rex_set_session('ffmpeg_operation', 'convert');
-                        rex_set_session('ffmpeg_original_meta', $originalMeta);
+                        rex_file::put($log, "Using popen for Windows\n", FILE_APPEND);
+                        pclose(popen($winCmd, "r"));
                     }
+                } else {
+                    $unixCmd = $command . " 1>> " . escapeshellarg($log) . " 2>&1 >/dev/null &";
+                    rex_file::put($log, "Unix command: " . $unixCmd . "\n\n", FILE_APPEND);
                     
-                    $command = str_ireplace(['INPUT', 'OUTPUT'], [$input, $output], $command);
-                    break;
-            }
-            
-            // Debug-Log
-            rex_file::put($log, "Output file: " . rex_session('ffmpeg_output_video_file', 'string', '') . PHP_EOL);
-            rex_file::put($log, "Command: " . $command . PHP_EOL . PHP_EOL);
-            
-            // Execute command based on OS
-            if (str_starts_with(PHP_OS, 'WIN')) {
-                pclose(popen("start /B " . $command . " 1>> $log 2>&1", "r")); // windows
-            } else {
-                shell_exec($command . " 1>> $log 2>&1 >/dev/null &"); //linux
+                    if (function_exists('exec') && !in_array('exec', explode(',', ini_get('disable_functions')))) {
+                        rex_file::put($log, "Using exec for Unix\n", FILE_APPEND);
+                        exec($unixCmd, $execOutput, $execReturnVar);
+                        rex_file::put($log, "exec return code: " . $execReturnVar . "\n", FILE_APPEND);
+                    } else {
+                        rex_file::put($log, "Using shell_exec for Unix\n", FILE_APPEND);
+                        shell_exec($unixCmd);
+                    }
+                }
+                
+                rex_file::put($log, "Process started\n\n", FILE_APPEND);
+            } catch (Exception $e) {
+                rex_file::put($log, "EXCEPTION: " . $e->getMessage() . "\n", FILE_APPEND);
+                rex_file::put($log, "Stack trace: " . $e->getTraceAsString() . "\n", FILE_APPEND);
             }
 
             exit();
@@ -143,7 +227,17 @@ if (rex::isBackend() && rex::getUser()) {
         $log = rex_addon::get('ffmpeg')->getDataPath('log' . rex_session('ffmpeg_uid', 'string', '') . '.txt');
 
         if (rex_request::get('progress', 'boolean', false)) {
-            $getContent = rex_file::get($log);
+            $getContent = '';
+            
+            if (file_exists($log)) {
+                $getContent = rex_file::get($log);
+            } else {
+                exit(json_encode([
+                    'progress' => 0, 
+                    'log' => 'Logdatei existiert nicht: ' . $log
+                ]));
+            }
+            
             $operation = rex_session('ffmpeg_operation', 'string', 'convert');
             
             // Debug: Logfile content
@@ -151,6 +245,14 @@ if (rex::isBackend() && rex::getUser()) {
                 exit(json_encode([
                     'progress' => 0, 
                     'log' => 'Prozess wurde gestartet. Bitte warten...'
+                ]));
+            }
+            
+            // Check for error in ffmpeg output
+            if (strpos($getContent, 'Error') !== false || strpos($getContent, 'error') !== false) {
+                exit(json_encode([
+                    'progress' => 'error',
+                    'log' => $getContent
                 ]));
             }
             
@@ -311,12 +413,12 @@ if (rex::isBackend() && rex::getUser()) {
                         rex_file::put($log, "File $filename was successfully added to rex_mediapool" . PHP_EOL, FILE_APPEND);
                     } catch (Exception $e) {
                         rex_file::put($log, "Error adding file to mediapool: " . $e->getMessage() . PHP_EOL, FILE_APPEND);
+                        rex_file::put($log, "Stack trace: " . $e->getTraceAsString() . PHP_EOL, FILE_APPEND);
                     }
                 } else {
                     rex_file::put($log, "ERROR: Output file does not exist: " . $outputFile . PHP_EOL, FILE_APPEND);
                 }
                 
-                rex_unset_session('ffmpeg_output_video_file');
                 rex_unset_session('ffmpeg_output_video_file');
                 rex_unset_session('ffmpeg_operation');
                 rex_unset_session('ffmpeg_original_meta');
