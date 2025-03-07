@@ -23,8 +23,8 @@ $poster_images = $sql->getArray('SELECT * FROM ' . $media_table . ' WHERE filena
 $trimmed_videos = $sql->getArray('SELECT * FROM ' . $media_table . ' WHERE filename LIKE \'trim_%\' AND filetype LIKE \'video/%\' ORDER BY updatedate DESC');
 
 // Handle delete request for optimized videos
-if (rex_request('ffmpeg_video', 'boolean', false) && rex_request('delete_optimized', 'boolean', false)) {
-    $filename = rex_request('filename', 'string', '');
+if (rex_request::get('ffmpeg_video', 'boolean', false) && rex_request::get('delete_optimized', 'boolean', false)) {
+    $filename = rex_request::get('filename', 'string', '');
     $success = false;
     $message = '';
     
@@ -120,9 +120,13 @@ if (count($result) > 0) {
     $n['label'] = '<label></label>';
     $n['field'] = [];
     
+    $hasVideos = false;
+    
     foreach ($result as $key => $item) {
         // Skip already processed videos
         if (substr($item['filename'], 0, 4) == 'web_' || substr($item['filename'], 0, 7) == 'poster_' || substr($item['filename'], 0, 5) == 'trim_') continue;
+        
+        $hasVideos = true;
         
         // Get processed versions of this video
         $has_optimized = false;
@@ -189,14 +193,14 @@ if (count($result) > 0) {
         </div>';
     }
 
-    if (count($n['field']) > 0) {
+    if ($hasVideos) {
         $n['field'] = implode('', $n['field']);
         $formElements[] = $n;
         $fragment = new rex_fragment();
         $fragment->setVar('elements', $formElements, false);
         $content .= $fragment->parse('core/form/container.php');
     } else {
-        $content .= '<div class="alert alert-info">Keine Videos zur Bearbeitung vorhanden. Bitte laden Sie zuerst Videos in den Medienpool hoch.</div>';
+        $content .= '<div class="alert alert-info">Keine unverarbeiteten Videos zur Bearbeitung vorhanden. Bitte laden Sie neue Videos in den Medienpool hoch.</div>';
     }
     
     $content .= '</fieldset>';
@@ -207,7 +211,7 @@ if (count($result) > 0) {
     // Save-Button
     $formElements = [];
     $n = [];
-    $n['field'] = '<button class="btn btn-save rex-form-aligned btn-start disabled" id="start" type="submit" name="save" value="' . $this->i18n('execute') . '">' . $this->i18n('execute') . '</button>';
+    $n['field'] = '<button class="btn btn-save rex-form-aligned btn-start' . ($hasVideos ? ' disabled' : '') . '" id="start" type="submit" name="save" value="' . $this->i18n('execute') . '">' . $this->i18n('execute') . '</button>';
     $formElements[] = $n;
     
     $fragment = new rex_fragment();
@@ -426,7 +430,7 @@ $content .= '
         <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
         <h4 class="modal-title">Video-Vorschau</h4>
       </div>
-      <div class="modal-body">
+    <div class="modal-body">
         <video controls style="width: 100%; height: auto;">
           <source src="" type="video/mp4">
           Ihr Browser unterstützt keine Video-Wiedergabe.
@@ -435,6 +439,12 @@ $content .= '
     </div>
   </div>
 </div>';
+
+// Debugging-Info ausgeben
+$content .= '
+<script>
+console.log("FFMPEG main page loaded");
+</script>';
 
 // Ausgabe Formular
 $fragment = new rex_fragment();
@@ -445,7 +455,7 @@ $fragment->setVar('buttons', $buttons, false);
 $output = $fragment->parse('core/page/section.php');
 
 $output = '
-<form action="' . rex_url::currentBackendPage() . '" method="post">
+<form action="' . rex_url::currentBackendPage() . '" method="post" id="ffmpeg-form">
     <input type="hidden" name="formsubmit" value="1" />
     ' . $csrfToken->getHiddenField() . '
     ' . $output . '
