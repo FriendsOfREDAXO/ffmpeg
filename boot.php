@@ -166,7 +166,13 @@ if (rex::isBackend() && rex::getUser()) {
                             rex_set_session('ffmpeg_original_meta', $originalMeta);
                         }
                         
-                        $command = str_ireplace(['INPUT', 'OUTPUT'], [$input, $output], $command);
+                        // First extract the command structure, then fill in the escaped parameters
+                        $commandTemplate = str_ireplace(['INPUT', 'OUTPUT'], ['%INPUT%', '%OUTPUT%'], $command);
+                        $command = str_replace(
+                            ['%INPUT%', '%OUTPUT%'],
+                            [escapeshellarg($input), escapeshellarg($output)],
+                            $commandTemplate
+                        );
                         break;
                 }
                 
