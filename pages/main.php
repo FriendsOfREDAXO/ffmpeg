@@ -191,12 +191,6 @@ if (count($videos) > 0) {
     $content .= '<div class="alert alert-info">Keine Videos im Medienpool gefunden. Bitte laden Sie zuerst Videos in den Medienpool hoch.</div>';
 }
 
-// Debugging-Info ausgeben
-$content .= '
-<script>
-console.log("FFMPEG main page loaded");
-</script>';
-
 // Video preview modal
 $content .= '
 <div class="modal fade" id="video-preview-modal" tabindex="-1" role="dialog">
