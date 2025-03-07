@@ -1,2 +1,96 @@
-.demo_addon {
+.operation-selector {
+    margin-bottom: 20px;
+}
+
+.operation-selector .btn-group {
+    margin-bottom: 10px;
+}
+
+.operation-selector .btn.active {
+    background-color: #4b9ad9;
+    color: #fff;
+    border-color: #4b9ad9;
+}
+
+#trim-range {
+    margin: 20px 0;
+    height: 10px;
+}
+
+#trim-range .ui-slider-range {
+    background: #4b9ad9;
+}
+
+#trim-range .ui-slider-handle {
+    border-radius: 50%;
+    width: 16px;
+    height: 16px;
+    top: -4px;
+    margin-left: -8px;
+    border: 1px solid #ccc;
+    background: #f6f6f6;
+    cursor: pointer;
+}
+
+#trim-range .ui-slider-handle:focus,
+#trim-range .ui-slider-handle:active {
+    outline: none;
+    background: #e6e6e6;
+}
+
+.video-preview-link {
+    margin-left: 5px;
+}
+
+.panel-heading label {
+    display: block;
+    margin-bottom: 0;
+    cursor: pointer;
+}
+
+.badge {
+    background-color: #4b9ad9;
+    margin-right: 3px;
+}
+
+.panel-default .panel-body {
+    font-size: 13px;
+    padding: 10px;
+    background-color: #f9f9f9;
+}
+
+#video-preview-modal .modal-body {
+    padding: 0;
+}
+
+#video-preview-modal video {
+    display: block;
+    width: 100%;
+    height: auto;
+}
+
+/* Progress bar styling */
+.progress {
+    height: 25px;
+    margin-bottom: 0;
+}
+
+.progress-bar {
+    line-height: 25px;
+    font-size: 14px;
+    background-color: #4b9ad9;
+}
+
+.log pre {
+    background-color: #2a2d31;
+    color: #f1f1f1;
+    border-radius: 0 0 4px 4px;
+    border: none;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .panel-default .panel-body .col-md-4 {
+        margin-bottom: 5px;
+    }
 }
