@@ -11,11 +11,12 @@
 
     function showProgress() {
         console.log("Checking progress...");
-        $.ajax({
-            type: 'get',
-            url: 'index.php?page=ffmpeg/main&ffmpeg_video=1&progress=1',
-            dataType: 'json',
-        })
+  
+$.ajax({
+    type: 'get',
+    url: window.location.href.split('?')[0] + '?page=ffmpeg/main&ffmpeg_video=1&progress=1',
+    dataType: 'json',
+})
             .fail(function (jqXHR, textStatus) {
                 console.log("Request failed: " + textStatus);
 
