@@ -3,14 +3,38 @@ ffmpeg_video_convert = Video Converter
 ffmpeg_video_config = Einstellungen
 ffmpeg_legend_video = Videos
 ffmpeg_convert_info = Bitte stellen Sie sicher, dass das Video noch nicht in Verwendung ist. <br> Die konvertierte Datei wird im Medienpool unter "Keine Kategorie" abgelegt. 
-ffmpeg_config_legend1 = FFMpeg Settings
+ffmpeg_config_legend1 = FFMpeg Einstellungen
 ffmpeg_config_delete = Quell-Datei nach erfolgreicher Komprimierung löschen
 ffmpeg_command = FFMpeg Command
+ffmpeg_poster_quality = Poster-Qualität
+ffmpeg_trim_preset = Trim-Preset für gekürzte Videos
+ffmpeg_config_inherit_meta = Metadaten vom Original übernehmen
 
 ffmpeg_config_save = Einstellungen speichern
 ffmpeg_config_saved = Einstellungen wurden gespeichert!
-ffmpeg_execute = Video konvertieren
+ffmpeg_execute = Ausführen
+
+# Command examples
+ffmpeg_command_examples = Befehlsbeispiele
+ffmpeg_command_examples_title = Nützliche FFmpeg Befehle
+ffmpeg_command_examples_convert = Standard-Konvertierung
+ffmpeg_command_examples_convert_info = Standard-Konvertierung mit guter Qualität und Kompression
+ffmpeg_command_examples_compress = Starke Kompression
+ffmpeg_command_examples_compress_info = Stärker komprimierte Version für Web-Nutzung
+ffmpeg_command_examples_webm = WebM-Format
+ffmpeg_command_examples_webm_info = Moderne Alternative zu MP4, besonders für Web-Anwendungen
+
+# Tab names
+ffmpeg_tab_convert = Konvertieren
+ffmpeg_tab_optimized = Optimierte Videos
+ffmpeg_tab_posters = Poster
+ffmpeg_tab_trimmed = Gekürzte Videos
+
+# Operation types
+ffmpeg_operation_convert = Konvertieren
+ffmpeg_operation_trim = Kürzen
+ffmpeg_operation_poster = Poster erstellen
 
 # Benennung für die Addonrechte, sichtbar innerhalb der REDAXO-Administration unter Benutzer > Rollen > Allgemein
-#perm_general_ffmpeg[] = ffmpeg[] - Rechte für Video-Konverter
-#perm_general_ffmpeg[config] = ffmpeg[config] - Video-Konverter (Settings)
+perm_general_ffmpeg[] = ffmpeg[] - Rechte für Video-Konverter
+perm_general_ffmpeg[config] = ffmpeg[config] - Video-Konverter (Settings)
