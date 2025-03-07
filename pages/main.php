@@ -226,6 +226,7 @@ $output = $fragment->parse('core/page/section.php');
 
 $output = '
 <form action="' . rex_url::currentBackendPage() . '" method="post" id="ffmpeg-form">
+    <input type="hidden" name="page" value="ffmpeg/main" />
     <input type="hidden" name="formsubmit" value="1" />
     ' . $csrfToken->getHiddenField() . '
     ' . $output . '
