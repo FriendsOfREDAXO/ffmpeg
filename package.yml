@@ -4,28 +4,31 @@ author: Friends Of REDAXO
 supportpage: https://github.com/FriendsOfREDAXO/ffmpeg
 
 # Seiten
-pages:
-    ffmpeg:
-        title: 'Video-Konverter'
-        perm: ffmpeg[]
-        icon: rex-icon fa-video-camera
-        subpages:
-            main:
-                title: 'translate:ffmpeg_main'
-                perm: ffmpeg[]
-            optimized:
-                title: 'translate:ffmpeg_optimized' 
-                perm: ffmpeg[]
-            poster:
-                title: 'translate:ffmpeg_poster'
-                perm: ffmpeg[]
-            trimmed:
-                title: 'translate:ffmpeg_trimmed'
-                perm: ffmpeg[]
-            config:
-                title: 'translate:ffmpeg_video_config'
-                perm: ffmpeg[config]
-                icon: rex-icon fa-wrench
+page:
+    title: 'Video-Konverter'
+    perm: ffmpeg[]
+    icon: rex-icon fa-video-camera
+    subpages:
+        main:
+            title: 'translate:ffmpeg_main'
+            perm: ffmpeg[]
+            icon: rex-icon fa-compress
+        optimized:
+            title: 'translate:ffmpeg_optimized' 
+            perm: ffmpeg[]
+            icon: rex-icon fa-check-square-o
+        poster:
+            title: 'translate:ffmpeg_poster'
+            perm: ffmpeg[]
+            icon: rex-icon fa-picture-o
+        trimmed:
+            title: 'translate:ffmpeg_trimmed'
+            perm: ffmpeg[]
+            icon: rex-icon fa-scissors
+        config:
+            title: 'translate:ffmpeg_video_config'
+            perm: ffmpeg[config]
+            icon: rex-icon fa-wrench
 
 default_config:
     command: 'ffmpeg -y -i INPUT -vcodec h264 -crf 23 -preset veryfast OUTPUT.mp4'
