@@ -269,13 +269,22 @@ class rex_api_ffmpeg_converter extends rex_api_function
         // Check if conversion is complete based on log content and process status
         if ($progress > 98 || 
             strpos($getContent, 'Qavg') !== false || 
-            strpos($getContent, 'kb/s:') !== false) {
+            strpos($getContent, 'kb/s:') !== false || 
+            strpos($getContent, 'video:') !== false) {
             
             // Überprüfen, ob der Prozess noch läuft
             if (!$this->isProcessRunning($conversionId)) {
                 // Prozess ist beendet, jetzt den Medienpool-Import durchführen
-                $this->handleDone();
-                return ['progress' => 'done', 'log' => $getContent];
+                $result = $this->handleDone();
+                
+                // Prüfen ob Import erfolgreich war
+                if (strpos($result['log'] ?? '', 'was successfully added to rex_mediapool') !== false) {
+                    return ['progress' => 'done', 'log' => $result['log'], 'imported' => true];
+                } else {
+                    // Import scheint nicht erfolgreich gewesen zu sein, wir geben trotzdem "done" zurück,
+                    // damit das Frontend einen erneuten Versuch starten kann
+                    return ['progress' => 'done', 'log' => $getContent, 'imported' => false];
+                }
             }
         }
         
