@@ -37,38 +37,32 @@
                 $('#log pre').html(data.log);
                 scrolllog();
 
-                if (data.log.indexOf("Overwrite ?") >= 0) {
+                if (data.progress === 'error') {
                     $('#start').removeClass('disabled').prop('disabled', false);
                     clearInterval(doProgress);
                     conversionActive = false;
                     updateUIForConversion(false);
+                } else if (data.progress === 'done') {
+                    $('#prog').css('width', '100%');
+                    $('#progress-text').html('100%');
+                    $('#start').removeClass('disabled').prop('disabled', false);
+                    
+                    // Zeige Erfolgsanimation
+                    $('.spinner').hide();
+                    $('#progress-text').addClass('text-success').html('<i class="fa fa-check"></i> Fertig!');
+                    
+                    clearInterval(doProgress);
+                    conversionActive = false;
+                    updateUIForConversion(false);
+                    
+                    // Nach 3 Sekunden Seite neu laden, um die optimierte Video-Liste zu aktualisieren
+                    setTimeout(function() {
+                        window.location.reload();
+                    }, 3000);
                 } else {
-                    if (data.progress === "done") {
-                        $('#prog').css('width', '100%');
-                        $('#progress-text').html('100%');
-                        $('#start').removeClass('disabled').prop('disabled', false);
-                        
-                        // Zeige Erfolgsanimation
-                        $('.spinner').hide();
-                        $('#progress-text').addClass('text-success').html('<i class="fa fa-check"></i> Fertig!');
-                        
-                        clearInterval(doProgress);
-                        
-                        // Wichtig: führe showFinalDone() aus, bevor wir conversionActive auf false setzen
-                        showFinalDone();
-                        
-                        conversionActive = false;
-                        updateUIForConversion(false);
-                        
-                        // Nach 3 Sekunden Seite neu laden, um die optimierte Video-Liste zu aktualisieren
-                        setTimeout(function() {
-                            window.location.reload();
-                        }, 3000);
-                    } else {
-                        var progress = parseInt(data.progress);
-                        $('#prog').css('width', progress + '%');
-                        $('#progress-text').html(progress + '%');
-                    }
+                    var progress = parseInt(data.progress);
+                    $('#prog').css('width', progress + '%');
+                    $('#progress-text').html(progress + '%');
                 }
             });
     }
@@ -90,41 +84,6 @@
         }
     }
 
-    function showFinalDone() {
-        $.ajax({
-            type: 'get',
-            url: 'index.php?rex-api-call=ffmpeg_converter&func=done',
-            dataType: 'json',
-        })
-            .fail(function (jqXHR, textStatus) {
-                console.log("Request failed: " + textStatus);
-                $('#log pre').html("Request failed: " + textStatus);
-            })
-            .done(function (data) {
-                if (data.error) {
-                    $('#log pre').html("Error: " + data.error);
-                    return;
-                }
-                $('#log pre').html(data.log);
-                scrolllog();
-                
-                // Prüfe, ob das Video erfolgreich zum Medienpool hinzugefügt wurde
-                if (data.log.indexOf("was successfully added to rex_mediapool") > -1) {
-                    console.log("Video erfolgreich zum Medienpool hinzugefügt.");
-                } else {
-                    console.log("Warnung: Video wurde möglicherweise nicht zum Medienpool hinzugefügt.");
-                    // Versuche es erneut nach einer kurzen Verzögerung
-                    setTimeout(function() {
-                        $.ajax({
-                            type: 'get',
-                            url: 'index.php?rex-api-call=ffmpeg_converter&func=done',
-                            dataType: 'json'
-                        });
-                    }, 2000);
-                }
-            });
-    }
-
     $(document).ready(function () {
         // Prüfe Server-Status bei Seitenladung
         checkServerConversionStatus();
@@ -137,34 +96,7 @@
                 return false;
             }
 
-            updateUIForConversion(true);
-
-            $.ajax({
-                type: 'get',
-                url: 'index.php?rex-api-call=ffmpeg_converter&func=start&video=' + encodeURIComponent(video),
-                dataType: 'json'
-            })
-                .fail(function (jqXHR, textStatus) {
-                    console.log("Request failed: " + textStatus);
-                    $('.progress-section').show();
-                    $('#log pre').html("Request failed: " + textStatus);
-                    updateUIForConversion(false);
-                })
-                .done(function (data) {
-                    if (data.error) {
-                        $('.progress-section').show();
-                        $('#log pre').html("Error: " + data.error);
-                        updateUIForConversion(false);
-                        return;
-                    }
-
-                    $('.progress-section').show();
-                    $('#prog').css('width', '0%');
-                    $('#progress-text').html('0%');
-                    $('#log pre').html("Konvertierung gestartet...");
-                    SetProgressStart();
-                });
-
+            startConversion(video);
             return false;
         });
 
@@ -181,6 +113,51 @@
         });
     });
     
+    function startConversion(video, confirmOverwrite) {
+        updateUIForConversion(true);
+        
+        let url = 'index.php?rex-api-call=ffmpeg_converter&func=start&video=' + encodeURIComponent(video);
+        if (confirmOverwrite) {
+            url += '&confirm_overwrite=1';
+        }
+
+        $.ajax({
+            type: 'get',
+            url: url,
+            dataType: 'json'
+        })
+            .fail(function (jqXHR, textStatus) {
+                console.log("Request failed: " + textStatus);
+                $('.progress-section').show();
+                $('#log pre').html("Request failed: " + textStatus);
+                updateUIForConversion(false);
+            })
+            .done(function (data) {
+                if (data.error) {
+                    $('.progress-section').show();
+                    $('#log pre').html("Error: " + data.error);
+                    updateUIForConversion(false);
+                    return;
+                }
+                
+                if (data.status === 'confirm_overwrite') {
+                    // Frage Benutzer, ob überschrieben werden soll
+                    updateUIForConversion(false);
+                    
+                    if (confirm(data.message)) {
+                        startConversion(video, true);
+                    }
+                    return;
+                }
+
+                $('.progress-section').show();
+                $('#prog').css('width', '0%');
+                $('#progress-text').html('0%');
+                $('#log pre').html("Konvertierung gestartet...");
+                SetProgressStart();
+            });
+    }
+    
     function checkServerConversionStatus() {
         $.ajax({
             type: 'get',
@@ -191,6 +168,13 @@
                 if (data.active) {
                     conversionActive = true;
                     updateUIForConversion(true);
+                    
+                    // Zeige Infos zur laufenden Konvertierung
+                    if (data.info && data.info.video) {
+                        $('#log pre').html(data.info.log || "Konvertierung für \"" + data.info.video + "\" läuft...");
+                        scrolllog();
+                    }
+                    
                     SetProgressStart();
                 }
             });
