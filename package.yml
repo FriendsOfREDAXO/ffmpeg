@@ -24,7 +24,7 @@ default_config:
 requires:
     redaxo: '^5.18.1'
     packages:
-        media_pool: '^2.14.0'
+        mediapool: '^2.14.0'
     php:
         version: '>=8.1'
         extensions: [gd, xml]
