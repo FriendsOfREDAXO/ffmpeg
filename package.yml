@@ -1,5 +1,5 @@
 package: ffmpeg
-version: '1.1.0'
+version: '2.0.0'
 author: Friends Of REDAXO
 supportpage: https://github.com/FriendsOfREDAXO/
 
@@ -22,17 +22,13 @@ default_config:
     command: 'ffmpeg -y -i INPUT -vcodec h264   OUTPUT.mp4'
 
 requires:
-    redaxo: '^5.5'
+    redaxo: '^5.18.1'
     packages:
-        media_manager: '^2.0.1'
+        media_pool: '^2.14.0'
     php:
-        version: '>=5.6'
+        version: '>=8.1'
         extensions: [gd, xml]
 
 installer_ignore:
     - node_modules
     - .env
-
-# Autoloading für API-Klassen
-load_options: 
-    api: true
