@@ -1,6 +1,7 @@
 (function ($) {
     var doProgress;
     var conversionActive = false;
+    var completionCheck; // Timer für den automatischen Import nach Abschluss
 
     function SetProgressStart() {
         doProgress = setInterval(showProgress, 2000);
@@ -52,8 +53,9 @@
                     $('#progress-text').addClass('text-success').html('<i class="fa fa-check"></i> Fertig!');
                     
                     clearInterval(doProgress);
-                    conversionActive = false;
-                    updateUIForConversion(false);
+                    
+                    // Starte den Import-Prozess
+                    showFinalDone();
                     
                     // Nach 3 Sekunden Seite neu laden, um die optimierte Video-Liste zu aktualisieren
                     setTimeout(function() {
@@ -63,6 +65,38 @@
                     var progress = parseInt(data.progress);
                     $('#prog').css('width', progress + '%');
                     $('#progress-text').html(progress + '%');
+                    
+                    // Wenn der Fortschritt nahe an 100% ist, starten wir einen zusätzlichen Timer, 
+                    // der explizit auf die Fertigstellung prüft
+                    if (progress >= 95 && !completionCheck) {
+                        completionCheck = setInterval(checkCompletion, 2000);
+                    }
+                }
+            });
+    }
+    
+    // Separate Funktion, die explizit prüft, ob die Konvertierung abgeschlossen ist
+    // und den Import auslöst, auch wenn der Progress-Callback dies verpasst hat
+    function checkCompletion() {
+        $.ajax({
+            type: 'get',
+            url: 'index.php?rex-api-call=ffmpeg_converter&func=progress',
+            dataType: 'json',
+        })
+            .done(function (data) {
+                if (data.progress === 'done' || 
+                    (data.log && (
+                        data.log.indexOf('Qavg') !== -1 || 
+                        data.log.indexOf('kb/s:') !== -1 || 
+                        data.log.indexOf('video:') !== -1
+                    ))
+                ) {
+                    // Die Konvertierung ist abgeschlossen, aber der Callback hat es möglicherweise verpasst
+                    clearInterval(completionCheck);
+                    completionCheck = null;
+                    
+                    // Den Import explizit starten
+                    showFinalDone();
                 }
             });
     }
@@ -82,6 +116,42 @@
             $('input[name=video]').prop('disabled', false);
             $('#start').removeClass('disabled').prop('disabled', false);
         }
+    }
+
+    function showFinalDone() {
+        console.log("Performing final import process...");
+        $.ajax({
+            type: 'get',
+            url: 'index.php?rex-api-call=ffmpeg_converter&func=done',
+            dataType: 'json',
+        })
+            .fail(function (jqXHR, textStatus) {
+                console.error("Import process failed: " + textStatus);
+                $('#log pre').append("\nImport process failed: " + textStatus);
+                scrolllog();
+            })
+            .done(function (data) {
+                if (data.error) {
+                    console.error("Import error: " + data.error);
+                    $('#log pre').append("\nImport error: " + data.error);
+                    scrolllog();
+                    return;
+                }
+                
+                console.log("Import process completed successfully");
+                $('#log pre').html(data.log);
+                scrolllog();
+                
+                // Nochmal verifizieren, dass der Import erfolgreich war
+                if (data.log.indexOf("was successfully added to rex_mediapool") === -1) {
+                    console.warn("Video may not have been imported correctly. Retrying...");
+                    // Wenn das Video nicht importiert wurde, versuchen wir es erneut
+                    setTimeout(showFinalDone, 1000);
+                } else {
+                    conversionActive = false;
+                    updateUIForConversion(false);
+                }
+            });
     }
 
     $(document).ready(function () {
@@ -154,7 +224,15 @@
                 $('#prog').css('width', '0%');
                 $('#progress-text').html('0%');
                 $('#log pre').html("Konvertierung gestartet...");
+                
+                // Starte die Fortschrittsüberwachung
                 SetProgressStart();
+                
+                // Stelle sicher, dass der Completion-Check zurückgesetzt wird
+                if (completionCheck) {
+                    clearInterval(completionCheck);
+                    completionCheck = null;
+                }
             });
     }
     
@@ -176,6 +254,11 @@
                     }
                     
                     SetProgressStart();
+                    
+                    // Bei aktivem Prozess auch den Completion-Check starten
+                    if (!completionCheck) {
+                        completionCheck = setInterval(checkCompletion, 2000);
+                    }
                 }
             });
     }
