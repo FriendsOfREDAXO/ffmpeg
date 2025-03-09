@@ -220,18 +220,11 @@
 
     // Konvertierungsstatus vom Server abrufen
     function checkStatus() {
-        console.log("Checking conversion status...");
-        $('.progress-section').show();
-        
         $.ajax({
             type: 'get',
             url: 'index.php?rex-api-call=ffmpeg_converter&func=status',
             dataType: 'json',
         })
-            .fail(function(jqXHR, textStatus) {
-                console.log("Status check failed: " + textStatus);
-                $('#log pre').html("Status check failed: " + textStatus);
-            })
             .done(function (data) {
                 if (data.active) {
                     // Es läuft eine Konvertierung
@@ -265,13 +258,6 @@
                         // Bereits abgeschlossen
                         showCompleted();
                     }
-                } else {
-                    // Keine aktive Konvertierung
-                    $('#log pre').html("Keine aktive Konvertierung gefunden.");
-                    if (conversionActive) {
-                        // War aktiv, ist aber nicht mehr aktiv
-                        showCompleted();
-                    }
                 }
             });
     }
@@ -285,7 +271,7 @@
             let video = $('input[name=video]:checked').val();
 
             if (video === undefined) {
-                alert('Bitte wählen Sie ein Video zur Konvertierung aus!');
+                alert($('.rex-addon-output').data('i18n-select-video') || 'Bitte wählen Sie ein Video zur Konvertierung aus!');
                 return false;
             }
 
@@ -317,8 +303,12 @@
     });
     
     // Konvertierung starten
-    function startConversion(video) {
+    function startConversion(video, confirmOverwrite) {
         let url = 'index.php?rex-api-call=ffmpeg_converter&func=start&video=' + encodeURIComponent(video);
+        
+        if (confirmOverwrite) {
+            url += '&confirm_overwrite=1';
+        }
 
         $.ajax({
             type: 'get',
@@ -336,6 +326,16 @@
                     $('.progress-section').show();
                     $('#log pre').html("Error: " + data.error);
                     updateUIForConversion(false);
+                    return;
+                }
+                
+                // Überschreiben bestätigen
+                if (data.status === 'confirm_overwrite') {
+                    updateUIForConversion(false);
+                    
+                    if (confirm(data.message)) {
+                        startConversion(video, true);
+                    }
                     return;
                 }
 
