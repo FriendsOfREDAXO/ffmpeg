@@ -13,6 +13,7 @@ ffmpeg_no_videos_found = Keine Videos zur Konvertierung gefunden.
 ffmpeg_conversion_in_progress = Es läuft bereits eine Konvertierung. Bitte warten Sie, bis diese abgeschlossen ist.
 ffmpeg_view_in_mediapool = Im Medienpool anzeigen
 ffmpeg_smaller = kleiner
+ffmpeg_already_converted = Bereits konvertiert
 
 ffmpeg_config_save = Einstellungen speichern
 ffmpeg_config_saved = Einstellungen wurden gespeichert!
