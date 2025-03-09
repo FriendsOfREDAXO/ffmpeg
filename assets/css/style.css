@@ -179,15 +179,7 @@
 }
 
 /* Verbesserte Buttons im Dark Mode */
-.rex-theme-dark .btn-default {
-    background-color: rgba(255, 255, 255, 0.1);
-    border-color: rgba(255, 255, 255, 0.2);
-}
 
-.rex-theme-dark .btn-default:hover {
-    background-color: rgba(255, 255, 255, 0.15);
-    border-color: rgba(255, 255, 255, 0.25);
-}
 
 /* Smooth Transitions */
 .video-item, .progress-bar, .spinner > div, .btn {
@@ -257,16 +249,6 @@
 
     body:not(.rex-theme-dark) .video-item:hover {
         background-color: rgba(255, 255, 255, 0.05);
-    }
-
-    body:not(.rex-theme-dark) .btn-default {
-        background-color: rgba(255, 255, 255, 0.1);
-        border-color: rgba(255, 255, 255, 0.2);
-    }
-
-    body:not(.rex-theme-dark) .btn-default:hover {
-        background-color: rgba(255, 255, 255, 0.15);
-        border-color: rgba(255, 255, 255, 0.25);
     }
 }
 
