@@ -3,9 +3,14 @@
     var conversionActive = false;
     var lastStatus = '';
     var waitingForImport = false;
+    var pollStatus;  // Timer für automatische Status-Aktualisierung
 
     function SetProgressStart() {
         doProgress = setInterval(showProgress, 2000);
+        // Auch einen Timer für die automatische Status-Aktualisierung starten
+        if (!pollStatus) {
+            pollStatus = setInterval(checkServerConversionStatus, 5000);
+        }
     }
 
     function scrolllog() {
@@ -48,6 +53,9 @@
                         waitingForImport = true;
                         console.log("Starting import process...");
                         importConvertedVideo();
+                    } else if (data.status === 'done') {
+                        // Prozess ist komplett fertig
+                        completeProcess();
                     }
                 }
 
@@ -57,22 +65,7 @@
                     conversionActive = false;
                     updateUIForConversion(false);
                 } else if (data.progress === 'done') {
-                    $('#prog').css('width', '100%');
-                    $('#progress-text').html('100%');
-                    $('#start').removeClass('disabled').prop('disabled', false);
-                    
-                    // Zeige Erfolgsanimation
-                    $('.spinner').hide();
-                    $('#progress-text').addClass('text-success').html('<i class="fa fa-check"></i> Fertig!');
-                    
-                    clearInterval(doProgress);
-                    conversionActive = false;
-                    updateUIForConversion(false);
-                    
-                    // Nach 3 Sekunden Seite neu laden, um die optimierte Video-Liste zu aktualisieren
-                    setTimeout(function() {
-                        window.location.reload();
-                    }, 3000);
+                    completeProcess();
                 } else if (data.status === 'importing') {
                     // Import läuft
                     $('#prog').css('width', '99%');
@@ -88,8 +81,47 @@
                     var progress = parseInt(data.progress);
                     $('#prog').css('width', progress + '%');
                     $('#progress-text').html(progress + '%');
+                    
+                    // Bei hohem Fortschritt prüfen, ob FFMPEG bereits fertig ist
+                    if (progress > 95) {
+                        // Überprüfen, ob das Log auf einen abgeschlossenen Prozess hinweist
+                        if (data.log && (
+                            data.log.indexOf('video:') !== -1 ||
+                            data.log.indexOf('Konvertierung abgeschlossen') !== -1 ||
+                            data.log.indexOf('successfully added to rex_mediapool') !== -1
+                        )) {
+                            // Der Prozess ist abgeschlossen, aber die Fortschrittsanzeige ist noch nicht auf 100%
+                            checkServerConversionStatus();
+                        }
+                    }
                 }
             });
+    }
+
+    // Funktion zum Abschließen des Prozesses und Aktualisieren der UI
+    function completeProcess() {
+        $('#prog').css('width', '100%');
+        $('#progress-text').html('100%');
+        $('#start').removeClass('disabled').prop('disabled', false);
+        
+        // Zeige Erfolgsanimation
+        $('.spinner').hide();
+        $('#progress-text').addClass('text-success').html('<i class="fa fa-check"></i> Fertig!');
+        
+        // Timer stoppen
+        clearInterval(doProgress);
+        if (pollStatus) {
+            clearInterval(pollStatus);
+            pollStatus = null;
+        }
+        
+        conversionActive = false;
+        updateUIForConversion(false);
+        
+        // Nach 3 Sekunden Seite neu laden, um die optimierte Video-Liste zu aktualisieren
+        setTimeout(function() {
+            window.location.reload();
+        }, 3000);
     }
 
     function updateUIForConversion(active) {
@@ -106,6 +138,12 @@
             // UI für inaktive Konvertierung, aber Fortschrittsanzeige bleibt sichtbar
             $('input[name=video]').prop('disabled', false);
             $('#start').removeClass('disabled').prop('disabled', false);
+            
+            // Timer stoppen
+            if (pollStatus) {
+                clearInterval(pollStatus);
+                pollStatus = null;
+            }
         }
     }
 
@@ -134,16 +172,7 @@
                 // Wenn der Import erfolgreich war, setzen wir das Flag zurück
                 if (data.status === 'success') {
                     waitingForImport = false;
-                    
-                    // UI aktualisieren
-                    $('#prog').css('width', '100%');
-                    $('#progress-text').addClass('text-success').html('<i class="fa fa-check"></i> Fertig!');
-                    $('.spinner').hide();
-                    
-                    // Nach 3 Sekunden Seite neu laden
-                    setTimeout(function() {
-                        window.location.reload();
-                    }, 3000);
+                    completeProcess();
                 } else {
                     // Bei Fehler oder unvollständigem Import, versuchen wir es erneut
                     setTimeout(function() {
@@ -265,7 +294,14 @@
                     } else if (data.status === 'converting') {
                         // Fortschrittsanzeige starten
                         SetProgressStart();
+                    } else if (data.status === 'done') {
+                        // Prozess ist komplett fertig
+                        completeProcess();
                     }
+                } else if (conversionActive) {
+                    // Wenn die Seite aktiv ist, aber der Server sagt, es gibt keinen aktiven Prozess mehr,
+                    // aktualisieren wir die UI mit "Fertig"
+                    completeProcess();
                 }
             });
     }
