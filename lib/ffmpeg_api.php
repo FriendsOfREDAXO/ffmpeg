@@ -237,7 +237,9 @@ class rex_api_ffmpeg_converter extends rex_api_function
         }
 
         // Replace placeholders in command
-        $command = str_ireplace(['INPUT', 'OUTPUT'], [$input, $output], $command);
+        $escapedInput = escapeshellarg($input);
+        $escapedOutput = escapeshellarg($output);
+        $command = str_ireplace(['INPUT', 'OUTPUT'], [$escapedInput, $escapedOutput], $command);
 
         // Schreibe Startinformationen ins Log
         rex_file::put($log, 'Konvertierung für "' . $video . '" gestartet um ' . date('d.m.Y H:i:s') . "\n", FILE_APPEND);
