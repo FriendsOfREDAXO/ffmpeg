@@ -399,46 +399,28 @@ class rex_api_ffmpeg_converter extends rex_api_function
                 ) . PHP_EOL, FILE_APPEND);
             }
             
-            // Delete source file if configured
-            if (rex_addon::get('ffmpeg')->getConfig('delete') == 1) {
-             // Add converted file to media pool
-             $syncResult = rex_mediapool_syncFile(pathinfo($outputFile, PATHINFO_BASENAME), 0, '');
-             rex_unset_session('ffmpeg_output_video_file');
-             
-             if ($syncResult) {
-                 rex_file::put($log, sprintf("Destination file %s was successfully added to rex_mediapool", $outputFile) . PHP_EOL, FILE_APPEND);
-                 // Konvertierung abgeschlossen
-                 rex_file::put($log, 'Konvertierung abgeschlossen um ' . date('d.m.Y H:i:s') . PHP_EOL, FILE_APPEND);
-                 $this->setConversionStatus(self::STATUS_DONE);
-                
-                // Delete source file if configured (only if import was successful)
-                if (rex_addon::get('ffmpeg')->getConfig('delete') == 1) {
-                    rex_mediapool_deleteMedia(pathinfo($inputFile, PATHINFO_BASENAME));
-                    rex_unset_session('ffmpeg_input_video_file');
-                    rex_file::put($log, sprintf("Source file %s deletion was successful", $inputFile) . PHP_EOL, FILE_APPEND);
-                }
-             } else {
-                 rex_file::put($log, sprintf("Destination file %s rex_mediapool registration was not successful", $outputFile) . PHP_EOL, FILE_APPEND);
-                 rex_file::put($log, 'Please execute a mediapool sync by hand' . PHP_EOL, FILE_APPEND);
-                 rex_file::put($log, 'Konvertierung fehlgeschlagen um ' . date('d.m.Y H:i:s') . PHP_EOL, FILE_APPEND);
-                 $this->setConversionStatus(self::STATUS_ERROR);
-             }
-            
-            // Add converted file to media pool
-            $syncResult = rex_mediapool_syncFile(pathinfo($outputFile, PATHINFO_BASENAME), 0, '');
-            rex_unset_session('ffmpeg_output_video_file');
-            
-            if ($syncResult) {
-                rex_file::put($log, sprintf("Destination file %s was successfully added to rex_mediapool", $outputFile) . PHP_EOL, FILE_APPEND);
-                // Konvertierung abgeschlossen
-                rex_file::put($log, 'Konvertierung abgeschlossen um ' . date('d.m.Y H:i:s') . PHP_EOL, FILE_APPEND);
-                $this->setConversionStatus(self::STATUS_DONE);
-            } else {
-                rex_file::put($log, sprintf("Destination file %s rex_mediapool registration was not successful", $outputFile) . PHP_EOL, FILE_APPEND);
-                rex_file::put($log, 'Please execute a mediapool sync by hand' . PHP_EOL, FILE_APPEND);
-                rex_file::put($log, 'Konvertierung fehlgeschlagen um ' . date('d.m.Y H:i:s') . PHP_EOL, FILE_APPEND);
-                $this->setConversionStatus(self::STATUS_ERROR);
-            }
+// Add converted file to media pool
+$syncResult = rex_mediapool_syncFile(pathinfo($outputFile, PATHINFO_BASENAME), 0, '');
+rex_unset_session('ffmpeg_output_video_file');
+
+if ($syncResult) {
+    rex_file::put($log, sprintf("Destination file %s was successfully added to rex_mediapool", $outputFile) . PHP_EOL, FILE_APPEND);
+    // Konvertierung abgeschlossen
+    rex_file::put($log, 'Konvertierung abgeschlossen um ' . date('d.m.Y H:i:s') . PHP_EOL, FILE_APPEND);
+    $this->setConversionStatus(self::STATUS_DONE);
+    
+    // Delete source file if configured (only if import was successful)
+    if (rex_addon::get('ffmpeg')->getConfig('delete') == 1) {
+        rex_mediapool_deleteMedia(pathinfo($inputFile, PATHINFO_BASENAME));
+        rex_unset_session('ffmpeg_input_video_file');
+        rex_file::put($log, sprintf("Source file %s deletion was successful", $inputFile) . PHP_EOL, FILE_APPEND);
+    }
+} else {
+    rex_file::put($log, sprintf("Destination file %s rex_mediapool registration was not successful", $outputFile) . PHP_EOL, FILE_APPEND);
+    rex_file::put($log, 'Please execute a mediapool sync by hand' . PHP_EOL, FILE_APPEND);
+    rex_file::put($log, 'Konvertierung fehlgeschlagen um ' . date('d.m.Y H:i:s') . PHP_EOL, FILE_APPEND);
+    $this->setConversionStatus(self::STATUS_ERROR);
+}
             
             // Entferne die Konvertierungs-ID erst, wenn alles abgeschlossen ist
             // Dadurch kann der Benutzer den Status noch abrufen
