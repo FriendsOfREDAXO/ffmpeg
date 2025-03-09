@@ -188,10 +188,13 @@ class rex_api_ffmpeg_converter extends rex_api_function
         return ['progress' => $results, 'log' => $getContent];
     }
 
-    protected function handleDone()
+    protected function handleDone($silentMode = false)
     {
         $conversionId = rex_session('ffmpeg_conversion_id', 'string', '');
         if (empty($conversionId)) {
+            if ($silentMode) {
+                return ['log' => 'No active conversion found'];
+            }
             throw new rex_api_exception('No active conversion found');
         }
 
@@ -257,6 +260,13 @@ class rex_api_ffmpeg_converter extends rex_api_function
         // Clean up session
         rex_unset_session('ffmpeg_conversion_id');
 
-        return ['log' => rex_file::get($log)];
+        $logContent = rex_file::get($log);
+        
+        // Wenn im Silent-Modus, Rückgabe ohne Header-Änderungen
+        if ($silentMode) {
+            return ['log' => $logContent];
+        }
+        
+        return ['log' => $logContent];
     }
 }
