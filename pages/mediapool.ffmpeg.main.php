@@ -54,11 +54,18 @@ if (!empty($conversionId)) {
 // Videos aus dem Medienpool holen
 $sql = rex_sql::factory();
 
+// Bereits optimierte Videos sammeln (um zu prüfen, welche Originale bereits konvertiert wurden)
+$optimizedVideos = $sql->getArray('SELECT * FROM ' . rex::getTable('media') . ' WHERE filetype LIKE \'video/%\' AND filename LIKE \'web_%\' ORDER BY updatedate DESC');
+
+// Liste der bereits konvertierten Videos (ohne 'web_' Präfix)
+$alreadyConverted = [];
+foreach ($optimizedVideos as $video) {
+    $originalName = substr($video['filename'], 4); // "web_" entfernen
+    $alreadyConverted[] = $originalName;
+}
+
 // Unkonvertierte Videos
 $result = $sql->getArray('SELECT * FROM ' . rex::getTable('media') . ' WHERE filetype LIKE \'video/%\' AND filename NOT LIKE \'web_%\' ORDER BY updatedate DESC');
-
-// Bereits optimierte Videos
-$optimizedVideos = $sql->getArray('SELECT * FROM ' . rex::getTable('media') . ' WHERE filetype LIKE \'video/%\' AND filename LIKE \'web_%\' ORDER BY updatedate DESC');
 
 // Unkonvertierte Videos auflisten
 if ($result) {
@@ -66,13 +73,16 @@ if ($result) {
     $n['field'] = [];
     foreach ($result as $key => $item) {
         $isProcessing = $conversionActive && isset($conversionInfo['video']) && $conversionInfo['video'] === $item['filename'];
+        $isAlreadyConverted = in_array($item['filename'], $alreadyConverted);
         
         $n['field'][] = '
-        <div class="video-item' . ($isProcessing ? ' processing' : '') . '">
+        <div class="video-item' . ($isProcessing ? ' processing' : '') . ($isAlreadyConverted ? ' already-converted' : '') . '">
             <label>
-                <input class="mycheckbox" id="v' . $key . '" type="radio" name="video" value="' . $item['filename'] . '" data-video="' . $item['filename'] . '"' . ($conversionActive ? ' disabled' : '') . '> 
+                <input class="mycheckbox" id="v' . $key . '" type="radio" name="video" value="' . $item['filename'] . '" data-video="' . $item['filename'] . '"' . 
+                (($conversionActive || $isAlreadyConverted) ? ' disabled' : '') . '> 
                 <strong>' . $item['filename'] . '</strong>
-                ' . ($isProcessing ? '<span class="badge badge-info">Wird konvertiert...</span>' : '') . '
+                ' . ($isProcessing ? '<span class="badge badge-info conversion-badge">Wird konvertiert...</span>' : '') . '
+                ' . ($isAlreadyConverted ? '<span class="badge badge-success conversion-badge">' . $this->i18n('ffmpeg_already_converted') . '</span>' : '') . '
             </label>
             <div class="video-meta">
                 <span class="video-size">' . rex_formatter::bytes($item['filesize']) . '</span>
@@ -223,3 +233,202 @@ if ($optimizedVideos && count($optimizedVideos) > 0) {
     echo $output;
 }
 ?>
+
+<style>
+/* REDAXO Dark Mode kompatible Styles */
+.video-item {
+    padding: 10px;
+    border-bottom: 1px solid rgba(var(--rex-color-border-text-rgb, 238, 238, 238), .2);
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 10px;
+    transition: background-color 0.2s ease;
+}
+
+.video-meta {
+    display: flex;
+    color: var(--rex-color-text-muted, #888);
+    font-size: 0.85em;
+    margin-top: 5px;
+    margin-left: 20px;
+}
+
+.video-size, .video-date {
+    margin-right: 15px;
+}
+
+.optimized {
+    background-color: rgba(var(--rex-color-background-rgb, 248, 248, 248), .1);
+    border-radius: 5px;
+    padding: 12px;
+}
+
+.processing {
+    background-color: rgba(var(--rex-color-background-rgb, 240, 247, 255), .15);
+    border-radius: 5px;
+}
+
+.already-converted {
+    opacity: 0.7;
+    background-color: rgba(var(--rex-color-success-rgb, 92, 184, 92), .1);
+    border-radius: 5px;
+}
+
+.compression-rate {
+    color: #fff;
+    background-color: #5cb85c;
+    margin-left: 10px;
+}
+
+.conversion-badge {
+    margin-left: 10px;
+    display: inline-block;
+}
+
+.video-actions {
+    margin-top: 10px;
+    margin-left: 20px;
+}
+
+/* Coole Statusanzeige */
+.conversion-status {
+    padding: 15px;
+    position: relative;
+}
+
+.progress {
+    height: 20px;
+    margin-bottom: 0;
+    background-color: rgba(var(--rex-color-border-text-rgb, 233, 236, 239), .2);
+}
+
+.progress-bar {
+    background-color: var(--rex-color-brand, #3498db);
+}
+
+.conversion-details {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-top: 10px;
+}
+
+#progress-text {
+    font-size: 16px;
+    font-weight: bold;
+    margin-left: 10px;
+    color: var(--rex-color-text, inherit);
+}
+
+/* Spinner Animation */
+.spinner {
+    margin-right: 10px;
+    width: 70px;
+    text-align: center;
+}
+
+.spinner > div {
+    width: 12px;
+    height: 12px;
+    background-color: var(--rex-color-brand, #3498db);
+    border-radius: 100%;
+    display: inline-block;
+    animation: sk-bouncedelay 1.4s infinite ease-in-out both;
+}
+
+.spinner .bounce1 {
+    animation-delay: -0.32s;
+}
+
+.spinner .bounce2 {
+    animation-delay: -0.16s;
+}
+
+@keyframes sk-bouncedelay {
+    0%, 80%, 100% { 
+        transform: scale(0);
+    } 40% { 
+        transform: scale(1.0);
+    }
+}
+
+/* Hervorhebung aktiver Videos */
+.active-video {
+    background-color: rgba(var(--rex-color-brand-rgb, 52, 152, 219), .1);
+    border-left: 4px solid var(--rex-color-brand, #3498db);
+    padding-left: 8px;
+}
+
+/* Log-Bereich */
+#log pre {
+    background-color: var(--rex-color-panel-bg, #fff);
+    color: var(--rex-color-text, #212529);
+    border: 1px solid rgba(var(--rex-color-border-text-rgb, 221, 221, 221), .2);
+    height: 200px;
+    overflow-y: auto;
+    padding: 10px;
+    font-family: monospace;
+    font-size: 0.9em;
+    white-space: pre-wrap;
+}
+
+/* Speziell für den REDAXO Dark Mode */
+.rex-theme-dark .video-item {
+    border-bottom-color: rgba(255, 255, 255, 0.1);
+}
+
+.rex-theme-dark .optimized {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+.rex-theme-dark .processing {
+    background-color: rgba(53, 152, 219, 0.15);
+}
+
+.rex-theme-dark .already-converted {
+    background-color: rgba(92, 184, 92, 0.1);
+}
+
+.rex-theme-dark .active-video {
+    background-color: rgba(53, 152, 219, 0.15);
+}
+
+.rex-theme-dark #log pre {
+    background-color: rgba(0, 0, 0, 0.2);
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+.rex-theme-dark .progress {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+/* Bessere Kontrastfarben für Text */
+.text-success {
+    color: var(--rex-color-success, #2ecc71) !important;
+}
+
+/* Hover-Effekte */
+.video-item:hover {
+    background-color: rgba(var(--rex-color-brand-rgb, 52, 152, 219), .05);
+}
+
+.rex-theme-dark .video-item:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+/* Verbesserte Buttons im Dark Mode */
+.rex-theme-dark .btn-default {
+    background-color: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+.rex-theme-dark .btn-default:hover {
+    background-color: rgba(255, 255, 255, 0.15);
+    border-color: rgba(255, 255, 255, 0.25);
+}
+
+/* Smooth Transitions */
+.video-item, .progress-bar, .spinner > div, .btn {
+    transition: all 0.3s ease;
+}
+</style>
