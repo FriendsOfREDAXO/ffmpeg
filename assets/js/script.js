@@ -53,9 +53,12 @@
                         $('#progress-text').addClass('text-success').html('<i class="fa fa-check"></i> Fertig!');
                         
                         clearInterval(doProgress);
+                        
+                        // Wichtig: führe showFinalDone() aus, bevor wir conversionActive auf false setzen
+                        showFinalDone();
+                        
                         conversionActive = false;
                         updateUIForConversion(false);
-                        showFinalDone();
                         
                         // Nach 3 Sekunden Seite neu laden, um die optimierte Video-Liste zu aktualisieren
                         setTimeout(function() {
