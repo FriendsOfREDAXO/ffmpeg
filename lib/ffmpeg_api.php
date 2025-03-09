@@ -249,7 +249,7 @@ class rex_api_ffmpeg_converter extends rex_api_function
         if (str_starts_with(PHP_OS, 'WIN')) {
             pclose(popen("start /B " . $command . " 1> $log 2>&1", "r")); // windows
         } else {
-            shell_exec($command . " > /dev/null 2>&1 &"); // linux
+            shell_exec($command . " 1> $log 2>&1 >/dev/null &"); //linux
         }
 
         return ['status' => 'started', 'conversion_id' => $conversionId];
