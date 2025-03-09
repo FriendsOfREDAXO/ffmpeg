@@ -35,9 +35,10 @@ class rex_api_ffmpeg_converter extends rex_api_function
                     exit;
                     
                 case 'status':
-                    $result = $this->getStatus();
+                    // Rufe die interne Status-Methode auf und sende das Ergebnis
+                    $statusData = $this->checkStatus();
                     rex_response::cleanOutputBuffers();
-                    rex_response::sendJson($result);
+                    rex_response::sendJson($statusData);
                     exit;
 
                 default:
@@ -52,7 +53,8 @@ class rex_api_ffmpeg_converter extends rex_api_function
         }
     }
     
-    protected function getStatus()
+    // Öffentliche statische Methode, um den Konvertierungsstatus zu überprüfen
+    public static function getConversionStatus()
     {
         $conversionId = rex_session('ffmpeg_conversion_id', 'string', '');
         $active = false;
@@ -68,7 +70,11 @@ class rex_api_ffmpeg_converter extends rex_api_function
                     strpos($logContent, 'registration was not successful') === false) {
                     
                     // Überprüfen, ob der ffmpeg-Prozess noch läuft
-                    if ($this->isProcessRunning($conversionId)) {
+                    // Einfaches Heuristik: Wurde die Datei in den letzten 30 Sekunden aktualisiert?
+                    $lastModified = filemtime($log);
+                    $currentTime = time();
+                    
+                    if ($currentTime - $lastModified < 30) {
                         $active = true;
                         
                         // Dateinamen aus Log extrahieren
@@ -105,6 +111,12 @@ class rex_api_ffmpeg_converter extends rex_api_function
             'active' => $active,
             'info' => $processInfo
         ];
+    }
+    
+    // Private Methode für interne API-Aufrufe
+    private function checkStatus()
+    {
+        return self::getConversionStatus();
     }
     
     protected function isProcessRunning($conversionId)
