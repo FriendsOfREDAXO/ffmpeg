@@ -107,6 +107,21 @@
                 }
                 $('#log pre').html(data.log);
                 scrolllog();
+                
+                // Prüfe, ob das Video erfolgreich zum Medienpool hinzugefügt wurde
+                if (data.log.indexOf("was successfully added to rex_mediapool") > -1) {
+                    console.log("Video erfolgreich zum Medienpool hinzugefügt.");
+                } else {
+                    console.log("Warnung: Video wurde möglicherweise nicht zum Medienpool hinzugefügt.");
+                    // Versuche es erneut nach einer kurzen Verzögerung
+                    setTimeout(function() {
+                        $.ajax({
+                            type: 'get',
+                            url: 'index.php?rex-api-call=ffmpeg_converter&func=done',
+                            dataType: 'json'
+                        });
+                    }, 2000);
+                }
             });
     }
 
