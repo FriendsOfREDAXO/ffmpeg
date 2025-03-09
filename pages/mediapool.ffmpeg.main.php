@@ -6,19 +6,15 @@ $optimizedContent = '';
 
 $csrfToken = rex_csrf_token::factory('ffmpeg');
 
-// Prüfen, ob gerade ein Konvertierungsvorgang läuft
-$conversionActive = false;
-$conversionId = rex_session('ffmpeg_conversion_id', 'string', '');
-if (!empty($conversionId)) {
-    $log = rex_addon::get('ffmpeg')->getDataPath('log' . $conversionId . '.txt');
-    if (file_exists($log)) {
-        $logContent = rex_file::get($log);
-        // Wenn das Log existiert und nicht "done" oder Fehler enthält, läuft die Konvertierung noch
-        if (strpos($logContent, 'was successfully added to rex_mediapool') === false && 
-            strpos($logContent, 'registration was not successful') === false) {
-            $conversionActive = true;
-        }
-    }
+// Prüfen, ob API-Klasse verfügbar ist
+if (class_exists('rex_api_ffmpeg_converter')) {
+    $ffmpegApi = new rex_api_ffmpeg_converter();
+    $statusData = $ffmpegApi->getStatus();
+    $conversionActive = $statusData['active'];
+    $conversionInfo = $statusData['info'];
+} else {
+    $conversionActive = false;
+    $conversionInfo = [];
 }
 
 // Videos aus dem Medienpool holen
@@ -35,11 +31,14 @@ if ($result) {
     $n = [];
     $n['field'] = [];
     foreach ($result as $key => $item) {
+        $isProcessing = $conversionActive && $conversionInfo && $conversionInfo['video'] === $item['filename'];
+        
         $n['field'][] = '
-        <div class="video-item">
+        <div class="video-item' . ($isProcessing ? ' processing' : '') . '">
             <label>
                 <input class="mycheckbox" id="v' . $key . '" type="radio" name="video" value="' . $item['filename'] . '" data-video="' . $item['filename'] . '"' . ($conversionActive ? ' disabled' : '') . '> 
                 <strong>' . $item['filename'] . '</strong>
+                ' . ($isProcessing ? '<span class="badge badge-info">Wird konvertiert...</span>' : '') . '
             </label>
             <div class="video-meta">
                 <span class="video-size">' . rex_formatter::bytes($item['filesize']) . '</span>
@@ -114,7 +113,9 @@ if ($result) {
                             <span id="progress-text">0%</span>
                         </div>
                     </div>
-                    <div id="log" class="log" style="padding:15px;margin:5px 0;"><pre style="height:200px;overflow-y: auto"></pre></div>
+                    <div id="log" class="log" style="padding:15px;margin:5px 0;"><pre style="height:200px;overflow-y: auto">' . 
+                    ($conversionActive && isset($conversionInfo['log']) ? $conversionInfo['log'] : '') . 
+                    '</pre></div>
                 </div>
             </div>
         </form>';
@@ -188,3 +189,111 @@ if ($optimizedVideos && count($optimizedVideos) > 0) {
     echo $output;
 }
 ?>
+
+<style>
+/* Styles für die Videoübersicht */
+.video-item {
+    padding: 10px;
+    border-bottom: 1px solid #eee;
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 10px;
+}
+
+.video-meta {
+    display: flex;
+    color: #888;
+    font-size: 0.85em;
+    margin-top: 5px;
+    margin-left: 20px;
+}
+
+.video-size, .video-date {
+    margin-right: 15px;
+}
+
+.optimized {
+    background-color: #f8f8f8;
+    border-radius: 5px;
+    padding: 12px;
+}
+
+.processing {
+    background-color: #f0f7ff;
+    border-radius: 5px;
+}
+
+.compression-rate {
+    color: #fff;
+    background-color: #5cb85c;
+    margin-left: 10px;
+}
+
+.video-actions {
+    margin-top: 10px;
+    margin-left: 20px;
+}
+
+/* Coole Statusanzeige */
+.conversion-status {
+    padding: 15px;
+    position: relative;
+}
+
+.progress {
+    height: 20px;
+    margin-bottom: 0;
+}
+
+.conversion-details {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-top: 10px;
+}
+
+#progress-text {
+    font-size: 16px;
+    font-weight: bold;
+    margin-left: 10px;
+}
+
+/* Spinner Animation */
+.spinner {
+    margin-right: 10px;
+    width: 70px;
+    text-align: center;
+}
+
+.spinner > div {
+    width: 12px;
+    height: 12px;
+    background-color: #3498db;
+    border-radius: 100%;
+    display: inline-block;
+    animation: sk-bouncedelay 1.4s infinite ease-in-out both;
+}
+
+.spinner .bounce1 {
+    animation-delay: -0.32s;
+}
+
+.spinner .bounce2 {
+    animation-delay: -0.16s;
+}
+
+@keyframes sk-bouncedelay {
+    0%, 80%, 100% { 
+        transform: scale(0);
+    } 40% { 
+        transform: scale(1.0);
+    }
+}
+
+/* Hervorhebung aktiver Videos */
+.active-video {
+    background-color: #f5f5f5;
+    border-left: 4px solid #3498db;
+    padding-left: 8px;
+}
+</style>
