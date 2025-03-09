@@ -3,8 +3,8 @@
 if (rex::isBackend() && rex::getUser()) {
     // Add JavaScript to ffmpeg page
     if (rex_be_controller::getCurrentPagePart(2) == 'ffmpeg') {
-        rex_view::addJsFile($this->getAssetsUrl('js/script.js'));
-         rex_view::addCssFile($this->getAssetsUrl('css/style.js'));
+        rex_view::addJsFile(rex_addon::get('ffmpeg')->getAssetsUrl('js/script.js'));
+        rex_view::addCssFile(rex_addon::get('ffmpeg')->getAssetsUrl('style.css'));
     }
     
     // Create session variables if needed
