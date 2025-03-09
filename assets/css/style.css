@@ -1,5 +1,3 @@
-<style>
-/* REDAXO Dark Mode kompatible Styles */
 .video-item {
     padding: 10px;
     border-bottom: 1px solid rgba(var(--rex-color-border-text-rgb, 238, 238, 238), .2);
@@ -32,10 +30,21 @@
     border-radius: 5px;
 }
 
+.already-converted {
+    opacity: 0.7;
+    background-color: rgba(var(--rex-color-success-rgb, 92, 184, 92), .1);
+    border-radius: 5px;
+}
+
 .compression-rate {
     color: #fff;
     background-color: #5cb85c;
     margin-left: 10px;
+}
+
+.conversion-badge {
+    margin-left: 10px;
+    display: inline-block;
 }
 
 .video-actions {
@@ -138,6 +147,10 @@
     background-color: rgba(53, 152, 219, 0.15);
 }
 
+.rex-theme-dark .already-converted {
+    background-color: rgba(92, 184, 92, 0.1);
+}
+
 .rex-theme-dark .active-video {
     background-color: rgba(53, 152, 219, 0.15);
 }
@@ -180,4 +193,3 @@
 .video-item, .progress-bar, .spinner > div, .btn {
     transition: all 0.3s ease;
 }
-</style>
