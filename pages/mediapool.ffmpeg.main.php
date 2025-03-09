@@ -6,15 +6,49 @@ $optimizedContent = '';
 
 $csrfToken = rex_csrf_token::factory('ffmpeg');
 
-// Prüfen, ob API-Klasse verfügbar ist
-if (class_exists('rex_api_ffmpeg_converter')) {
-    $ffmpegApi = new rex_api_ffmpeg_converter();
-    $statusData = $ffmpegApi->getStatus();
-    $conversionActive = $statusData['active'];
-    $conversionInfo = $statusData['info'];
-} else {
-    $conversionActive = false;
-    $conversionInfo = [];
+// Prüfen, ob eine aktive Konvertierung läuft
+$conversionActive = false;
+$conversionInfo = [];
+
+// Konversionsstatus aus Session und Datei ermitteln
+$conversionId = rex_session('ffmpeg_conversion_id', 'string', '');
+if (!empty($conversionId)) {
+    $log = rex_addon::get('ffmpeg')->getDataPath('log' . $conversionId . '.txt');
+    if (file_exists($log)) {
+        $logContent = rex_file::get($log);
+        
+        // Wenn das Log existiert, aber keine "Fertig"-Marke enthält, läuft die Konvertierung noch
+        if (strpos($logContent, 'was successfully added to rex_mediapool') === false &&
+            strpos($logContent, 'registration was not successful') === false) {
+            
+            // Prüfen, ob der Prozess wirklich noch läuft (einfacher Check: wurde in den letzten 30 Sekunden aktualisiert)
+            $lastModified = filemtime($log);
+            $currentTime = time();
+            
+            if ($currentTime - $lastModified < 30) {
+                $conversionActive = true;
+                
+                // Dateinamen aus Log extrahieren
+                preg_match('/Konvertierung für "(.*?)" gestartet/', $logContent, $matches);
+                $videoName = $matches[1] ?? '';
+                
+                $conversionInfo = [
+                    'video' => $videoName,
+                    'log' => $logContent
+                ];
+            } else {
+                // Log existiert, wurde aber längere Zeit nicht aktualisiert
+                // Konvertierung scheint abgebrochen zu sein, Session-Variable löschen
+                rex_unset_session('ffmpeg_conversion_id');
+            }
+        } else {
+            // Konvertierung ist abgeschlossen, Session-Variable löschen
+            rex_unset_session('ffmpeg_conversion_id');
+        }
+    } else {
+        // Log existiert nicht, Session-Variable löschen
+        rex_unset_session('ffmpeg_conversion_id');
+    }
 }
 
 // Videos aus dem Medienpool holen
@@ -31,7 +65,7 @@ if ($result) {
     $n = [];
     $n['field'] = [];
     foreach ($result as $key => $item) {
-        $isProcessing = $conversionActive && $conversionInfo && $conversionInfo['video'] === $item['filename'];
+        $isProcessing = $conversionActive && isset($conversionInfo['video']) && $conversionInfo['video'] === $item['filename'];
         
         $n['field'][] = '
         <div class="video-item' . ($isProcessing ? ' processing' : '') . '">
