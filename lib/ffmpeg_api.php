@@ -173,10 +173,14 @@ class rex_api_ffmpeg_converter extends rex_api_function
         // Check if conversion is complete
         if ($progress > 98) {
             $results = 'done';
+            // Direkt den Done-Handler aufrufen, um das Video in den Medienpool zu importieren
+            $this->handleDone(true);
         } elseif (strpos($getContent, 'Qavg') !== false) {
             $results = 'done';
+            $this->handleDone(true);
         } elseif (strpos($getContent, 'kb/s:') !== false) {
             $results = 'done';
+            $this->handleDone(true);
         } else {
             $results = $progress;
         }
