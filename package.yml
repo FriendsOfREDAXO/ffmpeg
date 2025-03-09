@@ -1,5 +1,5 @@
 package: ffmpeg
-version: '1.0.1'
+version: '1.1.0'
 author: Friends Of REDAXO
 supportpage: https://github.com/FriendsOfREDAXO/
 
@@ -32,3 +32,7 @@ requires:
 installer_ignore:
     - node_modules
     - .env
+
+# Autoloading für API-Klassen
+load_options: 
+    api: true
