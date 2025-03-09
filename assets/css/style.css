@@ -196,12 +196,12 @@
 
 /* CSS-Variablen für Light- und Dark-Mode */
 :root {
-    --color-text: #212529;
-    --color-text-muted: #888;
-    --color-background: #fff;
-    --color-background-rgb: 255, 255, 255;
-    --color-border: #eee;
-    --color-border-rgb: 238, 238, 238;
+    --color-text: #333;
+    --color-text-muted: #666;
+    --color-background: #f8f8f8;
+    --color-background-rgb: 248, 248, 248;
+    --color-border: #ddd;
+    --color-border-rgb: 221, 221, 221;
     --color-brand: #3498db;
     --color-brand-rgb: 52, 152, 219;
     --color-success: #5cb85c;
@@ -280,11 +280,13 @@
 }
 
 .optimized {
-    background-color: rgba(var(--color-background-rgb, 248, 248, 248), .1);
+    background-color: rgba(var(--color-background-rgb, 248, 248, 248), .3);
+    border: 1px solid rgba(var(--color-border-rgb, 221, 221, 221), .3);
 }
 
 .processing {
-    background-color: rgba(var(--color-background-rgb, 240, 247, 255), .15);
+    background-color: rgba(var(--color-brand-rgb, 52, 152, 219), .1);
+    border: 1px solid rgba(var(--color-brand-rgb, 52, 152, 219), .2);
 }
 
 .already-converted {
@@ -319,5 +321,6 @@
 }
 
 .video-item:hover {
-    background-color: rgba(var(--color-brand-rgb, 52, 152, 219), .05);
+    background-color: rgba(var(--color-brand-rgb, 52, 152, 219), .08);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
