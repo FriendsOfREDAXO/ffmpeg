@@ -5,10 +5,26 @@ if (rex::isBackend() && rex::getUser()) {
     if (is_null(rex_session('ffmpeg_uid', 'string', null))) {
         rex_set_session('ffmpeg_uid', uniqid());
     }
-   $log = $this->getDataPath('log' . rex_session('ffmpeg_uid', 'string', '') . '.txt');
+    $log = $this->getDataPath('log' . rex_session('ffmpeg_uid', 'string', '') . '.txt');
 
-    if (rex_be_controller::getCurrentPagePart(2) == 'ffmpeg') {
+    // Eigene Hauptseite statt Medienpool-Integration
+    if (rex_be_controller::getCurrentPagePart(1) == 'ffmpeg') {
         rex_view::addJsFile($this->getAssetsUrl('js/script.js'));
+    }
+
+    // Cronjob für die Überprüfung alter nicht-importierter Videos (wird täglich ausgeführt)
+    if (rex_request::get('ffmpeg_cleanup', 'boolean', false)) {
+        $outputDir = rex_path::media();
+        $files = glob($outputDir . 'ffmpeg_temp_*');
+        $oneDayAgo = time() - (24 * 60 * 60);
+        
+        foreach ($files as $file) {
+            if (filemtime($file) < $oneDayAgo) {
+                unlink($file);
+                rex_logger::factory()->info('FFMPEG: Removed old temporary video: ' . basename($file));
+            }
+        }
+        exit('Cleanup complete');
     }
 
     if (rex_request::get('ffmpeg_video', 'boolean', false)) {
@@ -17,92 +33,106 @@ if (rex::isBackend() && rex::getUser()) {
             rex_file::put($log, ''); // Create or clear log file
 
             $input = rex_path::media(rex_request::get('video', 'string'));
-            $output = rex_path::media('web_' . pathinfo($input, PATHINFO_FILENAME));
+            // Temporäres Ausgabeverzeichnis mit Timestamp für spätere Verfolgung
+            $timestamp = time();
+            $outputBasename = 'ffmpeg_temp_' . $timestamp . '_' . pathinfo($input, PATHINFO_FILENAME);
+            $output = rex_path::media($outputBasename);
             $command = trim($this->getConfig('command')) . " ";
+            
+            // E-Mail-Empfänger speichern (falls angegeben)
+            $emailTo = rex_request::get('email', 'string', '');
+            if (!empty($emailTo)) {
+                rex_set_session('ffmpeg_notification_email', $emailTo);
+            }
 
             preg_match_all('/OUTPUT.(.*) /m', $command, $matches, PREG_SET_ORDER, 0);
             if (count($matches) > 0) {
                 $file = (trim($matches[0][0]));
                 rex_set_session('ffmpeg_input_video_file', $input);
                 rex_set_session('ffmpeg_output_video_file', $output . '.' . pathinfo($file, PATHINFO_EXTENSION));
+                
+                // Speichern von Informationen zu diesem Konvertierungsvorgang in einer Datenbanktabelle
+                $sql = rex_sql::factory();
+                $sql->setTable(rex::getTable('ffmpeg_queue'));
+                $sql->setValue('input_file', basename($input));
+                $sql->setValue('output_file', $outputBasename . '.' . pathinfo($file, PATHINFO_EXTENSION));
+                $sql->setValue('status', 'processing');
+                $sql->setValue('created', date('Y-m-d H:i:s'));
+                $sql->setValue('email', $emailTo);
+                $sql->setValue('user_id', rex::getUser()->getId());
+                $sql->insert();
+                
+                // Job-ID für spätere Referenz speichern
+                $jobId = $sql->getLastId();
+                rex_set_session('ffmpeg_current_job_id', $jobId);
             }
 
             $command = str_ireplace(['INPUT', 'OUTPUT'], [$input, $output], $command);
 
+            // Starte im Hintergrund ohne zu warten
             if (str_starts_with(PHP_OS, 'WIN')) {
-                pclose(popen("start /B " . $command . " 1> $log 2>&1", "r")); // windows
+                pclose(popen("start /B " . $command . " 1> $log 2>&1 && php -f " . rex_path::addon('ffmpeg', 'finish_conversion.php') . " jobId=$jobId", "r")); // windows
             } else {
-                shell_exec($command . " 1> $log 2>&1 >/dev/null &"); //linux
+                shell_exec($command . " 1> $log 2>&1 && php -f " . rex_path::addon('ffmpeg', 'finish_conversion.php') . " jobId=$jobId >/dev/null 2>&1 &"); //linux
             }
 
-            exit();
+            // Rückmeldung, dass der Job gestartet wurde
+            exit(json_encode(['status' => 'started', 'job_id' => $jobId]));
         }
-        $log = $this->getDataPath('log' . rex_session('ffmpeg_uid', 'string', '') . '.txt');
-
-        if (rex_request::get('progress', 'boolean', false)) {
-
-            $getContent = rex_file::get($log);
-
-            preg_match("/Duration: (.*?), start:/ms", $getContent, $matches);
-            if (!empty($rawDuration = $matches[1])) $ar = array_reverse(explode(":", $rawDuration));
-            $duration = floatval($ar[0]);
-            if (!empty($ar[1])) $duration += intval($ar[1]) * 60;
-            if (!empty($ar[2])) $duration += intval($ar[2]) * 60 * 60;
-            preg_match_all("/time=(.*?) bitrate/", $getContent, $matches);
-            $rawTime = array_pop($matches);
-            if (is_array($rawTime)) {
-                $rawTime = array_pop($rawTime);
+        
+        // Status eines Jobs abfragen
+        if (rex_request::get('check_status', 'boolean', false)) {
+            $jobId = rex_request::get('job_id', 'int', 0);
+            
+            if ($jobId > 0) {
+                $sql = rex_sql::factory();
+                $sql->setQuery('SELECT * FROM ' . rex::getTable('ffmpeg_queue') . ' WHERE id = :id', ['id' => $jobId]);
+                
+                if ($sql->getRows() > 0) {
+                    exit(json_encode([
+                        'status' => $sql->getValue('status'),
+                        'output_file' => $sql->getValue('output_file'),
+                        'created' => $sql->getValue('created')
+                    ]));
+                }
             }
-            $ar = array_reverse(explode(":", $rawTime));
-            $time = floatval($ar[0]);
-            if (!empty($ar[1])) $time += intval($ar[1]) * 60;
-            if (!empty($ar[2])) $time += intval($ar[2]) * 60 * 60;
-
-            //progress prec..
-            $progress = round(($time / $duration) * 100);
-
-            if ($progress > 98) {
-                $results = 'done';
-            } elseif (strpos($getContent, 'Qavg') !== false) {
-                $results = 'done';
-            } elseif (strpos($getContent, 'kb/s:') !== false) {
-                $results = 'done';
-            } else {
-                $results = $progress;
-            }
-
-            exit(json_encode(['progress' => $results, 'log' => $getContent]));
+            
+            exit(json_encode(['status' => 'not_found']));
         }
-
-        if (rex_request::get('done', 'boolean', false)) {
-
-            if (!function_exists('rex_mediapool_deleteMedia')) {
-                require rex_path::addon('mediapool', 'functions/function_rex_mediapool.php');
-            }
-
-            $inputFile = rex_session('ffmpeg_input_video_file', 'string', null);
-            $outputFile = rex_session('ffmpeg_output_video_file', 'string', null);
-
-            if (!is_null($inputFile) && !is_null($outputFile)) {
-                // 1. delete
-                if ($this->getConfig('delete') == 1) {
-                    rex_mediapool_deleteMedia(pathinfo($inputFile, PATHINFO_BASENAME));
-                    rex_unset_session('ffmpeg_input_video_file');
-                    rex_file::put($log, sprintf("Source file %s deletion was successful", $inputFile) . PHP_EOL); // Append to the log
+        
+        // Video importieren
+        if (rex_request::get('import', 'boolean', false)) {
+            $fileId = rex_request::get('file_id', 'int', 0);
+            
+            if ($fileId > 0) {
+                $sql = rex_sql::factory();
+                $sql->setQuery('SELECT * FROM ' . rex::getTable('ffmpeg_queue') . ' WHERE id = :id', ['id' => $fileId]);
+                
+                if ($sql->getRows() > 0) {
+                    $outputFile = $sql->getValue('output_file');
+                    
+                    if (!function_exists('rex_mediapool_syncFile')) {
+                        require rex_path::addon('mediapool', 'functions/function_rex_mediapool.php');
+                    }
+                    
+                    // Importieren und umbenennen (web_ Präfix)
+                    $newFilename = 'web_' . substr($outputFile, strpos($outputFile, '_', strpos($outputFile, '_') + 1) + 1);
+                    rename(rex_path::media($outputFile), rex_path::media($newFilename));
+                    rex_mediapool_syncFile($newFilename, 0, '');
+                    
+                    // Status aktualisieren
+                    $sql = rex_sql::factory();
+                    $sql->setTable(rex::getTable('ffmpeg_queue'));
+                    $sql->setWhere(['id' => $fileId]);
+                    $sql->setValue('status', 'imported');
+                    $sql->setValue('updated', date('Y-m-d H:i:s'));
+                    $sql->update();
+                    
+                    exit(json_encode(['status' => 'success', 'file' => $newFilename]));
                 }
-                // 2. add media
-                rex_mediapool_syncFile(pathinfo($outputFile, PATHINFO_BASENAME), 0, '');
-                rex_unset_session('ffmpeg_output_video_file');
-                rex_file::put($log, sprintf("Destination file %s was successfully added to rex_mediapool", $outputFile) . PHP_EOL); // Append to the log
-            } else {
-                if ($this->getConfig('delete') == 1) {
-                    rex_file::put($log, sprintf("Source file %s deletion was not possible", $inputFile) . PHP_EOL); // Append to the log
-                }
-                rex_file::put($log, sprintf("Destination file %s rex_mediapool registration was not successful", $outputFile) . PHP_EOL); // Append to the log
-                rex_file::put($log, 'Please execute a mediapool sync by hand' . PHP_EOL); // Append to the log
             }
-
-            exit(json_encode(['log' => rex_file::get($log)]));
+            
+            exit(json_encode(['status' => 'error', 'message' => 'File not found']));
         }
     }
 }
