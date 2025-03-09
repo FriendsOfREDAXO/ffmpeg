@@ -1,2 +1,93 @@
-.demo_addon {
+/* Styles für die Videoübersicht */
+.video-item {
+    padding: 10px;
+    border-bottom: 1px solid #eee;
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 10px;
+}
+
+.video-meta {
+    display: flex;
+    color: #888;
+    font-size: 0.85em;
+    margin-top: 5px;
+    margin-left: 20px;
+}
+
+.video-size, .video-date {
+    margin-right: 15px;
+}
+
+.optimized {
+    background-color: #f8f8f8;
+    border-radius: 5px;
+    padding: 12px;
+}
+
+.compression-rate {
+    color: #fff;
+    background-color: #5cb85c;
+    margin-left: 10px;
+}
+
+.video-actions {
+    margin-top: 10px;
+    margin-left: 20px;
+}
+
+/* Coole Statusanzeige */
+.conversion-status {
+    padding: 15px;
+    position: relative;
+}
+
+.progress {
+    height: 20px;
+    margin-bottom: 0;
+}
+
+.conversion-details {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-top: 10px;
+}
+
+#progress-text {
+    font-size: 16px;
+    font-weight: bold;
+    margin-left: 10px;
+}
+
+/* Spinner Animation */
+.spinner {
+    margin-right: 10px;
+    width: 70px;
+    text-align: center;
+}
+
+.spinner > div {
+    width: 12px;
+    height: 12px;
+    background-color: #3498db;
+    border-radius: 100%;
+    display: inline-block;
+    animation: sk-bouncedelay 1.4s infinite ease-in-out both;
+}
+
+.spinner .bounce1 {
+    animation-delay: -0.32s;
+}
+
+.spinner .bounce2 {
+    animation-delay: -0.16s;
+}
+
+@keyframes sk-bouncedelay {
+    0%, 80%, 100% { 
+        transform: scale(0);
+    } 40% { 
+        transform: scale(1.0);
+    }
 }
