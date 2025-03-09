@@ -193,3 +193,131 @@
 .video-item, .progress-bar, .spinner > div, .btn {
     transition: all 0.3s ease;
 }
+
+/* CSS-Variablen für Light- und Dark-Mode */
+:root {
+    --color-text: #212529;
+    --color-text-muted: #888;
+    --color-background: #fff;
+    --color-background-rgb: 255, 255, 255;
+    --color-border: #eee;
+    --color-border-rgb: 238, 238, 238;
+    --color-brand: #3498db;
+    --color-brand-rgb: 52, 152, 219;
+    --color-success: #5cb85c;
+    --color-success-rgb: 92, 184, 92;
+    --color-panel-bg: #fff;
+}
+
+/* Prefers Dark Mode - System Einstellung */
+@media (prefers-color-scheme: dark) {
+    :root {
+        --color-text: #e9ecef;
+        --color-text-muted: #adb5bd;
+        --color-background: #212529;
+        --color-background-rgb: 33, 37, 41;
+        --color-border: #495057;
+        --color-border-rgb: 73, 80, 87;
+        --color-brand: #3498db;
+        --color-brand-rgb: 52, 152, 219;
+        --color-success: #2ecc71;
+        --color-success-rgb: 46, 204, 113;
+        --color-panel-bg: #343a40;
+    }
+
+    /* Nur anwenden, wenn kein expliziter REDAXO Dark-Mode aktiviert ist */
+    body:not(.rex-theme-dark) .video-item {
+        border-bottom-color: rgba(255, 255, 255, 0.1);
+    }
+
+    body:not(.rex-theme-dark) .optimized {
+        background-color: rgba(255, 255, 255, 0.05);
+    }
+
+    body:not(.rex-theme-dark) .processing {
+        background-color: rgba(53, 152, 219, 0.15);
+    }
+
+    body:not(.rex-theme-dark) .already-converted {
+        background-color: rgba(92, 184, 92, 0.1);
+    }
+
+    body:not(.rex-theme-dark) .active-video {
+        background-color: rgba(53, 152, 219, 0.15);
+    }
+
+    body:not(.rex-theme-dark) #log pre {
+        background-color: rgba(0, 0, 0, 0.2);
+        border-color: rgba(255, 255, 255, 0.1);
+    }
+
+    body:not(.rex-theme-dark) .progress {
+        background-color: rgba(255, 255, 255, 0.1);
+    }
+
+    body:not(.rex-theme-dark) .video-item:hover {
+        background-color: rgba(255, 255, 255, 0.05);
+    }
+
+    body:not(.rex-theme-dark) .btn-default {
+        background-color: rgba(255, 255, 255, 0.1);
+        border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    body:not(.rex-theme-dark) .btn-default:hover {
+        background-color: rgba(255, 255, 255, 0.15);
+        border-color: rgba(255, 255, 255, 0.25);
+    }
+}
+
+/* Klassen, die die CSS-Variablen nutzen */
+.video-item {
+    border-bottom-color: rgba(var(--color-border-rgb, 238, 238, 238), .2);
+}
+
+.video-meta {
+    color: var(--color-text-muted, #888);
+}
+
+.optimized {
+    background-color: rgba(var(--color-background-rgb, 248, 248, 248), .1);
+}
+
+.processing {
+    background-color: rgba(var(--color-background-rgb, 240, 247, 255), .15);
+}
+
+.already-converted {
+    background-color: rgba(var(--color-success-rgb, 92, 184, 92), .1);
+}
+
+.progress {
+    background-color: rgba(var(--color-border-rgb, 233, 236, 239), .2);
+}
+
+.progress-bar, .spinner > div {
+    background-color: var(--color-brand, #3498db);
+}
+
+#progress-text {
+    color: var(--color-text, inherit);
+}
+
+.active-video {
+    background-color: rgba(var(--color-brand-rgb, 52, 152, 219), .1);
+    border-left-color: var(--color-brand, #3498db);
+}
+
+#log pre {
+    background-color: var(--color-panel-bg, #fff);
+    color: var(--color-text, #212529);
+    border-color: rgba(var(--color-border-rgb, 221, 221, 221), .2);
+}
+
+.text-success {
+    color: var(--color-success, #2ecc71) !important;
+}
+
+.video-item:hover {
+    background-color: rgba(var(--color-brand-rgb, 52, 152, 219), .05);
+}
