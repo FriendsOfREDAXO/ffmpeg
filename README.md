@@ -12,13 +12,16 @@ ffmpeg Video-Converter für REDAXO cms
 - Konvertierung von Video-Material mittels ffmpeg serverseitig
 - Übernahme des konvertierten Videos in den Medienpool mit präfix web_
 - Einstellungsseite um das ffmpeg-Kommando anzupassen 
-- Löschen der Original-Datei (optional) 
+- Löschen der Original-Datei (optional)
+- **NEU:** Asynchrone Verarbeitung im Hintergrund - Browser kann geschlossen werden
 
 ## Anwendung
 
 - Im Reiter Video-Konverter des Medienpools findet man eine Liste noch nicht bearbeiteter Videos. 
 - Hier wählt man ein Video aus zur Konvertierung
-- Nach Click auf `Video konvertieren`startet der Vorgang. (Das Fenster bitte nicht schließen) 
+- Nach Click auf `Video konvertieren` startet der Vorgang. 
+- Der Konvertierungsprozess läuft im Hintergrund. Das Browser-Fenster kann geschlossen werden.
+- Mit dem Button "Status prüfen" kann der aktuelle Status später abgefragt werden.
 
 ## Einstellungen
 
@@ -36,6 +39,11 @@ Konvertierte Videos erhalten automatisch das Prefix `web_`
 
 Tipps: Wer mit ffmpeg-Befehlen nicht vertraut ist, findet unter [http://www.mackinger.at/ffmpeg](http://www.mackinger.at/ffmpeg/) eine gute Hilfe. 
 
+## Technische Details
+
+- Der Konvertierungsprozess läuft asynchron im Hintergrund über eine REX-API
+- Der Status wird über eine API-Schnittstelle abgefragt
+- Nach Abschluss der Konvertierung wird das Video automatisch im Medienpool registriert
 
 ## Credits 
 - Idee und Konzept: KLXM Crossmedia GmbH 
@@ -45,11 +53,9 @@ Tipps: Wer mit ffmpeg-Befehlen nicht vertraut ist, findet unter [http://www.mack
 ## Based on: 
 [PHP-FFmpeg-Command-Execution](https://github.com/Pedroxam/PHP-FFmpeg-Command-Execution)
 
-
 ## LIZENZ 
 MIT 
 
 ## Hinweise: 
 - FFMPEG muss auf dem Server zur Verfügung stehen 
-- shell_exec muss für PHP zulässig sein 
-
+- shell_exec muss für PHP zulässig sein
