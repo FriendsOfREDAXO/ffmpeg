@@ -2,10 +2,11 @@ ffmpeg_main = Video Converter
 ffmpeg_video_convert = Video Converter
 ffmpeg_video_config = Einstellungen
 ffmpeg_legend_video = Videos
-ffmpeg_convert_info = Bitte stellen Sie sicher, dass das Video noch nicht in Verwendung ist. <br> Die konvertierte Datei wird im Medienpool unter "Keine Kategorie" abgelegt. 
+ffmpeg_convert_info = Bitte stellen Sie sicher, dass das Video noch nicht in Verwendung ist. <br> Die konvertierte Datei wird im Medienpool unter "Keine Kategorie" abgelegt. <br> Mit dieser Version können Sie den Konvertierungsprozess im Hintergrund laufen lassen.
 ffmpeg_config_legend1 = FFMpeg Settings
 ffmpeg_config_delete = Quell-Datei nach erfolgreicher Komprimierung löschen
 ffmpeg_command = FFMpeg Command
+ffmpeg_check_status = Status prüfen
 
 ffmpeg_config_save = Einstellungen speichern
 ffmpeg_config_saved = Einstellungen wurden gespeichert!
