@@ -5,6 +5,7 @@
     var progressValue = 0;
     var importStarted = false;
     var completionTimeout = null;
+    var currentVideoName = '';
 
     function SetProgressStart() {
         // Fortschrittsabfrage alle 2 Sekunden
@@ -18,7 +19,7 @@
     function showProgress() {
         $.ajax({
             type: 'get',
-            url: 'index.php?rex-api-call=ffmpeg_converter&func=progress',
+            url: 'index.php?rex-api-call=ffmpeg_converter&func=progress&video=' + encodeURIComponent(currentVideoName),
             dataType: 'json',
         })
             .fail(function (jqXHR, textStatus) {
@@ -185,7 +186,7 @@
         
         $.ajax({
             type: 'get',
-            url: 'index.php?rex-api-call=ffmpeg_converter&func=done',
+            url: 'index.php?rex-api-call=ffmpeg_converter&func=done&video=' + encodeURIComponent(currentVideoName),
             dataType: 'json',
         })
             .fail(function (jqXHR, textStatus) {
@@ -242,6 +243,18 @@
                     $('input[name=video]').prop('disabled', true);
                     $('#start').addClass('disabled').prop('disabled', true);
                     
+                    // Video-Name speichern
+                    if (data.info && data.info.video) {
+                        currentVideoName = data.info.video;
+                        
+                        // Markiere das aktive Video in der Liste
+                        $('input[name=video]').each(function() {
+                            if ($(this).data('video') === currentVideoName) {
+                                $(this).closest('.video-item').addClass('processing');
+                            }
+                        });
+                    }
+                    
                     if (data.status === 'converting') {
                         // Fortschrittsanzeige starten
                         SetProgressStart();
@@ -261,6 +274,56 @@
                 }
             });
     }
+    
+    // Funktion zum Prüfen aller Videos
+    function checkAllVideoStatus() {
+        // Fortschrittsanzeige zeigen
+        $('.progress-section').show();
+        $('#progress-text').html('Prüfe Status...');
+        
+        $.ajax({
+            type: 'get',
+            url: 'index.php?rex-api-call=ffmpeg_converter&func=check_all',
+            dataType: 'json',
+        })
+        .done(function(data) {
+            if (data.active) {
+                // Es läuft eine Konvertierung
+                conversionActive = true;
+                updateUIForConversion(true);
+                
+                // Log anzeigen
+                if (data.info && data.info.log) {
+                    $('#log pre').html(data.info.log);
+                    scrolllog();
+                }
+                
+                // Video-Name speichern
+                if (data.info && data.info.video) {
+                    currentVideoName = data.info.video;
+                    
+                    // Markiere das aktive Video in der Liste
+                    $('input[name=video]').each(function() {
+                        if ($(this).data('video') === currentVideoName) {
+                            $(this).closest('.video-item').addClass('processing');
+                        }
+                    });
+                }
+                
+                // Starte Fortschrittsanzeige
+                SetProgressStart();
+            } else {
+                // Keine Konvertierung aktiv
+                $('#progress-text').html('Keine aktive Konvertierung gefunden');
+                setTimeout(function() {
+                    window.location.reload(); // Liste aktualisieren
+                }, 2000);
+            }
+        })
+        .fail(function() {
+            $('#progress-text').html('Fehler beim Prüfen des Status');
+        });
+    }
 
     $(document).ready(function () {
         // Bei Seitenladung den Status prüfen
@@ -275,6 +338,9 @@
                 return false;
             }
 
+            // Video-Namen speichern für spätere Statusabfragen
+            currentVideoName = video;
+            
             // Variablen zurücksetzen
             progressValue = 0;
             importStarted = false;
@@ -291,7 +357,7 @@
 
         // Status-Button
         $('#check_status').on('click', function() {
-            checkStatus();
+            checkAllVideoStatus();
             return false;
         });
         
@@ -299,6 +365,9 @@
         $('input[name=video]').change(function() {
             $('.video-item').removeClass('active-video');
             $(this).closest('.video-item').addClass('active-video');
+            
+            // Aktuell ausgewähltes Video speichern
+            currentVideoName = $(this).val();
         });
     });
     

@@ -47,6 +47,12 @@ class rex_api_ffmpeg_converter extends rex_api_function
                     rex_response::cleanOutputBuffers();
                     rex_response::sendJson($statusData);
                     exit;
+                
+                case 'check_all':
+                    $allStatus = $this->checkAllVideos();
+                    rex_response::cleanOutputBuffers();
+                    rex_response::sendJson($allStatus);
+                    exit;
 
                 default:
                     throw new rex_api_exception('Invalid function');
@@ -61,25 +67,59 @@ class rex_api_ffmpeg_converter extends rex_api_function
     }
     
     // Status in Session speichern
-    private function setConversionStatus($status)
+    private function setConversionStatus($status, $videoName = null)
     {
+        // In Session speichern (wie bisher)
         rex_set_session('ffmpeg_conversion_status', $status);
+        
+        // Zusätzlich in Datei speichern, wenn Video-Name bekannt
+        if ($videoName) {
+            $statusFile = rex_addon::get('ffmpeg')->getDataPath('status_' . md5($videoName) . '.json');
+            $statusData = [
+                'status' => $status,
+                'video' => $videoName,
+                'timestamp' => time(),
+                'conversion_id' => rex_session('ffmpeg_conversion_id', 'string', '')
+            ];
+            rex_file::put($statusFile, json_encode($statusData));
+        }
     }
     
-    // Status aus Session lesen
-    private function getConversionStatus()
+    // Status aus Session lesen oder aus Datei, wenn Video-Name bekannt
+    private function getConversionStatus($videoName = null)
     {
-        return rex_session('ffmpeg_conversion_status', 'string', self::STATUS_PENDING);
+        // Zuerst Session-Status prüfen (für bestehende Sessions)
+        $sessionStatus = rex_session('ffmpeg_conversion_status', 'string', null);
+        
+        if ($sessionStatus) {
+            return $sessionStatus;
+        }
+        
+        // Wenn kein Video angegeben und keine Session, können wir nichts tun
+        if (!$videoName) {
+            return self::STATUS_PENDING;
+        }
+        
+        // Status-Datei versuchen zu finden
+        $statusFile = rex_addon::get('ffmpeg')->getDataPath('status_' . md5($videoName) . '.json');
+        if (file_exists($statusFile)) {
+            $statusData = json_decode(rex_file::get($statusFile), true);
+            return $statusData['status'] ?? self::STATUS_PENDING;
+        }
+        
+        return self::STATUS_PENDING;
     }
     
     // Öffentliche statische Methode, um den Konvertierungsstatus zu überprüfen
-    public static function getConversionInfo()
+    public static function getConversionInfo($videoName = null)
     {
+        // Session-basierte Infos (wie bisher)
         $conversionId = rex_session('ffmpeg_conversion_id', 'string', '');
         $conversionStatus = rex_session('ffmpeg_conversion_status', 'string', self::STATUS_PENDING);
         $active = false;
         $processInfo = [];
         
+        // Wenn wir eine Session haben, verwenden wir diese
         if (!empty($conversionId)) {
             $log = rex_addon::get('ffmpeg')->getDataPath('log' . $conversionId . '.txt');
             if (file_exists($log)) {
@@ -132,6 +172,50 @@ class rex_api_ffmpeg_converter extends rex_api_function
                 rex_set_session('ffmpeg_conversion_status', self::STATUS_ERROR);
             }
         }
+        // Wenn kein Session-basierter Status, aber ein Video-Name angegeben wurde
+        else if ($videoName) {
+            $statusFile = rex_addon::get('ffmpeg')->getDataPath('status_' . md5($videoName) . '.json');
+            if (file_exists($statusFile)) {
+                $statusData = json_decode(rex_file::get($statusFile), true);
+                
+                // Nur aktiv, wenn Status nicht DONE und Datei nicht zu alt
+                if ($statusData['status'] !== self::STATUS_DONE && $statusData['status'] !== self::STATUS_ERROR) {
+                    // Zeitstempel prüfen (30 Minuten Gültigkeit)
+                    if (time() - $statusData['timestamp'] < 1800) {
+                        $active = true;
+                        $conversionStatus = $statusData['status'];
+                        $conversionId = $statusData['conversion_id'] ?? '';
+                        
+                        // Log-Datei suchen
+                        $logFile = '';
+                        if (!empty($conversionId)) {
+                            $logFile = rex_addon::get('ffmpeg')->getDataPath('log' . $conversionId . '.txt');
+                        } else {
+                            // Fallback: Neueste Log-Datei suchen
+                            $logFiles = glob(rex_addon::get('ffmpeg')->getDataPath('log*.txt'));
+                            if (!empty($logFiles)) {
+                                usort($logFiles, function($a, $b) {
+                                    return filemtime($b) - filemtime($a);
+                                });
+                                $logFile = $logFiles[0];
+                            }
+                        }
+                        
+                        $logContent = '';
+                        if (file_exists($logFile)) {
+                            $logContent = rex_file::get($logFile);
+                        }
+                        
+                        $processInfo = [
+                            'video' => $videoName,
+                            'status' => $conversionStatus,
+                            'startTime' => date('d.m.Y H:i:s', $statusData['timestamp']),
+                            'log' => $logContent
+                        ];
+                    }
+                }
+            }
+        }
         
         return [
             'active' => $active,
@@ -143,6 +227,55 @@ class rex_api_ffmpeg_converter extends rex_api_function
     // Private Methode für interne API-Aufrufe
     private function checkStatus()
     {
+        $video = rex_request('video', 'string', '');
+        return self::getConversionInfo($video);
+    }
+    
+    // Neue Methode zum Prüfen aller Videos
+    private function checkAllVideos() {
+        // Alle Status-Dateien prüfen
+        $statusFiles = glob(rex_addon::get('ffmpeg')->getDataPath('status_*.json'));
+        $activeConversion = null;
+        
+        foreach ($statusFiles as $statusFile) {
+            $statusData = json_decode(rex_file::get($statusFile), true);
+            
+            // Nur aktive Konvertierungen (nicht DONE, nicht ERROR)
+            if ($statusData['status'] !== self::STATUS_DONE && $statusData['status'] !== self::STATUS_ERROR) {
+                // Nur aktuelle Konvertierungen (max. 30 Minuten alt)
+                if (time() - $statusData['timestamp'] < 1800) {
+                    $conversionId = $statusData['conversion_id'] ?? '';
+                    $logContent = '';
+                    
+                    // Log-Datei suchen
+                    if (!empty($conversionId)) {
+                        $logFile = rex_addon::get('ffmpeg')->getDataPath('log' . $conversionId . '.txt');
+                        if (file_exists($logFile)) {
+                            $logContent = rex_file::get($logFile);
+                        }
+                    }
+                    
+                    $activeConversion = [
+                        'active' => true,
+                        'status' => $statusData['status'],
+                        'info' => [
+                            'video' => $statusData['video'],
+                            'startTime' => date('d.m.Y H:i:s', $statusData['timestamp']),
+                            'log' => $logContent
+                        ]
+                    ];
+                    
+                    // Erste aktive Konvertierung zurückgeben
+                    break;
+                }
+            }
+        }
+        
+        if ($activeConversion) {
+            return $activeConversion;
+        }
+        
+        // Session-basiert prüfen (wenn keine dateibasierte aktive Konvertierung gefunden)
         return self::getConversionInfo();
     }
     
@@ -214,7 +347,7 @@ class rex_api_ffmpeg_converter extends rex_api_function
         // Create unique ID for this conversion
         $conversionId = uniqid();
         rex_set_session('ffmpeg_conversion_id', $conversionId);
-        $this->setConversionStatus(self::STATUS_CONVERTING);
+        $this->setConversionStatus(self::STATUS_CONVERTING, $video);
 
         // Create or clear log file
         $log = rex_addon::get('ffmpeg')->getDataPath('log' . $conversionId . '.txt');
@@ -258,6 +391,20 @@ class rex_api_ffmpeg_converter extends rex_api_function
     protected function handleProgress()
     {
         $conversionId = rex_session('ffmpeg_conversion_id', 'string', '');
+        $video = rex_request('video', 'string', '');
+        
+        // Wenn keine Session-ID vorhanden ist, aber ein Video angegeben wurde, versuche den Status aus der Datei zu lesen
+        if (empty($conversionId) && !empty($video)) {
+            $statusFile = rex_addon::get('ffmpeg')->getDataPath('status_' . md5($video) . '.json');
+            if (file_exists($statusFile)) {
+                $statusData = json_decode(rex_file::get($statusFile), true);
+                if (isset($statusData['conversion_id'])) {
+                    $conversionId = $statusData['conversion_id'];
+                    $conversionStatus = $statusData['status'];
+                }
+            }
+        }
+        
         if (empty($conversionId)) {
             return ['progress' => 'error', 'log' => 'No active conversion found'];
         }
@@ -268,9 +415,9 @@ class rex_api_ffmpeg_converter extends rex_api_function
         }
         
         $getContent = rex_file::get($log);
-        $currentStatus = $this->getConversionStatus();
+        $currentStatus = $this->getConversionStatus($video);
         
-        // Wenn wir bereits im Import-Status sind, zeigen wir den Fortschritt als 100%
+        // Wenn wir bereits im Import-Status sind, zeigen wir den Fortschritt als 99%
         if ($currentStatus === self::STATUS_IMPORTING) {
             return ['progress' => 99, 'log' => $getContent, 'status' => 'importing'];
         }
@@ -323,7 +470,7 @@ class rex_api_ffmpeg_converter extends rex_api_function
         
         if ($conversionComplete && !$this->isProcessRunning($conversionId)) {
             // Die Konvertierung ist abgeschlossen, jetzt Import starten
-            $this->setConversionStatus(self::STATUS_IMPORTING);
+            $this->setConversionStatus(self::STATUS_IMPORTING, $video);
             
             // Wir zeigen den Fortschritt als 99%, da der Import noch läuft
             return ['progress' => 99, 'log' => $getContent, 'status' => 'importing'];
@@ -333,119 +480,291 @@ class rex_api_ffmpeg_converter extends rex_api_function
         return ['progress' => $progress, 'log' => $getContent, 'status' => 'converting'];
     }
 
-    protected function handleDone()
-    {
-        $conversionId = rex_session('ffmpeg_conversion_id', 'string', '');
-        if (empty($conversionId)) {
-            return ['status' => 'error', 'log' => 'No active conversion found'];
-        }
+    // In ffmpeg_api.php, die handleDone-Methode verbessern:
 
+protected function handleDone()
+{
+    // Versuche Konversionsinformationen aus mehreren Quellen zu finden
+    $conversionId = rex_session('ffmpeg_conversion_id', 'string', '');
+    $video = rex_request('video', 'string', '');
+    $inputFile = rex_session('ffmpeg_input_video_file', 'string', null);
+    $outputFile = rex_session('ffmpeg_output_video_file', 'string', null);
+    
+    // Wenn keine Session-ID und kein Video-Parameter, versuche alle Status-Dateien zu durchsuchen
+    if (empty($conversionId) && empty($video)) {
+        $statusFiles = glob(rex_addon::get('ffmpeg')->getDataPath('status_*.json'));
+        
+        // Suche nach der neuesten aktiven Konvertierung
+        $newestStatusFile = null;
+        $newestTimestamp = 0;
+        
+        foreach ($statusFiles as $statusFile) {
+            $statusData = json_decode(rex_file::get($statusFile), true);
+            
+            // Nur Dateien betrachten, die nicht "DONE" oder "ERROR" sind
+            if ($statusData && isset($statusData['status']) && 
+                $statusData['status'] !== self::STATUS_DONE && 
+                $statusData['status'] !== self::STATUS_ERROR) {
+                
+                if ($statusData['timestamp'] > $newestTimestamp) {
+                    $newestTimestamp = $statusData['timestamp'];
+                    $newestStatusFile = $statusFile;
+                    
+                    if (isset($statusData['video'])) {
+                        $video = $statusData['video'];
+                    }
+                    
+                    if (isset($statusData['conversion_id'])) {
+                        $conversionId = $statusData['conversion_id'];
+                    }
+                }
+            }
+        }
+    }
+    
+    // Versuche Video aus Status-Datei zu bekommen
+    if (empty($video) && !empty($conversionId)) {
+        // Suche nach Status-Dateien mit dieser Konversions-ID
+        $statusFiles = glob(rex_addon::get('ffmpeg')->getDataPath('status_*.json'));
+        foreach ($statusFiles as $statusFile) {
+            $statusData = json_decode(rex_file::get($statusFile), true);
+            if (isset($statusData['conversion_id']) && $statusData['conversion_id'] === $conversionId) {
+                $video = $statusData['video'] ?? '';
+                break;
+            }
+        }
+    }
+    
+    // Wenn wir video und/oder conversionId haben, können wir weitermachen
+    if (empty($conversionId) && empty($video)) {
+        return ['status' => 'error', 'log' => 'No active conversion found'];
+    }
+
+    // Log-Datei finden
+    $log = null;
+    if (!empty($conversionId)) {
         $log = rex_addon::get('ffmpeg')->getDataPath('log' . $conversionId . '.txt');
         if (!file_exists($log)) {
-            return ['status' => 'error', 'log' => 'Log file not found'];
+            $log = null;
         }
-
-        // Get current log content
-        $logContent = rex_file::get($log);
-        
-        // Prüfe den aktuellen Status
-        $currentStatus = $this->getConversionStatus();
-        
-        // Wenn wir bereits im Done-Status sind, geben wir einfach den aktuellen Status zurück
-        if ($currentStatus === self::STATUS_DONE) {
-            return ['status' => 'success', 'log' => $logContent];
-        }
-        
-        // Wenn wir noch nicht im Import-Status sind, setzen wir ihn jetzt
-        if ($currentStatus !== self::STATUS_IMPORTING) {
-            $this->setConversionStatus(self::STATUS_IMPORTING);
-        }
-        
-        // Prüfen, ob der Import bereits erfolgreich war
-        if (strpos($logContent, 'was successfully added to rex_mediapool') !== false) {
-            $this->setConversionStatus(self::STATUS_DONE);
-            return ['status' => 'success', 'log' => $logContent];
-        }
-
-        // Import required functions if needed
-        if (!function_exists('rex_mediapool_deleteMedia')) {
-            require rex_path::addon('mediapool', 'functions/function_rex_mediapool.php');
-        }
-
-        $inputFile = rex_session('ffmpeg_input_video_file', 'string', null);
-        $outputFile = rex_session('ffmpeg_output_video_file', 'string', null);
-
-        if (!is_null($inputFile) && !is_null($outputFile) && file_exists($outputFile)) {
-            // Holen der Dateigröße vor dem Löschen
-            $originalSize = 0;
-            if (file_exists($inputFile)) {
-                $originalSize = filesize($inputFile);
-            }
-            
-            // Holen der Dateigröße des konvertierten Videos
-            $convertedSize = 0;
-            if (file_exists($outputFile)) {
-                $convertedSize = filesize($outputFile);
-            }
-            
-            // Berechnen der Einsparung
-            $savings = 0;
-            if ($originalSize > 0 && $convertedSize > 0) {
-                $savings = round(100 - (($convertedSize / $originalSize) * 100));
-                rex_file::put($log, sprintf("Dateigröße reduziert um %d%% (von %s auf %s)", 
-                    $savings,
-                    rex_formatter::bytes($originalSize),
-                    rex_formatter::bytes($convertedSize)
-                ) . PHP_EOL, FILE_APPEND);
-            }
-            
-// Add converted file to media pool
-$syncResult = rex_mediapool_syncFile(pathinfo($outputFile, PATHINFO_BASENAME), 0, '');
-rex_unset_session('ffmpeg_output_video_file');
-
-if ($syncResult) {
-    rex_file::put($log, sprintf("Destination file %s was successfully added to rex_mediapool", $outputFile) . PHP_EOL, FILE_APPEND);
-    // Konvertierung abgeschlossen
-    rex_file::put($log, 'Konvertierung abgeschlossen um ' . date('d.m.Y H:i:s') . PHP_EOL, FILE_APPEND);
-    $this->setConversionStatus(self::STATUS_DONE);
-    
-    // Delete source file if configured (only if import was successful)
-    if (rex_addon::get('ffmpeg')->getConfig('delete') == 1) {
-        rex_mediapool_deleteMedia(pathinfo($inputFile, PATHINFO_BASENAME));
-        rex_unset_session('ffmpeg_input_video_file');
-        rex_file::put($log, sprintf("Source file %s deletion was successful", $inputFile) . PHP_EOL, FILE_APPEND);
     }
-} else {
-    rex_file::put($log, sprintf("Destination file %s rex_mediapool registration was not successful", $outputFile) . PHP_EOL, FILE_APPEND);
-    rex_file::put($log, 'Please execute a mediapool sync by hand' . PHP_EOL, FILE_APPEND);
-    rex_file::put($log, 'Konvertierung fehlgeschlagen um ' . date('d.m.Y H:i:s') . PHP_EOL, FILE_APPEND);
-    $this->setConversionStatus(self::STATUS_ERROR);
-}
+    
+    // Wenn keine Log-Datei gefunden, suche die neueste Log-Datei
+    if (!$log) {
+        $logFiles = glob(rex_addon::get('ffmpeg')->getDataPath('log*.txt'));
+        if (!empty($logFiles)) {
+            usort($logFiles, function($a, $b) {
+                return filemtime($b) - filemtime($a);
+            });
+            $log = $logFiles[0];
+        }
+    }
+    
+    if (!$log || !file_exists($log)) {
+        return ['status' => 'error', 'log' => 'Log file not found'];
+    }
+
+    // Get current log content
+    $logContent = rex_file::get($log);
+    
+    // Prüfen, ob der Import bereits erfolgreich war
+    if (strpos($logContent, 'was successfully added to rex_mediapool') !== false) {
+        $this->setConversionStatus(self::STATUS_DONE, $video);
+        return ['status' => 'success', 'log' => $logContent];
+    }
+    
+    // Setze den Status auf Importing, wenn wir an diesem Punkt sind
+    $this->setConversionStatus(self::STATUS_IMPORTING, $video);
+
+    // Import required functions if needed
+    if (!function_exists('rex_mediapool_deleteMedia')) {
+        require rex_path::addon('mediapool', 'functions/function_rex_mediapool.php');
+    }
+
+    // Versuche die Input/Output-Dateien zu ermitteln
+    if (empty($inputFile) || empty($outputFile)) {
+        // Aus Video-Name ermitteln
+        if (!empty($video)) {
+            $inputFile = rex_path::media($video);
             
-            // Entferne die Konvertierungs-ID erst, wenn alles abgeschlossen ist
-            // Dadurch kann der Benutzer den Status noch abrufen
-            if ($this->getConversionStatus() === self::STATUS_DONE) {
-                rex_unset_session('ffmpeg_conversion_id');
+            // Output-Datei aus Konvention ableiten
+            // Zuerst Endung aus Konfiguration ermitteln
+            $fileExt = 'mp4'; // Standard-Endung
+            $command = trim(rex_addon::get('ffmpeg')->getConfig('command'));
+            preg_match_all('/OUTPUT.(.*) /m', $command, $matches, PREG_SET_ORDER, 0);
+            if (count($matches) > 0) {
+                $file = (trim($matches[0][0]));
+                $fileExt = pathinfo($file, PATHINFO_EXTENSION);
             }
             
-            return ['status' => $syncResult ? 'success' : 'error', 'log' => rex_file::get($log)];
+            $outputFile = rex_path::media('web_' . pathinfo($video, PATHINFO_FILENAME) . '.' . $fileExt);
         } else {
-            rex_file::put($log, 'Fehler: Ausgabe-Datei konnte nicht erstellt werden.' . PHP_EOL, FILE_APPEND);
+            // Finde das konvertierte File anhand der Log-Datei
+            preg_match('/Destination file (.*?) was/m', $logContent, $matches);
+            if (!empty($matches[1])) {
+                $outputFile = $matches[1];
+                
+                // Versuche Input-File aus Log zu extrahieren
+                preg_match('/Konvertierung für "(.*?)" gestartet/', $logContent, $matches);
+                if (!empty($matches[1])) {
+                    $inputFile = rex_path::media($matches[1]);
+                }
+            }
+        }
+    }
+
+    // Fortfahren, wenn wir eine Output-Datei haben
+    if (!empty($outputFile) && file_exists($outputFile)) {
+        // Holen der Dateigröße vor dem Löschen
+        $originalSize = 0;
+        if (!empty($inputFile) && file_exists($inputFile)) {
+            $originalSize = filesize($inputFile);
+        }
+        
+        // Holen der Dateigröße des konvertierten Videos
+        $convertedSize = filesize($outputFile);
+        
+        // Berechnen der Einsparung
+        $savings = 0;
+        if ($originalSize > 0 && $convertedSize > 0) {
+            $savings = round(100 - (($convertedSize / $originalSize) * 100));
+            rex_file::put($log, sprintf("Dateigröße reduziert um %d%% (von %s auf %s)", 
+                $savings,
+                rex_formatter::bytes($originalSize),
+                rex_formatter::bytes($convertedSize)
+            ) . PHP_EOL, FILE_APPEND);
+        }
+        
+        // Prüfen, ob die Datei bereits im Medienpool existiert
+        $fileName = pathinfo($outputFile, PATHINFO_BASENAME);
+        $mediaSql = rex_sql::factory();
+        $existingMedia = $mediaSql->getArray(
+            'SELECT id FROM ' . rex::getTable('media') . ' WHERE filename = ?',
+            [$fileName]
+        );
+        
+        if (!empty($existingMedia)) {
+            // Datei existiert bereits im Medienpool, Prozess als erfolgreich markieren
+            rex_file::put($log, sprintf("Destination file %s was already in rex_mediapool", $outputFile) . PHP_EOL, FILE_APPEND);
+            rex_file::put($log, 'Konvertierung abgeschlossen um ' . date('d.m.Y H:i:s') . PHP_EOL, FILE_APPEND);
+            $this->setConversionStatus(self::STATUS_DONE, $video);
+            return ['status' => 'success', 'log' => rex_file::get($log)];
+        }
+        
+        // Add converted file to media pool
+        $syncResult = rex_mediapool_syncFile(pathinfo($outputFile, PATHINFO_BASENAME), 0, '');
+        rex_unset_session('ffmpeg_output_video_file');
+
+        if ($syncResult) {
+            rex_file::put($log, sprintf("Destination file %s was successfully added to rex_mediapool", $outputFile) . PHP_EOL, FILE_APPEND);
             
-            if (!is_null($inputFile) && rex_addon::get('ffmpeg')->getConfig('delete') == 1) {
-                rex_file::put($log, sprintf("Source file %s deletion was not possible", $inputFile) . PHP_EOL, FILE_APPEND);
+            // Metadaten vom Original übernehmen, falls vorhanden
+            if (!empty($inputFile)) {
+                $originalFileName = pathinfo($inputFile, PATHINFO_BASENAME);
+                $outputFileName = pathinfo($outputFile, PATHINFO_BASENAME);
+                
+                // Verfügbare Felder in der Tabelle ermitteln
+                $tableFields = [];
+                $sql = rex_sql::factory();
+                $tableDescription = $sql->getArray('DESCRIBE ' . rex::getTable('media'));
+                foreach ($tableDescription as $field) {
+                    $tableFields[] = $field['Field'];
+                }
+                
+                // Mögliche Metadaten-Felder definieren
+                $metaFieldMappings = [
+                    'title' => ['title'],
+                    'description' => ['description', 'art_description', 'med_description'],
+                    'copyright' => ['copyright', 'art_copyright', 'med_copyright']
+                ];
+                
+                // Originaldaten abfragen
+                $selectFields = ['filename'];
+                foreach ($metaFieldMappings as $fieldType => $possibleFields) {
+                    foreach ($possibleFields as $field) {
+                        if (in_array($field, $tableFields)) {
+                            $selectFields[] = $field;
+                        }
+                    }
+                }
+                
+                // SQL mit den verfügbaren Feldern erstellen
+                $sql = rex_sql::factory();
+                $originalData = $sql->getArray(
+                    'SELECT ' . implode(', ', $selectFields) . ' FROM ' . rex::getTable('media') . ' WHERE filename = ?',
+                    [$originalFileName]
+                );
+                
+                if (!empty($originalData)) {
+                    // Update-Query vorbereiten
+                    $updateSql = rex_sql::factory();
+                    $updateSql->setTable(rex::getTable('media'));
+                    $updateSql->setWhere(['filename' => $outputFileName]);
+                    
+                    $updatedFields = [];
+                    
+                    // Für jeden Metadaten-Typ die verfügbaren Felder prüfen
+                    foreach ($metaFieldMappings as $fieldType => $possibleFields) {
+                        foreach ($possibleFields as $field) {
+                            if (in_array($field, $tableFields) && isset($originalData[0][$field]) && !empty($originalData[0][$field])) {
+                                $value = $originalData[0][$field];
+                                
+                                // Titel-Feld mit Suffix versehen
+                                if ($fieldType === 'title') {
+                                    $value .= ' (weboptimiert)';
+                                }
+                                
+                                $updateSql->setValue($field, $value);
+                                $updatedFields[] = $field;
+                            }
+                        }
+                    }
+                    
+                    // Nur updaten, wenn es Felder zu aktualisieren gibt
+                    if (!empty($updatedFields)) {
+                        $updateSql->update();
+                        rex_file::put($log, "Metadaten (" . implode(', ', $updatedFields) . ") vom Original übernommen" . PHP_EOL, FILE_APPEND);
+                    }
+                }
             }
             
-            if (!is_null($outputFile)) {
-                rex_file::put($log, sprintf("Destination file %s rex_mediapool registration was not successful", $outputFile) . PHP_EOL, FILE_APPEND);
-            }
+            // Konvertierung abgeschlossen
+            rex_file::put($log, 'Konvertierung abgeschlossen um ' . date('d.m.Y H:i:s') . PHP_EOL, FILE_APPEND);
+            $this->setConversionStatus(self::STATUS_DONE, $video);
             
+            // Delete source file if configured (only if import was successful)
+            if (!empty($inputFile) && rex_addon::get('ffmpeg')->getConfig('delete') == 1) {
+                rex_mediapool_deleteMedia(pathinfo($inputFile, PATHINFO_BASENAME));
+                rex_unset_session('ffmpeg_input_video_file');
+                rex_file::put($log, sprintf("Source file %s deletion was successful", $inputFile) . PHP_EOL, FILE_APPEND);
+            }
+        } else {
+            rex_file::put($log, sprintf("Destination file %s rex_mediapool registration was not successful", $outputFile) . PHP_EOL, FILE_APPEND);
             rex_file::put($log, 'Please execute a mediapool sync by hand' . PHP_EOL, FILE_APPEND);
             rex_file::put($log, 'Konvertierung fehlgeschlagen um ' . date('d.m.Y H:i:s') . PHP_EOL, FILE_APPEND);
-            
-            $this->setConversionStatus(self::STATUS_ERROR);
-            
-            return ['status' => 'error', 'log' => rex_file::get($log)];
+            $this->setConversionStatus(self::STATUS_ERROR, $video);
         }
+        
+        return ['status' => $syncResult ? 'success' : 'error', 'log' => rex_file::get($log)];
+    } else {
+        if ($log) {
+            rex_file::put($log, 'Fehler: Ausgabe-Datei konnte nicht gefunden oder erstellt werden.' . PHP_EOL, FILE_APPEND);
+            
+            if (!empty($inputFile)) {
+                rex_file::put($log, sprintf("Input-Datei: %s", $inputFile) . PHP_EOL, FILE_APPEND);
+            }
+            
+            if (!empty($outputFile)) {
+                rex_file::put($log, sprintf("Output-Datei: %s (existiert nicht)", $outputFile) . PHP_EOL, FILE_APPEND);
+            }
+            
+            rex_file::put($log, 'Bitte führen Sie eine manuelle Synchronisierung im Medienpool durch.' . PHP_EOL, FILE_APPEND);
+            rex_file::put($log, 'Konvertierung fehlgeschlagen um ' . date('d.m.Y H:i:s') . PHP_EOL, FILE_APPEND);
+        }
+        
+        $this->setConversionStatus(self::STATUS_ERROR, $video);
+        
+        return ['status' => 'error', 'log' => $log ? rex_file::get($log) : 'Keine Log-Datei gefunden'];
     }
+}
 }
