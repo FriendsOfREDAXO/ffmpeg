@@ -16,7 +16,7 @@ $conversionInfo = $conversionData['info'];
 
 // Alle Videos einlesen (sowohl normale als auch konvertierte)
 $sql = rex_sql::factory();
-$allMediaFiles = $sql->getArray('SELECT * FROM ' . rex::getTable('media') . ' WHERE filetype LIKE \'video/%\' ORDER BY updatedate DESC');
+$allMediaFiles = $sql->getArray('SELECT id, filename, filesize, updatedate, title FROM ' . rex::getTable('media') . ' WHERE filetype LIKE \'video/%\' ORDER BY updatedate DESC');
 
 // Videos mit Konvertierungsstatusinformationen anreichern
 $allVideos = [];
@@ -50,6 +50,7 @@ foreach ($allMediaFiles as $media) {
         $allVideos[] = [
             'id' => $media['id'],
             'filename' => $media['filename'],
+            'title' => $media['title'],
             'filesize' => $media['filesize'],
             'updatedate' => $media['updatedate'],
             'isProcessing' => $isProcessing,
@@ -85,6 +86,12 @@ if (empty($allVideos)) {
             $statusClass = ' already-converted';
             $statusBadge = '<span class="badge badge-success conversion-badge"><i class="fa fa-check" aria-hidden="true"></i> ' . $this->i18n('ffmpeg_already_converted') . '</span>';
         }
+
+        // Titel des Videos anzeigen, falls vorhanden
+        $videoTitle = '';
+        if (!empty($video['title'])) {
+            $videoTitle = '<div class="video-title">' . $video['title'] . '</div>';
+        }
         
         $item = '
         <div class="video-item' . $statusClass . '">
@@ -94,6 +101,7 @@ if (empty($allVideos)) {
                 <strong>' . $video['filename'] . '</strong>
                 ' . $statusBadge . '
             </label>
+            ' . $videoTitle . '
             <div class="video-meta">
                 <span class="video-size"><i class="fa fa-file" aria-hidden="true"></i> ' . rex_formatter::bytes($video['filesize']) . '</span>
                 <span class="video-date"><i class="fa fa-calendar" aria-hidden="true"></i> ' . rex_formatter::strftime(strtotime($video['updatedate']), 'datetime') . '</span>';
@@ -111,9 +119,15 @@ if (empty($allVideos)) {
         // Link zum Original im Medienpool
         $item .= '<a href="' . rex_url::backendPage('mediapool/media', ['file_id' => $video['id']]) . '" class="btn btn-xs btn-default" title="Original im Medienpool anzeigen"><i class="fa fa-film" aria-hidden="true"></i> Original</a> ';
         
-        // Wenn konvertierte Version existiert, Link zum optimierten Video anzeigen
+        // Wenn konvertierte Version existiert, Link zum optimierten Video und dessen Titel anzeigen
         if ($video['isAlreadyConverted']) {
-            $item .= '<a href="' . rex_url::backendPage('mediapool/media', ['file_id' => $video['optimizedData']['id']]) . '" class="btn btn-xs btn-success" title="Optimierte Version im Medienpool anzeigen"><i class="fa fa-video" aria-hidden="true"></i> Web-Version</a>';
+            // Titel der optimierten Version anzeigen, falls vorhanden
+            $optimizedTitle = '';
+            if (!empty($video['optimizedData']['title'])) {
+                $optimizedTitle = ' <small class="text-muted">(' . $video['optimizedData']['title'] . ')</small>';
+            }
+            
+            $item .= '<a href="' . rex_url::backendPage('mediapool/media', ['file_id' => $video['optimizedData']['id']]) . '" class="btn btn-xs btn-success" title="Optimierte Version im Medienpool anzeigen"><i class="fa fa-video" aria-hidden="true"></i> Web-Version' . $optimizedTitle . '</a>';
         }
         
         $item .= '</div>';
