@@ -80,10 +80,10 @@ if (empty($allVideos)) {
         
         if ($video['isProcessing']) {
             $statusClass = ' processing';
-            $statusBadge = '<span class="badge badge-info conversion-badge">Wird konvertiert...</span>';
+            $statusBadge = '<span class="badge badge-info conversion-badge"><i class="fa fa-spinner fa-spin" aria-hidden="true"></i> Wird konvertiert...</span>';
         } elseif ($video['isAlreadyConverted']) {
             $statusClass = ' already-converted';
-            $statusBadge = '<span class="badge badge-success conversion-badge">' . $this->i18n('ffmpeg_already_converted') . '</span>';
+            $statusBadge = '<span class="badge badge-success conversion-badge"><i class="fa fa-check" aria-hidden="true"></i> ' . $this->i18n('ffmpeg_already_converted') . '</span>';
         }
         
         $item = '
@@ -95,23 +95,28 @@ if (empty($allVideos)) {
                 ' . $statusBadge . '
             </label>
             <div class="video-meta">
-                <span class="video-size">' . rex_formatter::bytes($video['filesize']) . '</span>
-                <span class="video-date">' . rex_formatter::strftime(strtotime($video['updatedate']), 'datetime') . '</span>';
+                <span class="video-size"><i class="fa fa-file" aria-hidden="true"></i> ' . rex_formatter::bytes($video['filesize']) . '</span>
+                <span class="video-date"><i class="fa fa-calendar" aria-hidden="true"></i> ' . rex_formatter::strftime(strtotime($video['updatedate']), 'datetime') . '</span>';
         
         // Wenn konvertierte Version existiert, Details anzeigen
         if ($video['isAlreadyConverted'] && $video['compressionRate'] > 0) {
-            $item .= '<span class="compression-rate badge">' . $video['compressionRate'] . '% ' . $this->i18n('ffmpeg_smaller') . '</span>';
+            $item .= '<span class="compression-rate badge"><i class="fa fa-compress" aria-hidden="true"></i> ' . $video['compressionRate'] . '% ' . $this->i18n('ffmpeg_smaller') . '</span>';
         }
         
         $item .= '</div>';
         
-        // Wenn konvertierte Version existiert, Link zum Medienpool anzeigen
+        // Aktionsbereich für Links
+        $item .= '<div class="video-actions">';
+        
+        // Link zum Original im Medienpool
+        $item .= '<a href="' . rex_url::backendPage('mediapool/media', ['file_id' => $video['id']]) . '" class="btn btn-xs btn-default" title="Original im Medienpool anzeigen"><i class="fa fa-film" aria-hidden="true"></i> Original</a> ';
+        
+        // Wenn konvertierte Version existiert, Link zum optimierten Video anzeigen
         if ($video['isAlreadyConverted']) {
-            $item .= '<div class="video-actions">
-                <a href="' . rex_url::backendPage('mediapool/media', ['file_id' => $video['optimizedData']['id']]) . '" class="btn btn-xs btn-default">' . $this->i18n('ffmpeg_view_in_mediapool') . '</a>
-            </div>';
+            $item .= '<a href="' . rex_url::backendPage('mediapool/media', ['file_id' => $video['optimizedData']['id']]) . '" class="btn btn-xs btn-success" title="Optimierte Version im Medienpool anzeigen"><i class="fa fa-video" aria-hidden="true"></i> Web-Version</a>';
         }
         
+        $item .= '</div>';
         $item .= '</div>';
         
         $videoItems[] = $item;
@@ -133,12 +138,12 @@ if (empty($allVideos)) {
     
     // Convert Button
     $n = [];
-    $n['field'] = '<button class="btn btn-primary rex-form-aligned btn-start" id="start" type="button" name="save" value="' . $this->i18n('execute') . '"' . ($conversionActive ? ' disabled' : '') . '>' . $this->i18n('execute') . '</button>';
+    $n['field'] = '<button class="btn btn-primary rex-form-aligned btn-start" id="start" type="button" name="save" value="' . $this->i18n('execute') . '"' . ($conversionActive ? ' disabled' : '') . '><i class="fa fa-cogs" aria-hidden="true"></i> ' . $this->i18n('execute') . '</button>';
     $formElements[] = $n;
     
     // Status Button
     $n = [];
-    $n['field'] = '<button class="btn btn-default rex-form-aligned" id="check_status" type="button" name="check" value="' . $this->i18n('ffmpeg_check_status') . '">' . $this->i18n('ffmpeg_check_status') . '</button>';
+    $n['field'] = '<button class="btn btn-default rex-form-aligned" id="check_status" type="button" name="check" value="' . $this->i18n('ffmpeg_check_status') . '"><i class="fa fa-refresh" aria-hidden="true"></i> ' . $this->i18n('ffmpeg_check_status') . '</button>';
     $formElements[] = $n;
     
     $fragment = new rex_fragment();
