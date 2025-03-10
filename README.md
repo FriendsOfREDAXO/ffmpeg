@@ -97,5 +97,14 @@ index.php?rex-api-call=ffmpeg_converter&func=FUNKTION&video=DATEINAME
 - Lead: Thomas Skerbis ([@skerbis](https://github.com/skerbis))
 - First Version: ([@joachimdoerr](https://github.com/joachimdoerr))
 
+
+## Autor
+
+**Friends Of REDAXO**
+
+* http://www.redaxo.org
+* https://github.com/FriendsOfREDAXO
+
+
 ## Lizenz
 MIT-Lizenz (mach damit, was du willst, aber auf eigene Gefahr!)
