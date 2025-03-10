@@ -657,6 +657,77 @@ protected function handleDone()
 
         if ($syncResult) {
             rex_file::put($log, sprintf("Destination file %s was successfully added to rex_mediapool", $outputFile) . PHP_EOL, FILE_APPEND);
+            
+            // Metadaten vom Original übernehmen, falls vorhanden
+            if (!empty($inputFile)) {
+                $originalFileName = pathinfo($inputFile, PATHINFO_BASENAME);
+                $outputFileName = pathinfo($outputFile, PATHINFO_BASENAME);
+                
+                // Verfügbare Felder in der Tabelle ermitteln
+                $tableFields = [];
+                $sql = rex_sql::factory();
+                $tableDescription = $sql->getArray('DESCRIBE ' . rex::getTable('media'));
+                foreach ($tableDescription as $field) {
+                    $tableFields[] = $field['Field'];
+                }
+                
+                // Mögliche Metadaten-Felder definieren
+                $metaFieldMappings = [
+                    'title' => ['title'],
+                    'description' => ['description', 'art_description', 'med_description'],
+                    'copyright' => ['copyright', 'art_copyright', 'med_copyright']
+                ];
+                
+                // Originaldaten abfragen
+                $selectFields = ['filename'];
+                foreach ($metaFieldMappings as $fieldType => $possibleFields) {
+                    foreach ($possibleFields as $field) {
+                        if (in_array($field, $tableFields)) {
+                            $selectFields[] = $field;
+                        }
+                    }
+                }
+                
+                // SQL mit den verfügbaren Feldern erstellen
+                $sql = rex_sql::factory();
+                $originalData = $sql->getArray(
+                    'SELECT ' . implode(', ', $selectFields) . ' FROM ' . rex::getTable('media') . ' WHERE filename = ?',
+                    [$originalFileName]
+                );
+                
+                if (!empty($originalData)) {
+                    // Update-Query vorbereiten
+                    $updateSql = rex_sql::factory();
+                    $updateSql->setTable(rex::getTable('media'));
+                    $updateSql->setWhere(['filename' => $outputFileName]);
+                    
+                    $updatedFields = [];
+                    
+                    // Für jeden Metadaten-Typ die verfügbaren Felder prüfen
+                    foreach ($metaFieldMappings as $fieldType => $possibleFields) {
+                        foreach ($possibleFields as $field) {
+                            if (in_array($field, $tableFields) && isset($originalData[0][$field]) && !empty($originalData[0][$field])) {
+                                $value = $originalData[0][$field];
+                                
+                                // Titel-Feld mit Suffix versehen
+                                if ($fieldType === 'title') {
+                                    $value .= ' (weboptimiert)';
+                                }
+                                
+                                $updateSql->setValue($field, $value);
+                                $updatedFields[] = $field;
+                            }
+                        }
+                    }
+                    
+                    // Nur updaten, wenn es Felder zu aktualisieren gibt
+                    if (!empty($updatedFields)) {
+                        $updateSql->update();
+                        rex_file::put($log, "Metadaten (" . implode(', ', $updatedFields) . ") vom Original übernommen" . PHP_EOL, FILE_APPEND);
+                    }
+                }
+            }
+            
             // Konvertierung abgeschlossen
             rex_file::put($log, 'Konvertierung abgeschlossen um ' . date('d.m.Y H:i:s') . PHP_EOL, FILE_APPEND);
             $this->setConversionStatus(self::STATUS_DONE, $video);
