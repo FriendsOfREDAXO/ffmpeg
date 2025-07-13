@@ -1,5 +1,5 @@
 package: ffmpeg
-version: '3.0.0'
+version: '3.1.0'
 author: Friends Of REDAXO
 supportpage: https://github.com/FriendsOfREDAXO/
 
@@ -38,9 +38,14 @@ requires:
     redaxo: '^5.18.1'
     packages:
         mediapool: '^2.14.0'
+        media_manager: '^2.14.0'
     php:
         version: '>=8.1'
         extensions: [gd, xml]
+
+conflicts:
+    packages:
+        videopreview: '*'
 
 installer_ignore:
     - node_modules

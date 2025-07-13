@@ -4,6 +4,40 @@ ffmpeg_info = Video-Informationen
 ffmpeg_help = Hilfe
 ffmpeg_video_convert = Video Converter
 ffmpeg_video_config = Einstellungen
+
+# Video Effekte (aus VideoPreview-Addon)
+videopreview_to_preview = Video Vorschau (MP4, ohne Ton)
+videopreview_to_webp = Video Vorschau (WebP)
+
+videopreview_error_ffmpeg = FFmpeg wurde nicht gefunden. Dieser Effekt wird nicht funktionieren.
+videopreview_error_duration = Videolänge konnte nicht ermittelt werden
+videopreview_error_output = Ausgabedatei ist leer oder existiert nicht
+videopreview_error_command = Befehl fehlgeschlagen
+
+videopreview_compression_minimal = Minimal (große Datei, beste Qualität)
+videopreview_compression_low = Niedrig (bessere Qualität)
+videopreview_compression_standard = Standard (ausgewogen)
+videopreview_compression_high = Hoch (kleine Datei)
+videopreview_compression_maximum = Maximal (kleinste Datei)
+
+videopreview_position_label = Position im Video
+videopreview_position_notice = Wähle die Stelle im Video, von der der Ausschnitt erstellt werden soll
+videopreview_position_end = 10 Sekunden vor Ende
+videopreview_position_middle = Mitte des Videos
+videopreview_position_start = Anfang (nach 2 Sekunden)
+
+videopreview_width_label = Ausgabebreite
+videopreview_width_notice = Empfohlen: 400-800px für bessere Textdarstellung
+
+videopreview_compression_label = Kompressionsstufe
+videopreview_compression_notice = Niedrigere Kompression für bessere Textqualität wählen
+
+videopreview_fps_label = FPS
+videopreview_fps_notice = Empfohlen: 12-15 FPS für bessere Textlesbarkeit
+
+videopreview_length_label = Snippet-Länge (Sekunden)
+videopreview_length_notice = Maximal %d Sekunden. Empfohlen: 2-3 Sekunden
+
 ffmpeg_legend_video = Zu konvertierende Videos
 ffmpeg_convert_info = Bitte stellen Sie sicher, dass das Video noch nicht in Verwendung ist. <br> Die konvertierte Datei wird im Medienpool unter "Keine Kategorie" abgelegt. <br> Die Konvertierung läuft im Hintergrund, Sie können den Browser schließen. Überprüfen Sie später den Status um den Vorgang abzuschließen. 
 ffmpeg_config_legend1 = FFMpeg Settings
@@ -37,6 +71,12 @@ ffmpeg_trimmer_shortcuts = Tastenkürzel: Strg+S (Start setzen), Strg+E (Ende se
 ffmpeg_info_no_data = Keine Video-Informationen verfügbar
 ffmpeg_info_not_found = Video-Datei nicht gefunden
 ffmpeg_info_ffmpeg_missing = FFmpeg nicht verfügbar
+
+# Media Manager Effect
+media_manager_effect_video_preview = Video Preview
+media_manager_effect_video_preview_timestamp = Zeitpunkt (HH:MM:SS)
+media_manager_effect_video_preview_width = Breite
+media_manager_effect_video_preview_height = Höhe
 
 # Benennung für die Addonrechte, sichtbar innerhalb der REDAXO-Administration unter Benutzer > Rollen > Allgemein
 #perm_general_ffmpeg[] = ffmpeg[] - Rechte für Video-Konverter

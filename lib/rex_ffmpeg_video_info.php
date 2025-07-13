@@ -168,6 +168,68 @@ class rex_ffmpeg_video_info
     }
     
     /**
+     * Thumbnail-URL für Video generieren
+     * 
+     * @param string $filename Dateiname im Medienpool
+     * @param string $mediaType Media Manager Typ (z.B. 'video_thumb')
+     * @return string|null Thumbnail-URL oder null
+     */
+    public static function getThumbnailUrl($filename, $mediaType = 'video_thumb')
+    {
+        if (!rex_media::get($filename)) {
+            return null;
+        }
+        
+        return rex_media_manager::getUrl($mediaType, $filename);
+    }
+    
+    /**
+     * Responsive Video-HTML mit Thumbnail generieren
+     * 
+     * @param string $filename Dateiname im Medienpool
+     * @param array $options Optionen (poster, controls, autoplay, etc.)
+     * @return string|null HTML-Code oder null
+     */
+    public static function getVideoHtml($filename, $options = [])
+    {
+        if (!rex_media::get($filename)) {
+            return null;
+        }
+        
+        $videoUrl = rex_url::media($filename);
+        $poster = $options['poster'] ?? self::getThumbnailUrl($filename, 'video_thumb');
+        $controls = $options['controls'] ?? true;
+        $autoplay = $options['autoplay'] ?? false;
+        $muted = $options['muted'] ?? false;
+        $cssClass = $options['class'] ?? 'video-responsive';
+        
+        $html = '<video class="' . $cssClass . '"';
+        
+        if ($poster) {
+            $html .= ' poster="' . $poster . '"';
+        }
+        
+        if ($controls) {
+            $html .= ' controls';
+        }
+        
+        if ($autoplay) {
+            $html .= ' autoplay';
+        }
+        
+        if ($muted) {
+            $html .= ' muted';
+        }
+        
+        $html .= '>';
+        $html .= '<source src="' . $videoUrl . '" type="video/mp4">';
+        $html .= 'Ihr Browser unterstützt das Video-Element nicht.';
+        $html .= '</video>';
+        
+        return $html;
+    }
+
+    /**
      * FFmpeg-Verfügbarkeit prüfen
      * 
      * @return bool True wenn FFmpeg verfügbar

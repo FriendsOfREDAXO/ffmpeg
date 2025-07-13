@@ -8,6 +8,7 @@ Vollständige Video-Management-Lösung für REDAXO CMS – Konvertierung, Trimmi
 - FFmpeg und FFprobe installiert und im PATH verfügbar
 - REDAXO 5.18.1 oder höher
 - PHP 8.1 oder höher
+- **Wichtig:** Das VideoPreview-Addon muss deinstalliert werden (Funktionalität ist integriert)
 
 ## 🚀 Features im Überblick
 
@@ -30,6 +31,12 @@ Vollständige Video-Management-Lösung für REDAXO CMS – Konvertierung, Trimmi
 - **Responsive Darstellung** mit Layout-Schutz
 - **Optimierungsempfehlungen** für Web-Performance
 - **Audio/Video-Stream-Details** komplett verfügbar
+
+### 🆕 Video-Thumbnails (Media Manager)
+- **Automatische Thumbnail-Generierung** aus Videos
+- **Media Manager Integration** für responsive Bildgrößen
+- **Konfigurierbarer Zeitpunkt** für Thumbnail-Extraktion
+- **Fallback-Placeholder** bei FFmpeg-Problemen
 
 ### 🆕 PHP-API für Entwickler
 - **Module-Integration** mit `rex_ffmpeg_video_info` Klasse
@@ -147,6 +154,60 @@ if ($info) {
 ?>
 ```
 
+### Video-Thumbnails generieren
+
+```php
+<?php
+$videoFile = 'REX_MEDIA[1]';
+
+// WebP-Vorschau (animiert) - benötigt Media Manager Typ mit 'rex_effect_video_to_webp'
+$webpPreview = rex_media_manager::getUrl('video_webp', $videoFile);
+echo '<img src="' . $webpPreview . '" alt="Video WebP Preview">';
+
+// MP4-Vorschau (ohne Ton) - benötigt Media Manager Typ mit 'rex_effect_video_to_preview'
+$mp4Preview = rex_media_manager::getUrl('video_preview', $videoFile);
+echo '<video autoplay muted loop><source src="' . $mp4Preview . '" type="video/mp4"></video>';
+
+// Kombination: WebP als Fallback für MP4
+echo '<video autoplay muted loop poster="' . $webpPreview . '">';
+echo '<source src="' . $mp4Preview . '" type="video/mp4">';
+echo '<img src="' . $webpPreview . '" alt="Video Preview">';
+echo '</video>';
+?>
+```
+
+### Video-Galerie mit Thumbnails
+
+```php
+<?php
+// Video-Liste aus dem Medienpool
+$sql = rex_sql::factory();
+$videos = $sql->getArray('SELECT filename FROM rex_media WHERE filetype LIKE "video/%"');
+
+echo '<div class="video-gallery">';
+foreach ($videos as $video) {
+    $filename = $video['filename'];
+    $info = rex_ffmpeg_video_info::getBasicInfo($filename);
+    
+    // WebP-Thumbnail für bessere Performance
+    $thumbnail = rex_media_manager::getUrl('video_webp_thumb', $filename);
+    
+    if ($info && $thumbnail) {
+        echo '<div class="video-item">';
+        echo '<a href="' . rex_url::media($filename) . '" data-lightbox="videos">';
+        echo '<img src="' . $thumbnail . '" alt="' . $info['filename'] . '">';
+        echo '<div class="video-overlay">';
+        echo '<span class="play-button">▶</span>';
+        echo '<span class="duration">' . $info['duration_formatted'] . '</span>';
+        echo '</div>';
+        echo '</a>';
+        echo '</div>';
+    }
+}
+echo '</div>';
+?>
+```
+
 ### Verfügbare API-Methoden
 
 - `getInfo($filename)` – Vollständige Video-Informationen
@@ -225,6 +286,11 @@ ffmpeg -y -i INPUT -vcodec h264 OUTPUT.mp4
 - PATH-Variable korrekt gesetzt?
 - PHP `exec()` Funktion verfügbar?
 
+### "Konflikt mit VideoPreview-Addon"
+- Das VideoPreview-Addon muss deinstalliert werden
+- Alle Thumbnail-Funktionen sind jetzt im FFmpeg-Addon integriert
+- Media Manager Effekt "Video-Vorschau" bleibt unverändert funktional
+
 ### Konvertierung startet nicht
 - PHP-Zeitlimits erhöhen
 - Disk-Space prüfen
@@ -239,12 +305,15 @@ ffmpeg -y -i INPUT -vcodec h264 OUTPUT.mp4
 ### Neue Features
 - ✅ Video-Trimmer mit Browser-Integration
 - ✅ Video-Informationen mit detaillierter Analyse
+- ✅ Video-Thumbnails über Media Manager (VideoPreview-Integration)
 - ✅ PHP-API für Module und Templates
 - ✅ Responsive Design für alle Seiten
 - ✅ Keyboard-Shortcuts für besseren Workflow
 - ✅ Web-Optimierung-Scanner mit Score-System
 - ✅ Mobile-Optimierung-Checker
 - ✅ Hilfe-Seite mit kompletter Dokumentation
+- ✅ Video-Galerie-Template mit Thumbnail-Support
+- ⚠️ Conflict-Regel: VideoPreview-Addon nicht mehr kompatibel (Funktionalität integriert)
 
 ### Verbesserungen
 - ✅ Alle Video-Typen im Trimmer unterstützt
@@ -263,6 +332,16 @@ Dieses Addon steht unter der MIT-Lizenz. Beiträge sind willkommen!
    - "Aktuelle Position setzen" klicken (oder Strg+S/E)
 4. **"Video schneiden"** klicken
 5. Geschnittenes Video wird automatisch als `web_trimmed_dateiname.mp4` gespeichert
+
+### 🆕 Video-Thumbnails (Media Manager)
+1. **Media Manager → Medientypen** aufrufen
+2. **Neuen Typ erstellen** (z.B. "video_thumb")
+3. **Effekt hinzufügen:** "Video Preview"
+4. **Parameter konfigurieren:**
+   - Zeitpunkt: `00:00:03` (3. Sekunde)
+   - Breite: `320`
+   - Höhe: `240`
+5. **Templates nutzen:** `rex_media_manager::getUrl('video_thumb', 'mein_video.mp4')`
 
 ### 🆕 Video-Informationen
 1. **Medienpool → Video-Konverter → Video-Informationen** aufrufen
