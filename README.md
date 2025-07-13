@@ -1,4 +1,4 @@
-# REDAXO-AddOn: FFmpeg Video Tools v2.0
+# REDAXO-AddOn: FFmpeg Video Tools v3.0
 
 Vollständige Video-Management-Lösung für REDAXO CMS – Konvertierung, Trimming und detaillierte Video-Analyse, alles in einem Addon!
 
@@ -18,20 +18,20 @@ Vollständige Video-Management-Lösung für REDAXO CMS – Konvertierung, Trimmi
 - **Kompressionsanzeige** zeigt eingesparten Speicherplatz
 - **Auto-Cleanup** für Originaldateien nach erfolgreicher Konvertierung
 
-### 🆕 Video-Trimmer (NEU in v2.0)
+### 🆕 Video-Trimmer
 - **Präzises Schneiden** direkt im Browser
 - **Verlustfreies Trimming** mit FFmpeg Stream-Copy
 - **Intuitive Bedienung** mit Video-Player-Integration
 - **Keyboard-Shortcuts** für professionellen Workflow
 - **Alle Video-Typen** unterstützt (Original + web-optimiert)
 
-### 🆕 Video-Informationen (NEU in v2.0)
+### 🆕 Video-Informationen 
 - **Detaillierte technische Analyse** aller Video-Parameter
 - **Responsive Darstellung** mit Layout-Schutz
 - **Optimierungsempfehlungen** für Web-Performance
 - **Audio/Video-Stream-Details** komplett verfügbar
 
-### 🆕 PHP-API für Entwickler (NEU in v2.0)
+### 🆕 PHP-API für Entwickler
 - **Module-Integration** mit `rex_ffmpeg_video_info` Klasse
 - **Performance-optimierte Methoden** für häufige Abfragen
 - **Template-Integration** für Video-Galerien und responsive Player
