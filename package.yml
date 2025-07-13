@@ -6,7 +6,7 @@ supportpage: https://github.com/FriendsOfREDAXO/
 # Seiten
 pages:
     mediapool/ffmpeg:
-        title: 'Video-Konverter'
+        title: 'Video-Tools'
         perm: ffmpeg[]
         icon: rex-icon fa-compress
 
@@ -14,6 +14,19 @@ pages:
             main:
                 title: 'translate:ffmpeg_main'
                 perm: ffmpeg[]
+            trimmer:
+                title: 'translate:ffmpeg_trimmer'
+                perm: ffmpeg[]
+                icon: rex-icon fa-cut
+            info:
+                title: 'translate:ffmpeg_info'
+                perm: ffmpeg[]
+                icon: rex-icon fa-info-circle
+            help:
+                title: 'translate:ffmpeg_help'
+                perm: ffmpeg[]
+                icon: rex-icon fa-question-circle
+                subPath: README.md
             config:
                 title: 'translate:ffmpeg_video_config'
                 perm: ffmpeg[config]

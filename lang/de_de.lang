@@ -1,4 +1,7 @@
-ffmpeg_main = Video Converter
+ffmpeg_main = Video-Konverter
+ffmpeg_trimmer = Video-Trimmer
+ffmpeg_info = Video-Informationen
+ffmpeg_help = Hilfe
 ffmpeg_video_convert = Video Converter
 ffmpeg_video_config = Einstellungen
 ffmpeg_legend_video = Zu konvertierende Videos
@@ -18,6 +21,22 @@ ffmpeg_already_converted = Bereits konvertiert
 ffmpeg_config_save = Einstellungen speichern
 ffmpeg_config_saved = Einstellungen wurden gespeichert!
 ffmpeg_execute = Video konvertieren
+
+# Video-Trimmer
+ffmpeg_trimmer_select_video = Video zum Schneiden auswählen
+ffmpeg_trimmer_cut_video = Video schneiden
+ffmpeg_trimmer_start_time = Startzeit (Sekunden)
+ffmpeg_trimmer_end_time = Endzeit (Sekunden)
+ffmpeg_trimmer_set_current = Aktuelle Position setzen
+ffmpeg_trimmer_preview = Das geschnittene Video wird {0} Sekunden lang sein
+ffmpeg_trimmer_success = Video erfolgreich geschnitten und gespeichert
+ffmpeg_trimmer_error_times = Ungültige Zeitangaben. Endzeit muss größer als Startzeit sein.
+ffmpeg_trimmer_shortcuts = Tastenkürzel: Strg+S (Start setzen), Strg+E (Ende setzen)
+
+# Video-Informationen API
+ffmpeg_info_no_data = Keine Video-Informationen verfügbar
+ffmpeg_info_not_found = Video-Datei nicht gefunden
+ffmpeg_info_ffmpeg_missing = FFmpeg nicht verfügbar
 
 # Benennung für die Addonrechte, sichtbar innerhalb der REDAXO-Administration unter Benutzer > Rollen > Allgemein
 #perm_general_ffmpeg[] = ffmpeg[] - Rechte für Video-Konverter

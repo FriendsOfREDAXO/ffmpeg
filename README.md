@@ -1,6 +1,6 @@
-# REDAXO-AddOn: FFMPEG Video Converter
+# REDAXO-AddOn: FFMPEG Video Tools
 
-Der ultimative Video-Turbo für REDAXO CMS – Konvertierung im Hintergrund, während du dich um die wichtigen Dinge kümmerst!
+Video Tools für REDAXO CMS – Konvertierung im Hintergrund, während du dich um die wichtigen Dinge kümmerst!
 
 ## Voraussetzungen
 
@@ -10,6 +10,7 @@ Der ultimative Video-Turbo für REDAXO CMS – Konvertierung im Hintergrund, wä
 
 ## Killer-Features 🚀
 
+### Video-Konverter
 - **Magische Hintergrundverarbeitung** – starte die Konvertierung und mach einfach weiter mit deinem Leben
 - **Browser-Schließen? Kein Problem!** Dein Video wird trotzdem fertig konvertiert
 - **Smarte Medienpool-Integration** mit web_-Prefix für aufgeräumte Mediatheken
@@ -18,26 +19,73 @@ Der ultimative Video-Turbo für REDAXO CMS – Konvertierung im Hintergrund, wä
 - **Kompressionsanzeige** zeigt dir, wie viel Speicherplatz du gerade gespart hast
 - **Aufräum-Option** – alte Originale automatisch entsorgen nach erfolgreicher Optimierung
 
+### 🆕 Video-Trimmer
+- **Präzises Schneiden** mit Start/End-Markierungen direkt im Browser
+- **Verlustfreies Trimming** durch FFmpeg Stream-Copy
+- **Intuitive Bedienung** mit Video-Player und One-Click-Buttons
+- **Keyboard-Shortcuts** für Profi-Workflow (Strg+S/E)
+- **Automatischer Import** als `web_trimmed_*` in den Medienpool
+
+### 🆕 Video-Informationen
+- **Detaillierte technische Daten** (Auflösung, Bitrate, Codec, Dauer)
+- **Seitenverhältnis-Erkennung** (16:9, 4:3, 9:16, etc.)
+- **Audio/Video-Stream-Details** mit allen wichtigen Parametern
+- **Optimierungsempfehlungen** basierend auf Video-Eigenschaften
+- **Direkter Zugang** zu Trimmer und Konverter
+- **Responsive Layout** mit Schutz vor Layout-Problemen bei langen Dateinamen
+
 ## Workflow, der rockt
 
+### Video-Konverter
 1. Video-Konverter im Medienpool öffnen – BAM, da ist die Video-Liste
 2. Video anklicken, das eine Frischzellenkur braucht
 3. "Video konvertieren" drücken und zurücklehnen
 4. **PLOT TWIST**: Browser schließen und Kaffee holen – die Maschine arbeitet weiter!
 5. Später zurückkommen, "Status prüfen" – wie von Zauberhand ist dein Video fertig
 
+### 🆕 Video-Trimmer
+1. **Medienpool → Video-Konverter → Video-Trimmer** aufrufen
+2. Video aus der Liste **auswählen** 
+3. Video abspielen und **Start-/Endpunkte** setzen:
+   - Position im Player suchen und pausieren
+   - "Aktuelle Position setzen" klicken (oder Strg+S/E)
+4. **"Video schneiden"** klicken
+5. Geschnittenes Video wird automatisch als `web_trimmed_dateiname.mp4` gespeichert
+
+### 🆕 Video-Informationen
+1. **Medienpool → Video-Konverter → Video-Informationen** aufrufen
+2. Video aus der Liste **auswählen**
+3. **Detaillierte Analyse** wird automatisch angezeigt:
+   - Auflösung, Seitenverhältnis, Dauer
+   - Video-/Audio-Codec-Details
+   - Bitrate und Qualitäts-Metriken
+   - Optimierungsempfehlungen
+4. **Direkte Aktionen** verfügbar (Schneiden, Konvertieren)
+
 ## Power-Einstellungen
 
 Hier wird's für Techies richtig interessant! Vollständige Kontrolle über die Konvertierungsparameter:
 
-```
+### Video-Konverter
+```bash
 ffmpeg -y -i INPUT -vcodec h264 -crf 23 -preset fast OUTPUT.mp4
+```
+
+### Video-Trimmer  
+```bash
+ffmpeg -y -ss START_TIME -t DURATION -i INPUT -c copy OUTPUT.mp4
+```
+
+### Video-Informationen
+```bash
+ffprobe -v quiet -print_format json -show_format -show_streams INPUT.mp4
 ```
 
 Spiel mit den Optionen für unterschiedliche Szenarien:
 - Max. Qualität für Produktvideos
 - Ultraschnelles Laden für Landing Pages
 - Platzsparende Archivierung für große Videokataloge
+- Verlustfreies Schneiden für exakte Clips
 
 ## Fortgeschrittene Superkräfte
 

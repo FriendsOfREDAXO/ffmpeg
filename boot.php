@@ -1,5 +1,8 @@
 <?php
 
+// Video-Info Klasse laden
+require_once __DIR__ . '/lib/rex_ffmpeg_video_info.php';
+
 if (rex::isBackend() && rex::getUser()) {
     // Add JavaScript to ffmpeg page
     if (rex_be_controller::getCurrentPagePart(2) == 'ffmpeg') {
