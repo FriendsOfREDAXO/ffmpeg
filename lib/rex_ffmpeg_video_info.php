@@ -54,7 +54,11 @@ class rex_ffmpeg_video_info
             'aspect_ratio' => $info['aspect_ratio'],
             'filesize' => $info['filesize'],
             'filesize_formatted' => $info['filesize_formatted'],
-            'codec' => $info['video']['codec_name'] ?? 'unknown'
+            'video_codec' => $info['video']['codec_name'] ?? 'unknown',
+            'audio_codec' => $info['audio']['codec_name'] ?? 'none',
+            'framerate' => $info['framerate'] ?? 0,
+            'bitrate' => $info['bitrate'] ?? 0,
+            'bitrate_formatted' => $info['bitrate_formatted'] ?? '0 bps'
         ];
     }
     
