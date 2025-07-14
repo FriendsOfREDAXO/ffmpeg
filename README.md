@@ -39,7 +39,7 @@ Vollständige Video-Management-Lösung für REDAXO CMS – Konvertierung, Trimmi
 - **Fallback-Placeholder** bei FFmpeg-Problemen
 
 ### 🆕 PHP-API für Entwickler
-- **Module-Integration** mit `rex_ffmpeg_video_info` Klasse
+- **Module-Integration** mit `VideoInfo` Klasse (`FriendsOfRedaxo\FFmpeg\VideoInfo`)
 - **Performance-optimierte Methoden** für häufige Abfragen
 - **Template-Integration** für Video-Galerien und responsive Player
 - **Optimierungs-Checks** für automatische Qualitätsbewertung
@@ -77,9 +77,11 @@ Vollständige Video-Management-Lösung für REDAXO CMS – Konvertierung, Trimmi
 
 ```php
 <?php
+use FriendsOfRedaxo\FFmpeg;
+
 // Video-Informationen in Modulen abrufen
 $videoFile = 'REX_MEDIA[1]';
-$info = rex_ffmpeg_video_info::getBasicInfo($videoFile);
+$info = VideoInfo::getBasicInfo($videoFile);
 
 if ($info) {
     echo '<div class="video-info">';
@@ -97,14 +99,16 @@ if ($info) {
 
 ```php
 <?php
+use FriendsOfRedaxo\FFmpeg;
+
 $videoFile = 'REX_MEDIA[1]';
 
 // Nur Dauer ermitteln (performance-optimiert)
-$duration = rex_ffmpeg_video_info::getDuration($videoFile);
+$duration = VideoInfo::getDuration($videoFile);
 echo 'Dauer: ' . $duration . ' Sekunden';
 
 // Nur Seitenverhältnis
-$ratio = rex_ffmpeg_video_info::getAspectRatio($videoFile);
+$ratio = VideoInfo::getAspectRatio($videoFile);
 echo 'Format: ' . $ratio;
 ?>
 ```
@@ -113,8 +117,10 @@ echo 'Format: ' . $ratio;
 
 ```php
 <?php
+use FriendsOfRedaxo\FFmpeg;
+
 $videoFile = 'REX_MEDIA[1]';
-$status = rex_ffmpeg_video_info::getOptimizationStatus($videoFile);
+$status = VideoInfo::getOptimizationStatus($videoFile);
 
 if ($status['optimized']) {
     echo '<span class="badge badge-success">Web-optimiert</span>';
@@ -133,8 +139,10 @@ echo '<p>Score: ' . $status['score'] . '/100</p>';
 
 ```php
 <?php
+use FriendsOfRedaxo\FFmpeg;
+
 $videoFile = 'REX_MEDIA[1]';
-$info = rex_ffmpeg_video_info::getBasicInfo($videoFile);
+$info = VideoInfo::getBasicInfo($videoFile);
 
 if ($info) {
     // CSS-Klasse basierend auf Seitenverhältnis
@@ -180,6 +188,8 @@ echo '</video>';
 
 ```php
 <?php
+use FriendsOfRedaxo\FFmpeg;
+
 // Video-Liste aus dem Medienpool
 $sql = rex_sql::factory();
 $videos = $sql->getArray('SELECT filename FROM rex_media WHERE filetype LIKE "video/%"');
@@ -187,7 +197,7 @@ $videos = $sql->getArray('SELECT filename FROM rex_media WHERE filetype LIKE "vi
 echo '<div class="video-gallery">';
 foreach ($videos as $video) {
     $filename = $video['filename'];
-    $info = rex_ffmpeg_video_info::getBasicInfo($filename);
+    $info = VideoInfo::getBasicInfo($filename);
     
     // WebP-Thumbnail für bessere Performance
     $thumbnail = rex_media_manager::getUrl('video_webp_thumb', $filename);
