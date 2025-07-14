@@ -1,0 +1,83 @@
+ffmpeg_main = Video Converter
+ffmpeg_trimmer = Video Trimmer
+ffmpeg_info = Video Information
+ffmpeg_help = Help
+ffmpeg_video_convert = Video Converter
+ffmpeg_video_config = Settings
+
+# Video Effects (from VideoPreview addon)
+videopreview_to_preview = Video Preview (MP4, no audio)
+videopreview_to_webp = Video Preview (WebP)
+
+videopreview_error_ffmpeg = FFmpeg not found. This effect will not work.
+videopreview_error_duration = Video duration could not be determined
+videopreview_error_output = Output file is empty or does not exist
+videopreview_error_command = Command failed
+
+videopreview_compression_minimal = Minimal (large file, best quality)
+videopreview_compression_low = Low (better quality)
+videopreview_compression_standard = Standard (balanced)
+videopreview_compression_high = High (small file)
+videopreview_compression_maximum = Maximum (smallest file)
+
+videopreview_position_label = Position in video
+videopreview_position_notice = Choose the position in the video from which the snippet should be created
+videopreview_position_end = 10 seconds before end
+videopreview_position_middle = Middle of video
+videopreview_position_start = Beginning (after 2 seconds)
+
+videopreview_width_label = Output width
+videopreview_width_notice = Recommended: 400-800px for better text display
+
+videopreview_compression_label = Compression level
+videopreview_compression_notice = Choose lower compression for better text quality
+
+videopreview_fps_label = FPS
+videopreview_fps_notice = Recommended: 12-15 FPS for better text readability
+
+videopreview_length_label = Snippet length (seconds)
+videopreview_length_notice = Maximum %d seconds. Recommended: 2-3 seconds
+
+ffmpeg_legend_video = Videos to convert
+ffmpeg_convert_info = Please ensure that the video is not currently in use. <br> The converted file will be stored in the media pool under "No category". <br> The conversion runs in the background, you can close the browser. Check the status later to complete the process.
+ffmpeg_config_legend1 = FFmpeg Settings
+ffmpeg_config_delete = Delete source file after successful compression
+ffmpeg_command = FFmpeg Command
+ffmpeg_check_status = Check status
+ffmpeg_optimized_videos = Optimized videos
+ffmpeg_optimized_videos_list = Already optimized videos
+ffmpeg_no_videos_found = No videos found for conversion.
+ffmpeg_conversion_in_progress = A conversion is already running. Please wait until it is completed.
+ffmpeg_view_in_mediapool = View in media pool
+ffmpeg_smaller = smaller
+ffmpeg_already_converted = Already converted
+
+ffmpeg_config_save = Save settings
+ffmpeg_config_saved = Settings have been saved!
+ffmpeg_execute = Convert video
+
+# Video Trimmer
+ffmpeg_trimmer_select_video = Select video to cut
+ffmpeg_trimmer_cut_video = Cut video
+ffmpeg_trimmer_start_time = Start time (seconds)
+ffmpeg_trimmer_end_time = End time (seconds)
+ffmpeg_trimmer_set_current = Set current position
+ffmpeg_trimmer_preview = The cut video will be {0} seconds long
+ffmpeg_trimmer_success = Video successfully cut and saved
+ffmpeg_trimmer_error_times = Invalid time specifications. End time must be greater than start time.
+ffmpeg_trimmer_shortcuts = Keyboard shortcuts: Ctrl+S (set start), Ctrl+E (set end)
+
+# Video Information API
+ffmpeg_info_no_data = No video information available
+ffmpeg_info_not_found = Video file not found
+ffmpeg_info_ffmpeg_missing = FFmpeg not available
+
+# Media Manager Effect
+media_manager_effect_video_preview = Video Preview
+media_manager_effect_video_preview_timestamp = Timestamp (HH:MM:SS)
+media_manager_effect_video_preview_width = Width
+media_manager_effect_video_preview_height = Height
+
+# Naming for addon permissions, visible within REDAXO administration under Users > Roles > General
+#perm_general_ffmpeg[] = ffmpeg[] - Rights for Video Converter
+#perm_general_ffmpeg[config] = ffmpeg[config] - Video Converter (Settings)
