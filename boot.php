@@ -1,8 +1,5 @@
 <?php
 
-// Video-Info Klasse laden
-require_once __DIR__ . '/lib/rex_ffmpeg_video_info.php';
-
 // Media Manager Effekte für Videos registrieren
 if (rex_addon::get('media_manager')->isAvailable()) {
     rex_media_manager::addEffect('rex_effect_video_to_webp');
