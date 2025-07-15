@@ -1,5 +1,20 @@
 <?php
-class rex_api_ffmpeg_converter extends rex_api_function
+namespace FriendsOfRedaxo\FFmpeg\Api;
+
+use Exception;
+use rex;
+use rex_addon;
+use rex_api_exception;
+use rex_api_function;
+use rex_backend_login;
+use rex_file;
+use rex_formatter;
+use rex_logger;
+use rex_path;
+use rex_response;
+use rex_sql;
+
+class Converter extends rex_api_function
 {
     protected $published = true;
     
@@ -480,7 +495,7 @@ class rex_api_ffmpeg_converter extends rex_api_function
         return ['progress' => $progress, 'log' => $getContent, 'status' => 'converting'];
     }
 
-    // In ffmpeg_api.php, die handleDone-Methode verbessern:
+    // TODO: Im API Converter (ex ffmpeg_api.php), die handleDone-Methode verbessern
 
 protected function handleDone()
 {

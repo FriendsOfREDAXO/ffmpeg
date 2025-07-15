@@ -1,10 +1,17 @@
 <?php
 
 // Media Manager Effekte für Videos registrieren
+
+use FriendsOfRedaxo\FFmpeg\Api\Converter;
+
 if (rex_addon::get('media_manager')->isAvailable()) {
     rex_media_manager::addEffect('rex_effect_video_to_webp');
     rex_media_manager::addEffect('rex_effect_video_to_preview');
 }
+
+// Converter-API bereitstellen
+rex_api_function::register('ffmpeg_convert', Converter::class);
+
 
 if (rex::isBackend() && rex::getUser()) {
     // Add JavaScript to ffmpeg page

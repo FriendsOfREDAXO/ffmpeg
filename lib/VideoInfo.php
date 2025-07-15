@@ -8,7 +8,15 @@
  * @package redaxo\ffmpeg
  * @author KLXM Crossmedia GmbH
  */
-class rex_ffmpeg_video_info
+namespace FriendsOfRedaxo\FFmpeg;
+
+use rex_formatter;
+use rex_media;
+use rex_media_manager;
+use rex_path;
+use rex_url;
+
+class VideoInfo
 {
     /**
      * Video-Informationen für eine Datei ermitteln
