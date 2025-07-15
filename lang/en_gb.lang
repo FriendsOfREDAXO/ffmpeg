@@ -71,6 +71,25 @@ ffmpeg_trimmer_shortcuts = Keyboard shortcuts: Ctrl+S (set start), Ctrl+E (set e
 ffmpeg_info_no_data = No video information available
 ffmpeg_info_not_found = Video file not found
 ffmpeg_info_ffmpeg_missing = FFmpeg not available
+ffmpeg_info_general = General Information
+ffmpeg_info_video_stream = Video Stream
+ffmpeg_info_audio_stream = Audio Stream
+ffmpeg_info_filename = Filename
+ffmpeg_info_filesize = File size
+ffmpeg_info_duration = Duration
+ffmpeg_info_format = Format
+ffmpeg_info_bitrate = Bitrate
+ffmpeg_info_resolution = Resolution
+ffmpeg_info_aspect_ratio = Aspect ratio
+ffmpeg_info_framerate = Frame rate
+ffmpeg_info_codec = Codec
+ffmpeg_info_profile = Profile
+ffmpeg_info_samplerate = Sample rate
+ffmpeg_info_channels = Channels
+ffmpeg_info_unknown = Unknown
+ffmpeg_browser_no_support = Your browser does not support the video element
+ffmpeg_no_videos_mediapool = No videos found in media pool
+ffmpeg_select_video_info = Select a video to get detailed technical information
 
 # Media Manager Effect
 media_manager_effect_video_preview = Video Preview
@@ -79,5 +98,5 @@ media_manager_effect_video_preview_width = Width
 media_manager_effect_video_preview_height = Height
 
 # Naming for addon permissions, visible within REDAXO administration under Users > Roles > General
-#perm_general_ffmpeg[] = ffmpeg[] - Rights for Video Converter
-#perm_general_ffmpeg[config] = ffmpeg[config] - Video Converter (Settings)
+perm_general_ffmpeg[] = ffmpeg[] - Rights for Video Converter
+perm_general_ffmpeg[config] = ffmpeg[config] - Video Converter (Settings)

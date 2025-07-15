@@ -71,6 +71,25 @@ ffmpeg_trimmer_shortcuts = Tastenkürzel: Strg+S (Start setzen), Strg+E (Ende se
 ffmpeg_info_no_data = Keine Video-Informationen verfügbar
 ffmpeg_info_not_found = Video-Datei nicht gefunden
 ffmpeg_info_ffmpeg_missing = FFmpeg nicht verfügbar
+ffmpeg_info_general = Allgemeine Informationen
+ffmpeg_info_video_stream = Video-Stream
+ffmpeg_info_audio_stream = Audio-Stream
+ffmpeg_info_filename = Dateiname
+ffmpeg_info_filesize = Dateigröße
+ffmpeg_info_duration = Dauer
+ffmpeg_info_format = Format
+ffmpeg_info_bitrate = Bitrate
+ffmpeg_info_resolution = Auflösung
+ffmpeg_info_aspect_ratio = Seitenverhältnis
+ffmpeg_info_framerate = Framerate
+ffmpeg_info_codec = Codec
+ffmpeg_info_profile = Profil
+ffmpeg_info_samplerate = Samplerate
+ffmpeg_info_channels = Kanäle
+ffmpeg_info_unknown = Unbekannt
+ffmpeg_browser_no_support = Ihr Browser unterstützt das Video-Element nicht
+ffmpeg_no_videos_mediapool = Keine Videos im Medienpool gefunden
+ffmpeg_select_video_info = Wählen Sie ein Video aus, um detaillierte technische Informationen zu erhalten
 
 # Media Manager Effect
 media_manager_effect_video_preview = Video Preview

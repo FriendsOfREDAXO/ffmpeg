@@ -10,7 +10,7 @@ $csrf = rex_csrf_token::factory('ffmpeg_trimmer');
 $ffmpegPath = 'ffmpeg';
 exec('which ffmpeg', $ffmpegCheck, $ffmpegReturn);
 if ($ffmpegReturn !== 0) {
-    echo rex_view::error('FFmpeg ist nicht verfügbar. Bitte installieren Sie FFmpeg.');
+    echo rex_view::error($this->i18n('ffmpeg_info_ffmpeg_missing'));
     return;
 }
 
@@ -112,7 +112,7 @@ if ($action === 'trim' && $csrf->isValid() && $videoFile && $videoInfo) {
                     $sql->insert();
                 }
                 
-                echo rex_view::success('Video erfolgreich geschnitten und gespeichert: ' . $newFilename);
+                echo rex_view::success($this->i18n('ffmpeg_trimmer_success') . ': ' . $newFilename);
                 
             } catch (Exception $e) {
                 echo rex_view::error('Fehler beim Importieren: ' . $e->getMessage());
@@ -121,7 +121,7 @@ if ($action === 'trim' && $csrf->isValid() && $videoFile && $videoInfo) {
             echo rex_view::error('Fehler beim Schneiden des Videos. FFmpeg-Output: ' . implode('<br>', $output));
         }
     } else {
-        echo rex_view::error('Ungültige Zeitangaben. Endzeit muss größer als Startzeit sein.');
+        echo rex_view::error($this->i18n('ffmpeg_trimmer_error_times'));
     }
 }
 
@@ -144,14 +144,14 @@ if ($videoFile && $videoInfo) {
     <div class="panel panel-default">
         <div class="panel-heading">
             <h3 class="panel-title">
-                <i class="rex-icon fa-cut"></i> Video schneiden: ' . rex_escape($videoInfo['filename']) . '
+                <i class="rex-icon fa-cut"></i> ' . $this->i18n('ffmpeg_trimmer_cut_video') . ': ' . rex_escape($videoInfo['filename']) . '
             </h3>
         </div>
         <div class="panel-body">
             <div class="video-trimmer-container" style="max-width: 800px; margin: 0 auto;">
                 <video id="trimmer-video" controls style="width: 100%; margin-bottom: 20px;">
                     <source src="' . rex_url::media($videoFile) . '" type="video/mp4">
-                    Ihr Browser unterstützt das Video-Element nicht.
+                    ' . $this->i18n('ffmpeg_browser_no_support') . '
                 </video>
                 
                 <form method="post" style="margin-top: 20px;">
@@ -163,22 +163,22 @@ if ($videoFile && $videoInfo) {
                         <label class="control-label" style="font-weight: 600; margin-bottom: 15px; display: block;">Zeitbereich festlegen:</label>
                         <div class="row">
                             <div class="col-sm-6">
-                                <label class="control-label">Startzeit (Sekunden):</label>
+                                <label class="control-label">' . $this->i18n('ffmpeg_trimmer_start_time') . ':</label>
                                 <div class="input-group">
                                     <input type="number" name="start_time" id="start_time" step="0.1" min="0" class="form-control" required>
                                     <span class="input-group-btn">
-                                        <button type="button" class="btn btn-info" onclick="setCurrentTime(\'start\')" title="Aktuelle Zeit setzen">
+                                        <button type="button" class="btn btn-info" onclick="setCurrentTime(\'start\')" title="' . $this->i18n('ffmpeg_trimmer_set_current') . '">
                                             <i class="rex-icon fa-clock-o"></i>
                                         </button>
                                     </span>
                                 </div>
                             </div>
                             <div class="col-sm-6">
-                                <label class="control-label">Endzeit (Sekunden):</label>
+                                <label class="control-label">' . $this->i18n('ffmpeg_trimmer_end_time') . ':</label>
                                 <div class="input-group">
                                     <input type="number" name="end_time" id="end_time" step="0.1" min="0" class="form-control" required>
                                     <span class="input-group-btn">
-                                        <button type="button" class="btn btn-info" onclick="setCurrentTime(\'end\')" title="Aktuelle Zeit setzen">
+                                        <button type="button" class="btn btn-info" onclick="setCurrentTime(\'end\')" title="' . $this->i18n('ffmpeg_trimmer_set_current') . '">
                                             <i class="rex-icon fa-clock-o"></i>
                                         </button>
                                     </span>
@@ -189,7 +189,7 @@ if ($videoFile && $videoInfo) {
                     
                     <div class="text-center" style="margin-top: 20px;">
                         <button type="submit" class="btn btn-primary">
-                            <i class="rex-icon fa-cut"></i> Video schneiden
+                            <i class="rex-icon fa-cut"></i> ' . $this->i18n('ffmpeg_trimmer_cut_video') . '
                         </button>
                         <a href="' . rex_url::currentBackendPage() . '" class="btn btn-default">
                             <i class="rex-icon fa-arrow-left"></i> Zurück zur Übersicht
@@ -239,11 +239,11 @@ if ($videoFile && $videoInfo) {
     <div class="panel panel-default">
         <div class="panel-heading">
             <h3 class="panel-title">
-                <i class="rex-icon fa-cut"></i> Video Trimmer
+                <i class="rex-icon fa-cut"></i> ' . $this->i18n('ffmpeg_trimmer') . '
             </h3>
         </div>
         <div class="panel-body">
-            <p>Wählen Sie ein Video aus dem Medienpool zum Schneiden:</p>';
+            <p>' . $this->i18n('ffmpeg_trimmer_select_video') . '</p>';
     
     if (count($videos) > 0) {
         $content .= '
@@ -277,7 +277,7 @@ if ($videoFile && $videoInfo) {
                             <td>' . $date . '</td>
                             <td>
                                 <a href="' . rex_url::currentBackendPage(['video' => $video['filename']]) . '" class="btn btn-primary btn-sm">
-                                    <i class="rex-icon fa-cut"></i> Schneiden
+                                    <i class="rex-icon fa-cut"></i> ' . $this->i18n('ffmpeg_trimmer_cut_video') . '
                                 </a>
                             </td>
                         </tr>';
@@ -290,7 +290,7 @@ if ($videoFile && $videoInfo) {
     } else {
         $content .= '
             <div class="alert alert-info">
-                <p>Keine Videos im Medienpool gefunden.</p>
+                <p>' . $this->i18n('ffmpeg_no_videos_mediapool') . '</p>
                 <p>Laden Sie Videos über den <a href="' . rex_url::backendPage('media') . '">Medienpool</a> hoch.</p>
             </div>';
     }
@@ -348,6 +348,6 @@ $content .= '
 
 // Fragment erstellen
 $fragment = new rex_fragment();
-$fragment->setVar('title', 'Video Trimmer');
+$fragment->setVar('title', $this->i18n('ffmpeg_trimmer'));
 $fragment->setVar('body', $content, false);
 echo $fragment->parse('core/page/section.php');

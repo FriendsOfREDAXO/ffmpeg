@@ -80,7 +80,7 @@ function formatDuration($seconds) {
 }
 
 function calculateAspectRatio($width, $height) {
-    if (!$width || !$height) return 'Unbekannt';
+    if (!$width || !$height) return rex_i18n::msg('ffmpeg_info_no_data');
     
     $gcd = function($a, $b) use (&$gcd) {
         return $b ? $gcd($b, $a % $b) : $a;
@@ -140,7 +140,7 @@ if ($videoFile && $videoInfo) {
     <div class="panel panel-default">
         <div class="panel-heading">
             <h3 class="panel-title">
-                <i class="rex-icon fa-info-circle"></i> Video-Informationen
+                <i class="rex-icon fa-info-circle"></i> ' . $this->i18n('ffmpeg_info') . '
                 <br><small style="font-weight: normal; word-break: break-all;">' . rex_escape($videoFile) . '</small>
             </h3>
         </div>
@@ -149,33 +149,33 @@ if ($videoFile && $videoInfo) {
                 <div class="col-md-6">
                     <video controls style="width: 100%; max-width: 500px; margin-bottom: 20px;">
                         <source src="' . rex_url::media($videoFile) . '" type="video/mp4">
-                        Ihr Browser unterstützt das Video-Element nicht.
+                        ' . $this->i18n('ffmpeg_browser_no_support') . '
                     </video>
                 </div>
                 <div class="col-md-6">';
     
     // Allgemeine Informationen
     $content .= '
-                    <h4><i class="rex-icon fa-file-video-o"></i> Allgemeine Informationen</h4>
+                    <h4><i class="rex-icon fa-file-video-o"></i> ' . $this->i18n('ffmpeg_info_general') . '</h4>
                     <table class="table table-striped video-info-table">
-                        <tr><td>Dateiname:</td><td>' . rex_escape($videoFile) . '</td></tr>
-                        <tr><td>Dateigröße:</td><td>' . $videoInfo['filesize_formatted'] . '</td></tr>
-                        <tr><td>Dauer:</td><td>' . $videoInfo['duration_formatted'] . '</td></tr>
-                        <tr><td>Format:</td><td>' . rex_escape($videoInfo['format']['format_name'] ?? 'Unbekannt') . '</td></tr>
-                        <tr><td>Bitrate:</td><td>' . $videoInfo['bitrate_formatted'] . '</td></tr>
+                        <tr><td>' . $this->i18n('ffmpeg_info_filename') . ':</td><td>' . rex_escape($videoFile) . '</td></tr>
+                        <tr><td>' . $this->i18n('ffmpeg_info_filesize') . ':</td><td>' . $videoInfo['filesize_formatted'] . '</td></tr>
+                        <tr><td>' . $this->i18n('ffmpeg_info_duration') . ':</td><td>' . $videoInfo['duration_formatted'] . '</td></tr>
+                        <tr><td>' . $this->i18n('ffmpeg_info_format') . ':</td><td>' . rex_escape($videoInfo['format']['format_name'] ?? $this->i18n('ffmpeg_info_unknown')) . '</td></tr>
+                        <tr><td>' . $this->i18n('ffmpeg_info_bitrate') . ':</td><td>' . $videoInfo['bitrate_formatted'] . '</td></tr>
                     </table>';
     
     // Video-Stream Informationen
     if ($videoInfo['video']) {
         $video = $videoInfo['video'];
         $content .= '
-                    <h4><i class="rex-icon fa-video-camera"></i> Video-Stream</h4>
+                    <h4><i class="rex-icon fa-video-camera"></i> ' . $this->i18n('ffmpeg_info_video_stream') . '</h4>
                     <table class="table table-striped video-info-table">
-                        <tr><td>Auflösung:</td><td>' . $video['width'] . ' × ' . $video['height'] . ' px</td></tr>
-                        <tr><td>Seitenverhältnis:</td><td>' . $videoInfo['aspect_ratio'] . '</td></tr>
-                        <tr><td>Framerate:</td><td>' . $videoInfo['framerate'] . ' fps</td></tr>
-                        <tr><td>Codec:</td><td>' . rex_escape($video['codec_name'] ?? 'Unbekannt') . '</td></tr>
-                        <tr><td>Profil:</td><td>' . rex_escape($video['profile'] ?? 'Unbekannt') . '</td></tr>
+                        <tr><td>' . $this->i18n('ffmpeg_info_resolution') . ':</td><td>' . $video['width'] . ' × ' . $video['height'] . ' px</td></tr>
+                        <tr><td>' . $this->i18n('ffmpeg_info_aspect_ratio') . ':</td><td>' . $videoInfo['aspect_ratio'] . '</td></tr>
+                        <tr><td>' . $this->i18n('ffmpeg_info_framerate') . ':</td><td>' . $videoInfo['framerate'] . ' fps</td></tr>
+                        <tr><td>' . $this->i18n('ffmpeg_info_codec') . ':</td><td>' . rex_escape($video['codec_name'] ?? $this->i18n('ffmpeg_info_unknown')) . '</td></tr>
+                        <tr><td>' . $this->i18n('ffmpeg_info_profile') . ':</td><td>' . rex_escape($video['profile'] ?? $this->i18n('ffmpeg_info_unknown')) . '</td></tr>
                     </table>';
     }
     
@@ -183,12 +183,12 @@ if ($videoFile && $videoInfo) {
     if ($videoInfo['audio']) {
         $audio = $videoInfo['audio'];
         $content .= '
-                    <h4><i class="rex-icon fa-volume-up"></i> Audio-Stream</h4>
+                    <h4><i class="rex-icon fa-volume-up"></i> ' . $this->i18n('ffmpeg_info_audio_stream') . '</h4>
                     <table class="table table-striped video-info-table">
-                        <tr><td>Codec:</td><td>' . rex_escape($audio['codec_name'] ?? 'Unbekannt') . '</td></tr>
-                        <tr><td>Samplerate:</td><td>' . ($audio['sample_rate'] ?? 'Unbekannt') . ' Hz</td></tr>
-                        <tr><td>Kanäle:</td><td>' . ($audio['channels'] ?? 'Unbekannt') . '</td></tr>
-                        <tr><td>Bitrate:</td><td>' . formatBitrate($audio['bit_rate'] ?? 0) . '</td></tr>
+                        <tr><td>' . $this->i18n('ffmpeg_info_codec') . ':</td><td>' . rex_escape($audio['codec_name'] ?? $this->i18n('ffmpeg_info_unknown')) . '</td></tr>
+                        <tr><td>' . $this->i18n('ffmpeg_info_samplerate') . ':</td><td>' . ($audio['sample_rate'] ?? $this->i18n('ffmpeg_info_unknown')) . ' Hz</td></tr>
+                        <tr><td>' . $this->i18n('ffmpeg_info_channels') . ':</td><td>' . ($audio['channels'] ?? $this->i18n('ffmpeg_info_unknown')) . '</td></tr>
+                        <tr><td>' . $this->i18n('ffmpeg_info_bitrate') . ':</td><td>' . formatBitrate($audio['bit_rate'] ?? 0) . '</td></tr>
                     </table>';
     }
     
@@ -271,7 +271,7 @@ if ($videoFile && $videoInfo) {
         <div class="panel-body">
             <p class="text-muted">
                 <i class="rex-icon fa-info-circle"></i> 
-                Wählen Sie ein Video aus, um detaillierte technische Informationen zu erhalten.
+                ' . $this->i18n('ffmpeg_select_video_info') . '
             </p>
             
             <div class="table-responsive">
@@ -289,7 +289,7 @@ if ($videoFile && $videoInfo) {
     
     if (empty($videos)) {
         $content .= '<tr><td colspan="5" class="text-center text-muted">
-                        <i class="rex-icon fa-video-camera"></i> Keine Videos im Medienpool gefunden.
+                        <i class="rex-icon fa-video-camera"></i> ' . $this->i18n('ffmpeg_no_videos_mediapool') . '
                     </td></tr>';
     } else {
         foreach ($videos as $video) {
