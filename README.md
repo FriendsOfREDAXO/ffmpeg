@@ -421,7 +421,7 @@ Die interne Power-API für alle, die programmieren wie Neo in Matrix:
 ### RESTful-Endpunkte
 
 ```
-index.php?rex-api-call=ffmpeg_converter&func=FUNKTION&video=DATEINAME
+index.php?rex-api-call=ffmpeg_convert&func=FUNKTION&video=DATEINAME
 ```
 
 #### `start` – Die Konvertierungsmaschine anwerfen

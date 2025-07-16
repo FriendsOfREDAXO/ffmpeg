@@ -19,7 +19,7 @@
     function showProgress() {
         $.ajax({
             type: 'get',
-            url: 'index.php?rex-api-call=ffmpeg_converter&func=progress&video=' + encodeURIComponent(currentVideoName),
+            url: 'index.php?rex-api-call=ffmpeg_convert&func=progress&video=' + encodeURIComponent(currentVideoName),
             dataType: 'json',
         })
             .fail(function (jqXHR, textStatus) {
@@ -186,7 +186,7 @@
         
         $.ajax({
             type: 'get',
-            url: 'index.php?rex-api-call=ffmpeg_converter&func=done&video=' + encodeURIComponent(currentVideoName),
+            url: 'index.php?rex-api-call=ffmpeg_convert&func=done&video=' + encodeURIComponent(currentVideoName),
             dataType: 'json',
         })
             .fail(function (jqXHR, textStatus) {
@@ -223,7 +223,7 @@
     function checkStatus() {
         $.ajax({
             type: 'get',
-            url: 'index.php?rex-api-call=ffmpeg_converter&func=status',
+            url: 'index.php?rex-api-call=ffmpeg_convert&func=status',
             dataType: 'json',
         })
             .done(function (data) {
@@ -283,7 +283,7 @@
         
         $.ajax({
             type: 'get',
-            url: 'index.php?rex-api-call=ffmpeg_converter&func=check_all',
+            url: 'index.php?rex-api-call=ffmpeg_convert&func=check_all',
             dataType: 'json',
         })
         .done(function(data) {
@@ -373,7 +373,7 @@
     
     // Konvertierung starten
     function startConversion(video, confirmOverwrite) {
-        let url = 'index.php?rex-api-call=ffmpeg_converter&func=start&video=' + encodeURIComponent(video);
+        let url = 'index.php?rex-api-call=ffmpeg_convert&func=start&video=' + encodeURIComponent(video);
         
         if (confirmOverwrite) {
             url += '&confirm_overwrite=1';

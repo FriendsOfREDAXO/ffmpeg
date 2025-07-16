@@ -1,5 +1,7 @@
 <?php
 
+use FriendsOfRedaxo\FFmpeg\Api\Converter;
+
 $content = '';
 $buttons = '';
 
@@ -10,7 +12,7 @@ $conversionActive = false;
 $conversionInfo = [];
 
 // Konversionsstatus aus API-Klasse ermitteln
-$conversionData = rex_api_ffmpeg_converter::getConversionInfo();
+$conversionData = Converter::getConversionInfo();
 $conversionActive = $conversionData['active'];
 $conversionInfo = $conversionData['info'];
 
