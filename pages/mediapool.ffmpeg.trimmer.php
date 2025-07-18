@@ -16,6 +16,10 @@ if ($ffmpegReturn !== 0) {
 
 // Parameter verarbeiten
 $videoFile = rex_request('video', 'string');
+// HTML-Entity-Dekodierung für URLs mit &amp;
+if (empty($videoFile)) {
+    $videoFile = html_entity_decode(rex_request('video', 'string'));
+}
 $action = rex_request('action', 'string');
 
 // Video-Info laden falls Video ausgewählt

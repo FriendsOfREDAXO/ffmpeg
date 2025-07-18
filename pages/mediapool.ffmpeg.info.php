@@ -4,6 +4,10 @@ $content = '';
 
 // Video-Parameter aus URL
 $videoFile = rex_request('video', 'string', '');
+// HTML-Entity-Dekodierung für URLs mit &amp;
+if (empty($videoFile)) {
+    $videoFile = html_entity_decode(rex_request('video', 'string', ''));
+}
 $videoInfo = null;
 
 if ($videoFile) {

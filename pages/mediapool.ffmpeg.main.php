@@ -7,6 +7,13 @@ $buttons = '';
 
 $csrfToken = rex_csrf_token::factory('ffmpeg');
 
+// Video-Parameter aus URL auslesen (für Direktlinks aus Vidstack)
+$preselectedVideo = rex_request('video', 'string');
+// HTML-Entity-Dekodierung für URLs mit &amp;
+if (empty($preselectedVideo)) {
+    $preselectedVideo = html_entity_decode(rex_request('video', 'string'));
+}
+
 // Prüfen, ob eine aktive Konvertierung läuft
 $conversionActive = false;
 $conversionInfo = [];
@@ -99,7 +106,8 @@ if (empty($allVideos)) {
         <div class="video-item' . $statusClass . '">
             <label>
                 <input class="mycheckbox" id="v' . $key . '" type="radio" name="video" value="' . $video['filename'] . '" data-video="' . $video['filename'] . '"' . 
-                (($conversionActive || $video['isAlreadyConverted']) ? ' disabled' : '') . '> 
+                (($conversionActive || $video['isAlreadyConverted']) ? ' disabled' : '') . 
+                ($preselectedVideo === $video['filename'] ? ' checked' : '') . '> 
                 <strong>' . $video['filename'] . '</strong>
                 ' . $statusBadge . '
             </label>
