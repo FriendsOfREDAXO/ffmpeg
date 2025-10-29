@@ -66,6 +66,14 @@ ffmpeg_trimmer_preview = The cut video will be {0} seconds long
 ffmpeg_trimmer_success = Video successfully cut and saved
 ffmpeg_trimmer_error_times = Invalid time specifications. End time must be greater than start time.
 ffmpeg_trimmer_shortcuts = Keyboard shortcuts: Ctrl+S (set start), Ctrl+E (set end)
+ffmpeg_trimmer_table_filename = Filename
+ffmpeg_trimmer_table_title = Title
+ffmpeg_trimmer_table_size = Size
+ffmpeg_trimmer_table_date = Date
+ffmpeg_trimmer_table_actions = Actions
+ffmpeg_trimmer_preview_show = Show preview
+ffmpeg_trimmer_modal_title = Video Preview
+ffmpeg_trimmer_modal_close = Close
 
 # Video Information API
 ffmpeg_info_no_data = No video information available

@@ -255,11 +255,11 @@ if ($videoFile && $videoInfo) {
                 <table class="table table-striped">
                     <thead>
                         <tr>
-                            <th style="width: 250px;">Dateiname</th>
-                            <th>Titel</th>
-                            <th style="width: 100px;">Größe</th>
-                            <th style="width: 120px;">Datum</th>
-                            <th style="width: 180px;">Aktionen</th>
+                            <th style="width: 250px;">' . $this->i18n('ffmpeg_trimmer_table_filename') . '</th>
+                            <th>' . $this->i18n('ffmpeg_trimmer_table_title') . '</th>
+                            <th style="width: 100px;">' . $this->i18n('ffmpeg_trimmer_table_size') . '</th>
+                            <th style="width: 120px;">' . $this->i18n('ffmpeg_trimmer_table_date') . '</th>
+                            <th style="width: 180px;">' . $this->i18n('ffmpeg_trimmer_table_actions') . '</th>
                         </tr>
                     </thead>
                     <tbody>';
@@ -279,7 +279,7 @@ if ($videoFile && $videoInfo) {
                             <td>' . $filesize . '</td>
                             <td>' . $date . '</td>
                             <td class="video-actions">
-                                <button type="button" class="btn btn-default btn-sm video-preview-btn" data-filename="' . $escapedFilename . '" title="' . $this->i18n('ffmpeg_preview_show') . '">
+                                <button type="button" class="btn btn-default btn-sm video-preview-btn" data-filename="' . $escapedFilename . '" title="' . $this->i18n('ffmpeg_trimmer_preview_show') . '">
                                     <i class="rex-icon fa-eye"></i>
                                 </button>
                                 <a href="' . rex_url::currentBackendPage(['video' => $video['filename']]) . '" class="btn btn-primary btn-sm" title="' . $this->i18n('ffmpeg_trimmer_cut_video') . '">
@@ -301,10 +301,10 @@ if ($videoFile && $videoInfo) {
                 <div class="modal-dialog modal-lg" role="document">
                     <div class="modal-content">
                         <div class="modal-header">
-                            <button type="button" class="close" data-dismiss="modal" aria-label="Schließen">
+                            <button type="button" class="close" data-dismiss="modal" aria-label="' . $this->i18n('ffmpeg_trimmer_modal_close') . '">
                                 <span aria-hidden="true">&times;</span>
                             </button>
-                            <h4 class="modal-title" id="videoPreviewModalLabel">Video-Vorschau</h4>
+                            <h4 class="modal-title" id="videoPreviewModalLabel">' . $this->i18n('ffmpeg_trimmer_modal_title') . '</h4>
                         </div>
                         <div class="modal-body">
                             <video id="modalVideo" controls style="width: 100%; max-height: 500px;">
@@ -314,7 +314,7 @@ if ($videoFile && $videoInfo) {
                             <p class="video-filename-display" style="margin-top: 10px; font-weight: bold;"></p>
                         </div>
                         <div class="modal-footer">
-                            <button type="button" class="btn btn-default" data-dismiss="modal">Schließen</button>
+                            <button type="button" class="btn btn-default" data-dismiss="modal">' . $this->i18n('ffmpeg_trimmer_modal_close') . '</button>
                         </div>
                     </div>
                 </div>
