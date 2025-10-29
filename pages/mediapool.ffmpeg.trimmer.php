@@ -267,17 +267,20 @@ if ($videoFile && $videoInfo) {
         foreach ($videos as $video) {
             $filesize = rex_formatter::bytes($video['filesize']);
             $date = rex_formatter::strftime($video['updatedate'], 'date');
+            // Prepare safe data attributes
+            $escapedFilename = rex_escape($video['filename']);
+            $jsonFilename = json_encode($video['filename'], JSON_HEX_QUOT | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS);
             
             $content .= '
                         <tr>
-                            <td class="video-filename" title="' . rex_escape($video['filename']) . '">
-                                <span class="filename-truncate">' . rex_escape($video['filename']) . '</span>
+                            <td class="video-filename" title="' . $escapedFilename . '">
+                                <span class="filename-truncate">' . $escapedFilename . '</span>
                             </td>
                             <td>' . rex_escape($video['title']) . '</td>
                             <td>' . $filesize . '</td>
                             <td>' . $date . '</td>
                             <td class="video-actions">
-                                <button type="button" class="btn btn-default btn-sm" onclick="showVideoPreview(\'' . rex_escape($video['filename']) . '\')" title="Vorschau anzeigen">
+                                <button type="button" class="btn btn-default btn-sm video-preview-btn" data-filename="' . $escapedFilename . '" title="Vorschau anzeigen">
                                     <i class="rex-icon fa-eye"></i>
                                 </button>
                                 <a href="' . rex_url::currentBackendPage(['video' => $video['filename']]) . '" class="btn btn-primary btn-sm" title="' . $this->i18n('ffmpeg_trimmer_cut_video') . '">
@@ -319,28 +322,32 @@ if ($videoFile && $videoInfo) {
             </div>
             
             <script>
-            function showVideoPreview(filename) {
-                var modal = jQuery(\'#videoPreviewModal\');
-                var video = document.getElementById(\'modalVideo\');
-                var source = document.getElementById(\'modalVideoSource\');
-                var filenameDisplay = modal.find(\'.video-filename-display\');
+            jQuery(document).ready(function($) {
+                // Event delegation for preview buttons
+                $(\'body\').on(\'click\', \'.video-preview-btn\', function() {
+                    var filename = $(this).data(\'filename\');
+                    var modal = $(\'#videoPreviewModal\');
+                    var video = modal.find(\'#modalVideo\')[0];
+                    var source = modal.find(\'#modalVideoSource\')[0];
+                    var filenameDisplay = modal.find(\'.video-filename-display\');
+                    
+                    // Pause video if playing
+                    video.pause();
+                    
+                    // Set new source with proper encoding
+                    source.src = \'' . rex_url::media('') . '\' + encodeURIComponent(filename);
+                    filenameDisplay.text(filename);
+                    
+                    // Load and show modal
+                    video.load();
+                    modal.modal(\'show\');
+                });
                 
-                // Pause video if playing
-                video.pause();
-                
-                // Set new source
-                source.src = \'' . rex_url::media('') . '\' + filename;
-                filenameDisplay.text(filename);
-                
-                // Load and show modal
-                video.load();
-                modal.modal(\'show\');
-            }
-            
-            // Stop video when modal is closed
-            jQuery(\'#videoPreviewModal\').on(\'hidden.bs.modal\', function () {
-                var video = document.getElementById(\'modalVideo\');
-                video.pause();
+                // Stop video when modal is closed
+                $(\'#videoPreviewModal\').on(\'hidden.bs.modal\', function () {
+                    var video = $(this).find(\'#modalVideo\')[0];
+                    video.pause();
+                });
             });
             </script>';
     } else {
