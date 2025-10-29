@@ -269,7 +269,6 @@ if ($videoFile && $videoInfo) {
             $date = rex_formatter::strftime($video['updatedate'], 'date');
             // Prepare safe data attributes
             $escapedFilename = rex_escape($video['filename']);
-            $jsonFilename = json_encode($video['filename'], JSON_HEX_QUOT | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS);
             
             $content .= '
                         <tr>
