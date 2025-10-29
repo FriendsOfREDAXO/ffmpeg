@@ -279,7 +279,7 @@ if ($videoFile && $videoInfo) {
                             <td>' . $filesize . '</td>
                             <td>' . $date . '</td>
                             <td class="video-actions">
-                                <button type="button" class="btn btn-default btn-sm video-preview-btn" data-filename="' . $escapedFilename . '" title="Vorschau anzeigen">
+                                <button type="button" class="btn btn-default btn-sm video-preview-btn" data-filename="' . $escapedFilename . '" title="' . $this->i18n('ffmpeg_preview_show') . '">
                                     <i class="rex-icon fa-eye"></i>
                                 </button>
                                 <a href="' . rex_url::currentBackendPage(['video' => $video['filename']]) . '" class="btn btn-primary btn-sm" title="' . $this->i18n('ffmpeg_trimmer_cut_video') . '">
