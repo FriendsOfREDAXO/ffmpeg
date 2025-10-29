@@ -119,10 +119,10 @@ if ($action === 'trim' && $csrf->isValid() && $videoFile && $videoInfo) {
                 echo rex_view::success($this->i18n('ffmpeg_trimmer_success') . ': ' . $newFilename);
                 
             } catch (Exception $e) {
-                echo rex_view::error('Fehler beim Importieren: ' . $e->getMessage());
+                echo rex_view::error($this->i18n('ffmpeg_trimmer_error_import') . ': ' . $e->getMessage());
             }
         } else {
-            echo rex_view::error('Fehler beim Schneiden des Videos. FFmpeg-Output: ' . implode('<br>', $output));
+            echo rex_view::error($this->i18n('ffmpeg_trimmer_error_cutting') . ': ' . implode('<br>', $output));
         }
     } else {
         echo rex_view::error($this->i18n('ffmpeg_trimmer_error_times'));
@@ -164,7 +164,7 @@ if ($videoFile && $videoInfo) {
                     <input type="hidden" name="action" value="trim">
                     
                     <div class="video-controls-wrapper">
-                        <label class="control-label" style="font-weight: 600; margin-bottom: 15px; display: block;">Zeitbereich festlegen:</label>
+                        <label class="control-label" style="font-weight: 600; margin-bottom: 15px; display: block;">' . $this->i18n('ffmpeg_trimmer_time_range_label') . '</label>
                         <div class="row">
                             <div class="col-sm-6">
                                 <label class="control-label">' . $this->i18n('ffmpeg_trimmer_start_time') . ':</label>
@@ -196,7 +196,7 @@ if ($videoFile && $videoInfo) {
                             <i class="rex-icon fa-cut"></i> ' . $this->i18n('ffmpeg_trimmer_cut_video') . '
                         </button>
                         <a href="' . rex_url::currentBackendPage() . '" class="btn btn-default">
-                            <i class="rex-icon fa-arrow-left"></i> Zurück zur Übersicht
+                            <i class="rex-icon fa-arrow-left"></i> ' . $this->i18n('ffmpeg_trimmer_back_to_list') . '
                         </a>
                     </div>
                 </form>
@@ -353,7 +353,7 @@ if ($videoFile && $videoInfo) {
         $content .= '
             <div class="alert alert-info">
                 <p>' . $this->i18n('ffmpeg_no_videos_mediapool') . '</p>
-                <p>Laden Sie Videos über den <a href="' . rex_url::backendPage('media') . '">Medienpool</a> hoch.</p>
+                <p>' . str_replace('{0}', rex_url::backendPage('media'), $this->i18n('ffmpeg_trimmer_upload_videos')) . '</p>
             </div>';
     }
     

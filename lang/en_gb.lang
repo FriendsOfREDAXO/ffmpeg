@@ -74,6 +74,11 @@ ffmpeg_trimmer_table_actions = Actions
 ffmpeg_trimmer_preview_show = Show preview
 ffmpeg_trimmer_modal_title = Video Preview
 ffmpeg_trimmer_modal_close = Close
+ffmpeg_trimmer_back_to_list = Back to overview
+ffmpeg_trimmer_upload_videos = Upload videos via the <a href="{0}">media pool</a>.
+ffmpeg_trimmer_error_import = Error importing
+ffmpeg_trimmer_error_cutting = Error cutting the video. FFmpeg output
+ffmpeg_trimmer_time_range_label = Set time range:
 
 # Video Information API
 ffmpeg_info_no_data = No video information available
