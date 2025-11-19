@@ -1,4 +1,4 @@
-# REDAXO-AddOn: FFmpeg Video Tools v3.0
+# REDAXO-AddOn: FFmpeg Video Tools v4.0
 
 Vollständige Video-Management-Lösung für REDAXO CMS – Konvertierung, Trimming und detaillierte Video-Analyse, alles in einem Addon!
 
@@ -18,6 +18,9 @@ Vollständige Video-Management-Lösung für REDAXO CMS – Konvertierung, Trimmi
 - **Metadaten-Erhaltung** (Titel, Beschreibung, Copyright)
 - **Kompressionsanzeige** zeigt eingesparten Speicherplatz
 - **Auto-Cleanup** für Originaldateien nach erfolgreicher Konvertierung
+- **🆕 Vorgefertigte Presets** für Web, Mobile, Archive und Standard-Konvertierungen
+- **🆕 Command-Vorschau** zeigt das generierte FFmpeg-Kommando in Echtzeit
+- **🆕 Direkte Command-Eingabe** ohne separate Textarea
 
 ### 🆕 Video-Trimmer
 - **Präzises Schneiden** direkt im Browser
@@ -310,27 +313,20 @@ ffmpeg -y -i INPUT -vcodec h264 OUTPUT.mp4
 - MIME-Types in der Datenbank prüfen
 - Browser-Unterstützung für Video-Format
 
-## 📝 Changelog v3.0
+## 📝 Changelog v4.0
 
 ### Neue Features
-- ✅ Video-Trimmer mit Browser-Integration
-- ✅ Video-Informationen mit detaillierter Analyse
-- ✅ Video-Thumbnails über Media Manager (VideoPreview-Integration)
-- ✅ PHP-API für Module und Templates
-- ✅ Responsive Design für alle Seiten
-- ✅ Keyboard-Shortcuts für besseren Workflow
-- ✅ Web-Optimierung-Scanner mit Score-System
-- ✅ Mobile-Optimierung-Checker
-- ✅ Hilfe-Seite mit kompletter Dokumentation
-- ✅ Video-Galerie-Template mit Thumbnail-Support
-- ⚠️ Conflict-Regel: VideoPreview-Addon nicht mehr kompatibel (Funktionalität integriert)
+- ✅ **Video-Konverter Presets** – Vorgefertigte Konvertierungsvorlagen (Web, Mobile, Archive, Standard)
+- ✅ **Command-Vorschau** – Echtzeit-Anzeige des generierten FFmpeg-Kommandos
+- ✅ **Verbesserte UI** – Direkte Command-Eingabe ohne separate Textarea
+- ✅ **Type Hints & Statische Analyse** – Vollständige PHPStan/PSalm-Kompatibilität
+- ✅ **Bugfixes** – Preset-Override, Video-Mapping, Transparenzen behoben
 
 ### Verbesserungen
-- ✅ Alle Video-Typen im Trimmer unterstützt
-- ✅ Intelligente Dateinamen-Generierung
-- ✅ Layout-Fixes für lange Dateinamen
-- ✅ Erweiterte MIME-Type-Unterstützung
-- ✅ Bessere Fehlerbehandlung
+- ✅ Code-Qualität mit REDAXO Core Methods (`rex_file`, `rex_media_service`, `rex_logger`)
+- ✅ Performance-Optimierungen in VideoInfo-Klasse
+- ✅ Erweiterte Fehlerbehandlung und Logging
+- ✅ Debug-Endpunkt für Konvertierungsprozesse
 
 ## 📄 Lizenz
 

@@ -54,6 +54,24 @@ ffmpeg_already_converted = Already converted
 
 ffmpeg_config_save = Save settings
 ffmpeg_config_saved = Settings have been saved!
+ffmpeg_config_preset = Preset
+config_preset = Preset
+config_preset_none = None
+config_preset_web = Web (balanced)
+config_preset_mobile = Mobile (lower quality, smaller)
+config_preset_archive = Archive (high quality, larger)
+config_preset_custom = Custom
+config_preset_custom_command = Custom command
+config_preset_help = Preset selects a predefined FFmpeg command. The command field is prefilled accordingly. If you select 'custom', edit the command manually in the field above. You can always edit the command directly.
+config_preset_web_desc = Example: ffmpeg -y -i INPUT -c:v libx264 -preset slow -crf 28 -c:a aac -b:a 128k OUTPUT.mp4 (balanced web)
+config_preset_mobile_desc = Example: ffmpeg -y -i INPUT -c:v libx264 -preset veryfast -crf 30 -c:a aac -b:a 96k -vf scale=-2:720 OUTPUT.mp4 (mobile)
+config_preset_archive_desc = Example: ffmpeg -y -i INPUT -c:v libx264 -preset veryslow -crf 22 -c:a copy OUTPUT.mp4 (archive)
+config_preset_custom_desc = Your own custom ffmpeg command; use placeholders INPUT and OUTPUT.
+config_preset_standard = Default (legacy)
+config_preset_standard_desc = Example: ffmpeg -y -i INPUT -vcodec h264 OUTPUT.mp4 (standard/default)
+config_command_help = The actual FFmpeg command executed. Placeholders: INPUT, OUTPUT
+config_preview_label = Effective FFmpeg command preview
+config_preset_priority = Priority: preset (unless preset=custom) > command field
 ffmpeg_execute = Convert video
 
 # Video Trimmer
