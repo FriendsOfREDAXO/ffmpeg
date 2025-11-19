@@ -54,6 +54,23 @@ ffmpeg_already_converted = Bereits konvertiert
 
 ffmpeg_config_save = Einstellungen speichern
 ffmpeg_config_saved = Einstellungen wurden gespeichert!
+config_preset = Preset
+config_preset_none = Keine
+config_preset_web = Web (ausgewogen)
+config_preset_mobile = Mobile (kleiner, geringere Qualität)
+config_preset_archive = Archiv (hohe Qualität)
+config_preset_custom = Benutzerdefiniert
+config_preset_custom_command = Benutzerdefinierter Befehl
+config_preset_help = Preset wählt einen vordefinierten FFmpeg-Befehl. Das Kommandofeld wird entsprechend vorbefüllt. Bei Auswahl von 'Benutzerdefiniert' bearbeite das Kommandofeld oben manuell. Du kannst das Kommando jederzeit direkt ändern.
+config_preset_web_desc = Beispiel: ffmpeg -y -i INPUT -c:v libx264 -preset slow -crf 28 -c:a aac -b:a 128k OUTPUT.mp4 (ausgewogen)
+config_preset_mobile_desc = Beispiel: ffmpeg -y -i INPUT -c:v libx264 -preset veryfast -crf 30 -c:a aac -b:a 96k -vf scale=-2:720 OUTPUT.mp4 (mobil)
+config_preset_archive_desc = Beispiel: ffmpeg -y -i INPUT -c:v libx264 -preset veryslow -crf 22 -c:a copy OUTPUT.mp4 (archiv)
+config_preset_custom_desc = Eigener FFmpeg-Befehl; Verwende Platzhalter INPUT und OUTPUT.
+config_preset_standard = Standard (Legacy)
+config_preset_standard_desc = Beispiel: ffmpeg -y -i INPUT -vcodec h264 OUTPUT.mp4 (Standard/Legacy)
+config_command_help = Das auszuführende FFmpeg-Kommando. Platzhalter: INPUT, OUTPUT
+config_preview_label = Vorschau des effektiven FFmpeg-Kommandos
+config_preset_priority = Priorität: Preset (außer preset=custom) > Kommando-Feld
 ffmpeg_execute = Video konvertieren
 
 # Video-Trimmer

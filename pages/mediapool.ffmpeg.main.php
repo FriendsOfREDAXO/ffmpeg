@@ -31,11 +31,13 @@ $allMediaFiles = $sql->getArray('SELECT id, filename, filesize, updatedate, titl
 $allVideos = [];
 $optimizedVideosMapping = [];
 
-// Zuerst alle optimierten Videos sammeln
+// Zuerst alle optimierten Videos sammeln (Mapping per Basename ohne Extension)
 foreach ($allMediaFiles as $media) {
     if (strpos($media['filename'], 'web_') === 0) {
-        $originalName = substr($media['filename'], 4);
-        $optimizedVideosMapping[$originalName] = $media;
+        // Verwende den Basename (ohne Dateiendung) als Schlüssel, damit verschiedene
+        // Extensions (z.B. mov -> mp4) erkannt werden
+        $originalBase = pathinfo(substr($media['filename'], 4), PATHINFO_FILENAME);
+        $optimizedVideosMapping[$originalBase] = $media;
     }
 }
 
@@ -46,9 +48,11 @@ foreach ($allMediaFiles as $media) {
     // Nur Originalvideos in die Liste aufnehmen (keine "web_"-Versionen)
     if (!$isOptimized) {
         $originalName = $media['filename'];
+        $originalBase = pathinfo($originalName, PATHINFO_FILENAME);
         $isProcessing = $conversionActive && isset($conversionInfo['video']) && $conversionInfo['video'] === $originalName;
-        $isAlreadyConverted = isset($optimizedVideosMapping[$originalName]);
-        $optimizedData = $isAlreadyConverted ? $optimizedVideosMapping[$originalName] : null;
+        // Prüfe anhand des Basename (ohne Extension), dann werden .mov -> .mp4 Varianten erkannt
+        $isAlreadyConverted = isset($optimizedVideosMapping[$originalBase]);
+        $optimizedData = $isAlreadyConverted ? $optimizedVideosMapping[$originalBase] : null;
         
         // Kompressionsrate berechnen, wenn konvertierte Version existiert
         $compressionRate = 0;

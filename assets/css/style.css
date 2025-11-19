@@ -31,8 +31,9 @@
 }
 
 .already-converted {
-    opacity: 0.7;
-    background-color: rgba(var(--rex-color-success-rgb, 92, 184, 92), .1);
+    /* Previously used opacity to indicate converted items — this reduced text contrast.
+       Use a subtle background color instead for clarity and accessibility. */
+    background-color: rgba(var(--rex-color-success-rgb, 92, 184, 92), .08);
     border-radius: 5px;
 }
 

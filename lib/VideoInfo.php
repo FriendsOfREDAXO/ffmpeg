@@ -22,9 +22,9 @@ class VideoInfo
      * Video-Informationen für eine Datei ermitteln
      * 
      * @param string $filename Dateiname im Medienpool (z.B. "mein_video.mp4")
-     * @return array|null Array mit Video-Informationen oder null bei Fehler
+     * @return array<string, mixed>|null Array mit Video-Informationen oder null bei Fehler
      */
-    public static function getInfo($filename)
+    public static function getInfo($filename): ?array
     {
         // Prüfen ob Datei existiert
         $videoPath = rex_path::media($filename);
@@ -34,6 +34,7 @@ class VideoInfo
         
         // Prüfen ob FFmpeg verfügbar ist
         if (!self::isFFmpegAvailable()) {
+            \rex_logger::factory()->log('warning', 'FFmpeg not available for VideoInfo::getInfo {file}', ['file' => $filename]);
             return null;
         }
         
@@ -44,9 +45,9 @@ class VideoInfo
      * Kurze Video-Informationen für Template-Verwendung
      * 
      * @param string $filename Dateiname im Medienpool
-     * @return array|null Vereinfachte Video-Daten
+     * @return array<string, mixed>|null Vereinfachte Video-Daten
      */
-    public static function getBasicInfo($filename)
+    public static function getBasicInfo($filename): ?array
     {
         $info = self::getInfo($filename);
         if (!$info) {
@@ -106,9 +107,9 @@ class VideoInfo
      * Prüfen ob Video für Web optimiert ist
      * 
      * @param string $filename Dateiname im Medienpool
-     * @return array Optimierungsstatus mit Empfehlungen
+     * @return array<string, mixed> Optimierungsstatus mit Empfehlungen
      */
-    public static function getOptimizationStatus($filename)
+    public static function getOptimizationStatus($filename): array
     {
         $info = self::getInfo($filename);
         if (!$info) {
@@ -199,10 +200,10 @@ class VideoInfo
      * Responsive Video-HTML mit Thumbnail generieren
      * 
      * @param string $filename Dateiname im Medienpool
-     * @param array $options Optionen (poster, controls, autoplay, etc.)
+     * @param array<string, mixed> $options Optionen (poster, controls, autoplay, etc.)
      * @return string|null HTML-Code oder null
      */
-    public static function getVideoHtml($filename, $options = [])
+    public static function getVideoHtml($filename, $options = []): ?string
     {
         if (!rex_media::get($filename)) {
             return null;
@@ -257,20 +258,22 @@ class VideoInfo
      * 
      * @param string $videoPath Vollständiger Pfad zur Video-Datei
      * @param string $filename Original-Dateiname
-     * @return array|null Video-Informationen
+     * @return array<string, mixed>|null Video-Informationen
      */
-    private static function extractVideoInfo($videoPath, $filename)
+    private static function extractVideoInfo($videoPath, $filename): ?array
     {
         // FFprobe für detaillierte Video-Informationen verwenden
         $cmd = 'ffprobe -v quiet -print_format json -show_format -show_streams ' . escapeshellarg($videoPath);
         $output = shell_exec($cmd);
         
         if (!$output) {
+            \rex_logger::factory()->log('warning', 'ffprobe returned no output for {file}', ['file' => $filename, 'cmd' => $cmd]);
             return null;
         }
         
         $data = json_decode($output, true);
         if (!$data) {
+            \rex_logger::factory()->log('warning', 'Could not json decode ffprobe output for {file}', ['file' => $filename]);
             return null;
         }
         
@@ -311,11 +314,12 @@ class VideoInfo
     /**
      * Dauer formatieren (HH:MM:SS oder MM:SS)
      */
-    private static function formatDuration($seconds)
+    private static function formatDuration(float $seconds): string
     {
-        $hours = floor($seconds / 3600);
-        $minutes = floor(($seconds % 3600) / 60);
-        $seconds = $seconds % 60;
+        // Use fmod to avoid implicit float->int conversion warnings with the % operator
+        $hours = (int) floor($seconds / 3600);
+        $minutes = (int) floor(fmod($seconds, 3600) / 60);
+        $seconds = (int) floor(fmod($seconds, 60));
         
         if ($hours > 0) {
             return sprintf('%02d:%02d:%02d', $hours, $minutes, $seconds);
@@ -327,7 +331,7 @@ class VideoInfo
     /**
      * Seitenverhältnis berechnen
      */
-    private static function calculateAspectRatio($width, $height)
+    private static function calculateAspectRatio(int $width, int $height): string
     {
         if (!$width || !$height) return 'Unbekannt';
         
@@ -362,21 +366,23 @@ class VideoInfo
     /**
      * Framerate berechnen
      */
-    private static function calculateFramerate($rFrameRate)
+    private static function calculateFramerate(string $rFrameRate): float
     {
         if (strpos($rFrameRate, '/') !== false) {
             list($num, $den) = explode('/', $rFrameRate);
+            $num = (int) $num;
+            $den = (int) $den;
             if ($den > 0) {
                 return round($num / $den, 2);
             }
         }
-        return 0;
+        return 0.0;
     }
     
     /**
      * Bitrate formatieren
      */
-    private static function formatBitrate($bitrate)
+    private static function formatBitrate(int $bitrate): string
     {
         if ($bitrate >= 1000000) {
             return round($bitrate / 1000000, 1) . ' Mbps';
@@ -388,8 +394,10 @@ class VideoInfo
     
     /**
      * Optimierungs-Score berechnen (0-100)
+     * 
+     * @param array<string, mixed> $info Video-Informationen
      */
-    private static function calculateOptimizationScore($info)
+    private static function calculateOptimizationScore(array $info): int
     {
         $score = 100;
         

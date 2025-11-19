@@ -1,5 +1,5 @@
 package: ffmpeg
-version: '3.3.0'
+version: '4.0.0'
 author: Friends Of REDAXO
 supportpage: https://github.com/FriendsOfREDAXO/
 
@@ -32,7 +32,7 @@ pages:
                 perm: ffmpeg[config]
                 icon: rex-icon fa-wrench
 default_config:
-    command: 'ffmpeg -y -i INPUT -vcodec h264   OUTPUT.mp4'
+    command: 'ffmpeg -y -i INPUT -vcodec h264 OUTPUT.mp4'
 
 requires:
     redaxo: '^5.18.1'
