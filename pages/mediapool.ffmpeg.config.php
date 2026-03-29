@@ -150,7 +150,8 @@ $select->setName('config[mediapool_category_id]');
 $select->addOption($this->i18n('mediapool_category_empty'), 0);
 
 $sql = rex_sql::factory();
-$sql->setQuery('SELECT id, name FROM rex_media_category ORDER BY name');
+$table = rex::getTable('media_category');
+$sql->setQuery('SELECT id, name FROM ' . $table . ' ORDER BY name');
 foreach ($sql as $row) {
     $select->addOption($row->getValue('name'), $row->getValue('id'));
 }
