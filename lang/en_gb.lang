@@ -73,6 +73,10 @@ config_command_help = The actual FFmpeg command executed. Placeholders: INPUT, O
 config_preview_label = Effective FFmpeg command preview
 config_preset_priority = Priority: preset (unless preset=custom) > command field
 ffmpeg_execute = Convert video
+mediapool_category_id = Category ID for converted videos (default: 0 for "No category")
+mediapool_category_empty = No category
+mediapool_category = Media pool category
+mediapool_category_description = Choose the category in which the converted videos should be stored. Default is "No category" (ID 0).
 
 # Video Trimmer
 ffmpeg_trimmer_select_video = Select video to cut
