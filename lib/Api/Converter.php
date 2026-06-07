@@ -757,7 +757,7 @@ class Converter extends rex_api_function
                 'name' => pathinfo($outputFile, PATHINFO_BASENAME),
                 'path' => $outputFile,
             ],
-            'category_id' => 0,
+            'category_id' => (int) rex_addon::get('ffmpeg')->getConfig('mediapool_category_id', 0),
             'title' => '',
         ];
         try {

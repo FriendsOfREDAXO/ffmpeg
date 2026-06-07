@@ -72,6 +72,10 @@ config_command_help = Das auszuführende FFmpeg-Kommando. Platzhalter: INPUT, OU
 config_preview_label = Vorschau des effektiven FFmpeg-Kommandos
 config_preset_priority = Priorität: Preset (außer preset=custom) > Kommando-Feld
 ffmpeg_execute = Video konvertieren
+mediapool_category_id = Kategorie-ID für konvertierte Videos (Standard: 0 für "Keine Kategorie")
+mediapool_category_empty = Keine Kategorie
+mediapool_category = Medienpool-Kategorie
+mediapool_category_description = Kategorie im Medienpool, in der die konvertierten Videos abgelegt werden sollen. Standard ist "Keine Kategorie" (ID 0).
 
 # Video-Trimmer
 ffmpeg_trimmer_select_video = Video zum Schneiden auswählen
