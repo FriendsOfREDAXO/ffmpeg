@@ -159,14 +159,15 @@ if (empty($allVideos)) {
         
         // Wenn konvertierte Version existiert, Link zum optimierten Video und dessen Titel anzeigen
         if ($video['isAlreadyConverted']) {
-            // Titel der optimierten Version anzeigen, falls vorhanden
-            $optimizedTitle = '';
-            if (!empty($video['optimizedData']['title'])) {
-                $optimizedTitle = ' <small class="text-muted">(' . $video['optimizedData']['title'] . ')</small>';
+            $optimizedFormat = '';
+            if (isset($video['optimizedData']['filename']) && is_string($video['optimizedData']['filename'])) {
+                $optimizedFormat = strtoupper((string) pathinfo($video['optimizedData']['filename'], PATHINFO_EXTENSION));
             }
+
+            $webVariantLabel = 'Web' . ('' !== $optimizedFormat ? ' (' . $optimizedFormat . ')' : '');
             
             $item .= '<div class="video-actions-group">';
-            $item .= '<a href="' . rex_url::backendPage('mediapool/media', ['file_id' => $video['optimizedData']['id']]) . '" class="btn btn-xs btn-success" title="Optimierte Version im Medienpool anzeigen"><i class="fa fa-video" aria-hidden="true"></i> Web-Version' . $optimizedTitle . '</a> ';
+            $item .= '<a href="' . rex_url::backendPage('mediapool/media', ['file_id' => $video['optimizedData']['id']]) . '" class="btn btn-xs btn-success" title="Optimierte Version im Medienpool anzeigen"><i class="fa fa-video" aria-hidden="true"></i> ' . rex_escape($webVariantLabel) . '</a> ';
             $item .= '<button type="button" class="btn btn-xs btn-success ffmpeg-preview-link" data-media-url="' . rex_escape(rex_url::media($video['optimizedData']['filename'])) . '" data-preview-label="' . rex_escape($this->i18n('ffmpeg_preview_optimized')) . '" data-video-title="' . rex_escape(!empty($video['optimizedData']['title']) ? $video['optimizedData']['title'] : $video['optimizedData']['filename']) . '"><i class="fa fa-play-circle" aria-hidden="true"></i> ' . $this->i18n('ffmpeg_preview_optimized_button') . '</button>';
             $item .= '</div>';
         }
