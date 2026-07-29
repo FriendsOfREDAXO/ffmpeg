@@ -7,13 +7,6 @@ $buttons = '';
 
 $csrfToken = rex_csrf_token::factory('ffmpeg');
 
-// Video-Parameter aus URL auslesen (für Direktlinks aus Vidstack)
-$preselectedVideo = rex_request('video', 'string');
-// HTML-Entity-Dekodierung für URLs mit &amp;
-if (empty($preselectedVideo)) {
-    $preselectedVideo = html_entity_decode(rex_request('video', 'string'));
-}
-
 // Prüfen, ob eine aktive Konvertierung läuft
 $conversionActive = false;
 $conversionInfo = [];
@@ -79,13 +72,13 @@ if (empty($allVideos)) {
     echo rex_view::info($this->i18n('ffmpeg_no_videos_found'));
 } else {
     // Videos in der konsolidierten Liste anzeigen
-    $content .= '<h3>' . $this->i18n('ffmpeg_convert_info') . '</h3>';
+    $content .= '<div class="ffmpeg-intro-card">' . $this->i18n('ffmpeg_convert_info') . '</div>';
     
     if ($conversionActive) {
         $content .= rex_view::warning($this->i18n('ffmpeg_conversion_in_progress'));
     }
     
-    $content .= '<fieldset><legend>' . $this->i18n('legend_video') . '</legend>';
+    $content .= '<fieldset class="ffmpeg-video-list"><legend>' . $this->i18n('legend_video') . '</legend>';
     
     $videoItems = [];
     foreach ($allVideos as $key => $video) {
@@ -105,16 +98,23 @@ if (empty($allVideos)) {
         if (!empty($video['title'])) {
             $videoTitle = '<div class="video-title">' . $video['title'] . '</div>';
         }
+
+        $inlineStatusDisplay = 'block';
+        $inlineLog = '';
+        if ($video['isProcessing'] && isset($conversionInfo['log']) && is_string($conversionInfo['log'])) {
+            $inlineLog = rex_escape($conversionInfo['log']);
+        }
+
+        $statusText = $video['isProcessing']
+            ? $this->i18n('ffmpeg_status_processing')
+            : ($video['isAlreadyConverted'] ? $this->i18n('ffmpeg_status_converted') : $this->i18n('ffmpeg_status_ready'));
         
         $item = '
-        <div class="video-item' . $statusClass . '">
-            <label>
-                <input class="mycheckbox" id="v' . $key . '" type="radio" name="video" value="' . $video['filename'] . '" data-video="' . $video['filename'] . '"' . 
-                (($conversionActive || $video['isAlreadyConverted']) ? ' disabled' : '') . 
-                ($preselectedVideo === $video['filename'] ? ' checked' : '') . '> 
-                <strong>' . $video['filename'] . '</strong>
+        <div class="video-item' . $statusClass . '" data-video-item="' . rex_escape($video['filename']) . '">
+            <div class="video-head">
+                <strong class="video-filename">' . $video['filename'] . '</strong>
                 ' . $statusBadge . '
-            </label>
+            </div>
             ' . $videoTitle . '
             <div class="video-meta">
                 <span class="video-size"><i class="fa fa-file" aria-hidden="true"></i> ' . rex_formatter::bytes($video['filesize']) . '</span>
@@ -127,11 +127,23 @@ if (empty($allVideos)) {
         
         $item .= '</div>';
         
-        // Aktionsbereich für Links
+        // Aktionsbereich für Konvertierung und Links
         $item .= '<div class="video-actions">';
+
+        $canConvert = !$video['isAlreadyConverted'] && !$video['isProcessing'];
+        if ($canConvert) {
+            $item .= '<div class="video-actions-group video-actions-group-primary">';
+            $item .= '<button class="btn btn-xs btn-primary ffmpeg-start-conversion" type="button" data-video="' . rex_escape($video['filename']) . '"' . ($conversionActive ? ' disabled' : '') . '><i class="fa fa-cogs" aria-hidden="true"></i> ' . $this->i18n('ffmpeg_convert_this_video') . '</button>';
+            $item .= '</div>';
+        }
+
+        $item .= '<div class="video-actions-group">';
         
         // Link zum Original im Medienpool
         $item .= '<a href="' . rex_url::backendPage('mediapool/media', ['file_id' => $video['id']]) . '" class="btn btn-xs btn-default" title="Original im Medienpool anzeigen"><i class="fa fa-film" aria-hidden="true"></i> Original</a> ';
+        
+        $item .= '<button type="button" class="btn btn-xs btn-info ffmpeg-preview-link" data-media-url="' . rex_escape(rex_url::media($video['filename'])) . '" data-preview-label="' . rex_escape($this->i18n('ffmpeg_preview_original')) . '" data-video-title="' . rex_escape(!empty($video['title']) ? $video['title'] : $video['filename']) . '"><i class="fa fa-play-circle" aria-hidden="true"></i> ' . $this->i18n('ffmpeg_preview') . '</button>';
+        $item .= '</div>';
         
         // Wenn konvertierte Version existiert, Link zum optimierten Video und dessen Titel anzeigen
         if ($video['isAlreadyConverted']) {
@@ -141,43 +153,49 @@ if (empty($allVideos)) {
                 $optimizedTitle = ' <small class="text-muted">(' . $video['optimizedData']['title'] . ')</small>';
             }
             
-            $item .= '<a href="' . rex_url::backendPage('mediapool/media', ['file_id' => $video['optimizedData']['id']]) . '" class="btn btn-xs btn-success" title="Optimierte Version im Medienpool anzeigen"><i class="fa fa-video" aria-hidden="true"></i> Web-Version' . $optimizedTitle . '</a>';
+            $item .= '<div class="video-actions-group">';
+            $item .= '<a href="' . rex_url::backendPage('mediapool/media', ['file_id' => $video['optimizedData']['id']]) . '" class="btn btn-xs btn-success" title="Optimierte Version im Medienpool anzeigen"><i class="fa fa-video" aria-hidden="true"></i> Web-Version' . $optimizedTitle . '</a> ';
+            $item .= '<button type="button" class="btn btn-xs btn-success ffmpeg-preview-link" data-media-url="' . rex_escape(rex_url::media($video['optimizedData']['filename'])) . '" data-preview-label="' . rex_escape($this->i18n('ffmpeg_preview_optimized')) . '" data-video-title="' . rex_escape(!empty($video['optimizedData']['title']) ? $video['optimizedData']['title'] : $video['optimizedData']['filename']) . '"><i class="fa fa-play-circle" aria-hidden="true"></i> ' . $this->i18n('ffmpeg_preview_optimized_button') . '</button>';
+            $item .= '</div>';
         }
         
         $item .= '</div>';
+
+        $item .= '<div class="video-inline-status" style="display:' . $inlineStatusDisplay . ';" data-running-label="' . rex_escape($this->i18n('ffmpeg_status_processing')) . '">';
+        $item .= '<div class="video-inline-main" style="display:' . ($video['isProcessing'] ? 'flex' : 'none') . ';">';
+        $item .= '<div class="video-inline-donut" style="--progress:' . ($video['isProcessing'] ? '99' : '0') . ';">';
+        $item .= '<span class="video-inline-donut-value">' . ($video['isProcessing'] ? '99%' : '0%') . '</span>';
+        $item .= '</div>';
+        $item .= '<div class="video-inline-status-meta">';
+        $item .= '<span class="video-inline-status-text">' . $this->i18n('ffmpeg_status_processing') . '</span>';
+        $item .= '<button type="button" class="btn btn-xs btn-link ffmpeg-toggle-inline-log" aria-expanded="false" data-show-label="' . rex_escape($this->i18n('ffmpeg_show_log')) . '" data-hide-label="' . rex_escape($this->i18n('ffmpeg_hide_log')) . '">' . $this->i18n('ffmpeg_show_log') . '</button>';
+        $item .= '</div>';
+        $item .= '</div>';
+        $item .= '<div class="video-inline-log" style="display:none;"><pre>' . $inlineLog . '</pre></div>';
+
+        $statusClass = $video['isAlreadyConverted'] ? 'is-converted' : 'is-ready';
+        $statusIcon = $video['isAlreadyConverted'] ? 'fa-check-circle' : 'fa-clock-o';
+        $item .= '<span class="video-inline-status-static ' . $statusClass . '" style="display:' . ($video['isProcessing'] ? 'none' : 'inline-flex') . ';"><i class="fa ' . $statusIcon . '" aria-hidden="true"></i> ' . $statusText . '</span>';
+        $item .= '</div>';
+
         $item .= '</div>';
         
         $videoItems[] = $item;
     }
     
-    $formElements = [];
-    $n = [];
-    $n['label'] = '<label></label>';
-    $n['field'] = implode('', $videoItems);
-    $formElements[] = $n;
-    $fragment = new rex_fragment();
-    $fragment->setVar('elements', $formElements, false);
-    $content .= $fragment->parse('core/form/container.php');
+    $content .= '<div class="ffmpeg-list-head">'
+        . '<span>' . $this->i18n('ffmpeg_col_file') . '</span>'
+        . '<span>' . $this->i18n('ffmpeg_col_info') . '</span>'
+        . '<span>' . $this->i18n('ffmpeg_col_actions') . '</span>'
+        . '<span>' . $this->i18n('ffmpeg_col_status') . '</span>'
+        . '</div>';
+    $content .= '<div class="ffmpeg-video-items">' . implode('', $videoItems) . '</div>';
     
     $content .= '</fieldset>';
     
-    // Action Buttons
-    $formElements = [];
-    
-    // Convert Button
-    $n = [];
-    $n['field'] = '<button class="btn btn-primary rex-form-aligned btn-start" id="start" type="button" name="save" value="' . $this->i18n('execute') . '"' . ($conversionActive ? ' disabled' : '') . '><i class="fa fa-cogs" aria-hidden="true"></i> ' . $this->i18n('execute') . '</button>';
-    $formElements[] = $n;
-    
-    // Status Button
-    $n = [];
-    $n['field'] = '<button class="btn btn-default rex-form-aligned" id="check_status" type="button" name="check" value="' . $this->i18n('ffmpeg_check_status') . '"><i class="fa fa-refresh" aria-hidden="true"></i> ' . $this->i18n('ffmpeg_check_status') . '</button>';
-    $formElements[] = $n;
-    
-    $fragment = new rex_fragment();
-    $fragment->setVar('elements', $formElements, false);
-    $buttons = $fragment->parse('core/form/submit.php');
-    $buttons = '<fieldset class="rex-form-action">' . $buttons . '</fieldset>';
+    $buttons = '<div class="ffmpeg-footer-actions">'
+        . '<button class="btn btn-default ffmpeg-status-check" id="check_status" type="button" name="check" value="' . $this->i18n('ffmpeg_check_status') . '"><i class="fa fa-refresh" aria-hidden="true"></i> ' . $this->i18n('ffmpeg_check_status') . '</button>'
+        . '</div>';
 
     // Ausgabe Formular
     $fragment = new rex_fragment();
@@ -188,27 +206,27 @@ if (empty($allVideos)) {
     $output = $fragment->parse('core/page/section.php');
 
     $output = '
-    <form action="' . rex_url::currentBackendPage() . '" method="post">
+    <form action="' . rex_url::currentBackendPage() . '" method="post" class="ffmpeg-converter-ui">
         <input type="hidden" name="formsubmit" value="1" />
         ' . $csrfToken->getHiddenField() . '
         ' . $output . '
         
         <div class="rex-page-section progress-section" style="display:' . ($conversionActive ? 'block' : 'none') . ';">
-            <div class="panel panel-info">
-                <div class="conversion-status">
-                    <div class="progress">
-                        <div class="progress-bar progress-bar-striped active" id="prog" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" style="width: ' . ($conversionActive ? '99' : '0') . '%"></div>
+            <div class="panel panel-info ffmpeg-global-status-panel">
+                <div class="conversion-status ffmpeg-global-status">
+                    <div class="video-inline-donut video-inline-donut-global" id="global-progress-donut" style="--progress:' . ($conversionActive ? '99' : '0') . ';">
+                        <span class="video-inline-donut-value" id="global-progress-value">' . ($conversionActive ? '99%' : '0%') . '</span>
                     </div>
                     <div class="conversion-details">
-                        <div class="spinner">
+                        <div class="spinner global-spinner">
                             <div class="bounce1"></div>
                             <div class="bounce2"></div>
                             <div class="bounce3"></div>
                         </div>
-                        <span id="progress-text">' . ($conversionActive ? 'Läuft...' : '0%') . '</span>
+                        <span id="progress-text">' . ($conversionActive ? 'Konvertierung läuft…' : '0%') . '</span>
                     </div>
                 </div>
-                <div id="log" class="log" style="padding:15px;margin:5px 0;"><pre style="height:200px;overflow-y: auto">' . 
+                <div id="log" class="log" style="padding:15px;margin:5px 0;display:none;"><pre style="height:200px;overflow-y: auto">' . 
                 ($conversionActive && isset($conversionInfo['log']) ? $conversionInfo['log'] : '') . 
                 '</pre></div>
             </div>
@@ -216,6 +234,25 @@ if (empty($allVideos)) {
     </form>';
 
     echo $output;
+
+    echo '<div class="modal fade" id="ffmpeg-video-preview-modal" tabindex="-1" role="dialog" aria-labelledby="ffmpeg-video-preview-title" aria-hidden="true">
+        <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Schließen"><span aria-hidden="true">&times;</span></button>
+                    <h4 class="modal-title" id="ffmpeg-video-preview-title">' . $this->i18n('ffmpeg_preview_modal_title') . '</h4>
+                </div>
+                <div class="modal-body">
+                    <div class="ffmpeg-preview-player-wrapper">
+                        <video id="ffmpeg-preview-video" class="ffmpeg-preview-video" controls preload="metadata" playsinline></video>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default" data-dismiss="modal">' . $this->i18n('ffmpeg_preview_modal_close') . '</button>
+                </div>
+            </div>
+        </div>
+    </div>';
     
     // Füge Data-Attribute für JavaScript hinzu
     echo '<div class="rex-addon-output" data-i18n-select-video="' . $this->i18n('ffmpeg_select_video') . '"></div>';

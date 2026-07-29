@@ -16,8 +16,23 @@ rex_api_function::register('ffmpeg_convert', Converter::class);
 if (rex::isBackend() && rex::getUser()) {
     // Add JavaScript to ffmpeg page
     if (rex_be_controller::getCurrentPagePart(2) == 'ffmpeg') {
-        rex_view::addJsFile(rex_addon::get('ffmpeg')->getAssetsUrl('js/script.js'));
-        rex_view::addCssFile(rex_addon::get('ffmpeg')->getAssetsUrl('css/style.css'));
+        $addon = rex_addon::get('ffmpeg');
+
+        $jsUrl = $addon->getAssetsUrl('js/script.js');
+        $cssUrl = $addon->getAssetsUrl('css/style.css');
+
+        $jsPath = $addon->getAssetsPath('js/script.js');
+        if (is_file($jsPath)) {
+            $jsUrl .= '?v=' . (string) filemtime($jsPath);
+        }
+
+        $cssPath = $addon->getAssetsPath('css/style.css');
+        if (is_file($cssPath)) {
+            $cssUrl .= '?v=' . (string) filemtime($cssPath);
+        }
+
+        rex_view::addJsFile($jsUrl);
+        rex_view::addCssFile($cssUrl);
     }
     
     // Create session variables if needed

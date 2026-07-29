@@ -1,4 +1,4 @@
-# REDAXO-AddOn: FFmpeg Video Tools v4.0
+# REDAXO-AddOn: FFmpeg Video Tools v4.1
 
 Vollständige Video-Management-Lösung für REDAXO CMS – Konvertierung, Trimming und detaillierte Video-Analyse, alles in einem Addon!
 
@@ -51,10 +51,11 @@ Vollständige Video-Management-Lösung für REDAXO CMS – Konvertierung, Trimmi
 
 ### Video-Konverter
 1. **Medienpool → Video-Tools → Video-Konverter** öffnen
-2. Video aus der Liste auswählen
-3. "Video konvertieren" klicken
+2. Gewünschtes Video in der tabellarischen Übersicht finden
+3. Direkt am Eintrag auf **"Dieses Video konvertieren"** klicken
 4. **Browser schließen möglich** – Konvertierung läuft weiter
-5. Später "Status prüfen" → Fertig optimiertes Video im Medienpool
+5. Fortschritt direkt am Eintrag verfolgen (Donut + optionales Protokoll)
+6. Später "Status prüfen" → Fertig optimiertes Video im Medienpool
 
 ### Video-Trimmer
 1. **Medienpool → Video-Tools → Video-Trimmer** aufrufen
