@@ -31,8 +31,22 @@ if (rex::isBackend() && rex::getUser()) {
             $cssUrl .= '?v=' . (string) filemtime($cssPath);
         }
 
+        $trimmerJsUrl = $addon->getAssetsUrl('js/trimmer.js');
+        $trimmerJsPath = $addon->getAssetsPath('js/trimmer.js');
+        if (is_file($trimmerJsPath)) {
+            $trimmerJsUrl .= '?v=' . (string) filemtime($trimmerJsPath);
+        }
+
+        $trimmerCssUrl = $addon->getAssetsUrl('css/trimmer.css');
+        $trimmerCssPath = $addon->getAssetsPath('css/trimmer.css');
+        if (is_file($trimmerCssPath)) {
+            $trimmerCssUrl .= '?v=' . (string) filemtime($trimmerCssPath);
+        }
+
         rex_view::addJsFile($jsUrl);
         rex_view::addCssFile($cssUrl);
+        rex_view::addJsFile($trimmerJsUrl);
+        rex_view::addCssFile($trimmerCssUrl);
     }
     
     // Create session variables if needed
