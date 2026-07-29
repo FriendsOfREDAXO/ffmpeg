@@ -1,6 +1,6 @@
 # Changelog
 
-## 4.1.0 - 2026-07-29
+## 4.2.0 - 2026-07-29
 
 ### Neu
 - Video-Konverter-Oberfläche als tabellarisches Desktop-Layout mit klaren Spalten (Datei, Informationen, Aktionen, Status).
