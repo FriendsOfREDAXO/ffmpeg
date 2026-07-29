@@ -25,6 +25,7 @@ if (rex_post('formsubmit', 'string') == '1' && !$csrfToken->isValid()) {
         ['command', 'string'],
         ['delete', 'string'],
         ['preset', 'string'],
+        ['category_id', 'int'],
     ]);
 
     // Keep the same preset mapping as the top-level one — always include the ffmpeg prefix
@@ -108,6 +109,22 @@ $fragment->setVar('elements', $formElements, false);
 $content .= $fragment->parse('core/form/container.php');
 
 $content .= '<p class="help-block">' . $this->i18n('config_preset_help') . '</p>';
+
+$formElements = [];
+$n = [];
+$n['label'] = '<label for="ffmpeg-config-category">' . $this->i18n('config_media_category') . '</label>';
+$select = new rex_media_category_select();
+$select->setId('ffmpeg-config-category');
+$select->setAttribute('class', 'form-control');
+$select->setName('config[category_id]');
+$select->addOption($this->i18n('config_media_category_none'), 0);
+$select->setSelected((int) $this->getConfig('category_id', 0));
+$n['field'] = $select->get();
+$formElements[] = $n;
+$fragment = new rex_fragment();
+$fragment->setVar('elements', $formElements, false);
+$content .= $fragment->parse('core/form/container.php');
+$content .= '<p class="help-block">' . $this->i18n('config_media_category_help') . '</p>';
 
 // Preset descriptions
 $content .= '<ul class="list-unstyled small">';

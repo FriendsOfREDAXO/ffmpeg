@@ -1,8 +1,9 @@
 # Changelog
 
-## 4.1.0 - 2026-07-29
+## 4.3.0 - 2026-07-29
 
 ### Neu
+- Konfigurierbare Medien-Kategorie für den Import konvertierter Dateien im Medienpool.
 - Video-Konverter-Oberfläche als tabellarisches Desktop-Layout mit klaren Spalten (Datei, Informationen, Aktionen, Status).
 - Konvertierung direkt am jeweiligen Dateieintrag über "Dieses Video konvertieren".
 - Vorschau-Modal für Original und Web-Version direkt aus der Liste, inklusive Loop-Schalter.

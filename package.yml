@@ -33,6 +33,7 @@ pages:
                 icon: rex-icon fa-wrench
 default_config:
     command: 'ffmpeg -y -i INPUT -vcodec h264 OUTPUT.mp4'
+    category_id: 0
 
 requires:
     redaxo: '^5.18.1'

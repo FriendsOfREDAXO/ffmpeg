@@ -39,9 +39,12 @@ videopreview_length_label = Snippet length (seconds)
 videopreview_length_notice = Maximum %d seconds. Recommended: 2-3 seconds
 
 ffmpeg_legend_video = Videos to convert
-ffmpeg_convert_info = Please ensure that the video is not currently in use. <br> The converted file will be stored in the media pool under "No category". <br> The conversion runs in the background, you can close the browser. Check the status later to complete the process.
+ffmpeg_convert_info = Please ensure that the video is not currently in use. <br> The converted file will be stored in the media pool in the configured category (or under "No category" if none is selected). <br> The conversion runs in the background, you can close the browser. Check the status later to complete the process.
 ffmpeg_config_legend1 = FFmpeg Settings
 ffmpeg_config_delete = Delete source file after successful compression
+ffmpeg_config_media_category = Media category
+ffmpeg_config_media_category_none = No category
+ffmpeg_config_media_category_help = Select the media category where converted files should be stored in the media pool.
 ffmpeg_command = FFmpeg Command
 ffmpeg_check_status = Check status
 ffmpeg_optimized_videos = Optimized videos
