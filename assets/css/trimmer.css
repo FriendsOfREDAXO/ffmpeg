@@ -1,0 +1,441 @@
+.ffmpeg-trimmer-panel {
+    --ffmpeg-trimmer-table-head-bg: #f4f8fc;
+    --ffmpeg-trimmer-table-head-border: #d6e1ec;
+    --ffmpeg-trimmer-table-head-text: #3b556e;
+    --ffmpeg-trimmer-editor-bg: #ffffff;
+    --ffmpeg-trimmer-editor-text: #23384d;
+    --ffmpeg-trimmer-editor-muted: #5b6f83;
+    --ffmpeg-trimmer-control-bg: #f8fbff;
+    --ffmpeg-trimmer-control-border: #dce5ef;
+    --ffmpeg-trimmer-field-bg: #ffffff;
+    --ffmpeg-trimmer-field-border: #c9d7e6;
+    --ffmpeg-trimmer-field-text: #23384d;
+    --ffmpeg-trimmer-video-border: #d3dde8;
+    --ffmpeg-trimmer-default-btn-bg: #f7faff;
+    --ffmpeg-trimmer-default-btn-border: #d3dde8;
+    --ffmpeg-trimmer-default-btn-text: #23384d;
+    --ffmpeg-trimmer-info-btn-bg: #2f7fd2;
+    --ffmpeg-trimmer-info-btn-border: #276eaf;
+    --ffmpeg-trimmer-info-btn-text: #ffffff;
+    --ffmpeg-trimmer-hud-bg: rgba(17, 25, 34, 0.82);
+    --ffmpeg-trimmer-hud-border: rgba(210, 224, 238, 0.35);
+    --ffmpeg-trimmer-hud-chip-bg: rgba(255, 255, 255, 0.16);
+    --ffmpeg-trimmer-hud-chip-text: #ecf3fa;
+    --ffmpeg-trimmer-hud-text: #ecf3fa;
+    --ffmpeg-trimmer-scrubber-accent: #4ca9ff;
+    border: 1px solid #d6e1ec;
+    border-radius: 12px;
+    box-shadow: 0 10px 28px rgba(21, 32, 43, 0.08);
+    overflow: hidden;
+}
+
+#videoPreviewModal {
+    --ffmpeg-trimmer-modal-bg: #ffffff;
+    --ffmpeg-trimmer-modal-header-bg: #f7faff;
+    --ffmpeg-trimmer-modal-border: #d3dde8;
+    --ffmpeg-trimmer-modal-text: #23384d;
+    --ffmpeg-trimmer-modal-muted: #556b80;
+    --ffmpeg-trimmer-modal-btn-bg: #f7faff;
+    --ffmpeg-trimmer-modal-btn-border: #d3dde8;
+    --ffmpeg-trimmer-modal-btn-text: #23384d;
+}
+
+body.rex-theme-dark .ffmpeg-trimmer-panel {
+    --ffmpeg-trimmer-table-head-bg: #24303b;
+    --ffmpeg-trimmer-table-head-border: #3b4754;
+    --ffmpeg-trimmer-table-head-text: #d6e4f1;
+    --ffmpeg-trimmer-editor-bg: #1f2933;
+    --ffmpeg-trimmer-editor-text: #d6e4f1;
+    --ffmpeg-trimmer-editor-muted: #aebfd0;
+    --ffmpeg-trimmer-control-bg: #24303b;
+    --ffmpeg-trimmer-control-border: #3b4754;
+    --ffmpeg-trimmer-field-bg: #1b242e;
+    --ffmpeg-trimmer-field-border: #425160;
+    --ffmpeg-trimmer-field-text: #d6e4f1;
+    --ffmpeg-trimmer-video-border: #3b4754;
+    --ffmpeg-trimmer-default-btn-bg: #24303b;
+    --ffmpeg-trimmer-default-btn-border: #3b4754;
+    --ffmpeg-trimmer-default-btn-text: #d6e4f1;
+    --ffmpeg-trimmer-info-btn-bg: #2e6faa;
+    --ffmpeg-trimmer-info-btn-border: #265f8f;
+    --ffmpeg-trimmer-info-btn-text: #eaf4ff;
+    --ffmpeg-trimmer-hud-bg: rgba(9, 14, 20, 0.86);
+    --ffmpeg-trimmer-hud-border: rgba(92, 113, 133, 0.45);
+    --ffmpeg-trimmer-hud-chip-bg: rgba(174, 191, 208, 0.2);
+    --ffmpeg-trimmer-hud-chip-text: #e5eff9;
+    --ffmpeg-trimmer-hud-text: #d8e7f6;
+    --ffmpeg-trimmer-scrubber-accent: #65b5ff;
+    border-color: #3b4754;
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
+}
+
+body.rex-theme-dark #videoPreviewModal {
+    --ffmpeg-trimmer-modal-bg: #1f2933;
+    --ffmpeg-trimmer-modal-header-bg: #24303b;
+    --ffmpeg-trimmer-modal-border: #3b4754;
+    --ffmpeg-trimmer-modal-text: #d6e4f1;
+    --ffmpeg-trimmer-modal-muted: #aebfd0;
+    --ffmpeg-trimmer-modal-btn-bg: #24303b;
+    --ffmpeg-trimmer-modal-btn-border: #3b4754;
+    --ffmpeg-trimmer-modal-btn-text: #d6e4f1;
+}
+
+@media (prefers-color-scheme: dark) {
+    body.rex-has-theme:not(.rex-theme-light) .ffmpeg-trimmer-panel {
+        --ffmpeg-trimmer-table-head-bg: #24303b;
+        --ffmpeg-trimmer-table-head-border: #3b4754;
+        --ffmpeg-trimmer-table-head-text: #d6e4f1;
+        --ffmpeg-trimmer-editor-bg: #1f2933;
+        --ffmpeg-trimmer-editor-text: #d6e4f1;
+        --ffmpeg-trimmer-editor-muted: #aebfd0;
+        --ffmpeg-trimmer-control-bg: #24303b;
+        --ffmpeg-trimmer-control-border: #3b4754;
+        --ffmpeg-trimmer-field-bg: #1b242e;
+        --ffmpeg-trimmer-field-border: #425160;
+        --ffmpeg-trimmer-field-text: #d6e4f1;
+        --ffmpeg-trimmer-video-border: #3b4754;
+        --ffmpeg-trimmer-default-btn-bg: #24303b;
+        --ffmpeg-trimmer-default-btn-border: #3b4754;
+        --ffmpeg-trimmer-default-btn-text: #d6e4f1;
+        --ffmpeg-trimmer-info-btn-bg: #2e6faa;
+        --ffmpeg-trimmer-info-btn-border: #265f8f;
+        --ffmpeg-trimmer-info-btn-text: #eaf4ff;
+        --ffmpeg-trimmer-hud-bg: rgba(9, 14, 20, 0.86);
+        --ffmpeg-trimmer-hud-border: rgba(92, 113, 133, 0.45);
+        --ffmpeg-trimmer-hud-chip-bg: rgba(174, 191, 208, 0.2);
+        --ffmpeg-trimmer-hud-chip-text: #e5eff9;
+        --ffmpeg-trimmer-hud-text: #d8e7f6;
+        --ffmpeg-trimmer-scrubber-accent: #65b5ff;
+        border-color: #3b4754;
+        box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
+    }
+
+    body.rex-has-theme:not(.rex-theme-light) #videoPreviewModal {
+        --ffmpeg-trimmer-modal-bg: #1f2933;
+        --ffmpeg-trimmer-modal-header-bg: #24303b;
+        --ffmpeg-trimmer-modal-border: #3b4754;
+        --ffmpeg-trimmer-modal-text: #d6e4f1;
+        --ffmpeg-trimmer-modal-muted: #aebfd0;
+        --ffmpeg-trimmer-modal-btn-bg: #24303b;
+        --ffmpeg-trimmer-modal-btn-border: #3b4754;
+        --ffmpeg-trimmer-modal-btn-text: #d6e4f1;
+    }
+}
+
+.ffmpeg-trimmer-panel .panel-heading {
+    background: linear-gradient(120deg, #1f5ea8, #2f7fd2);
+    border-bottom: 0;
+    color: #fff;
+}
+
+.ffmpeg-trimmer-panel .panel-title {
+    font-weight: 600;
+}
+
+.ffmpeg-trimmer-editor-panel .panel-body {
+    background: var(--ffmpeg-trimmer-editor-bg);
+    color: var(--ffmpeg-trimmer-editor-text);
+    padding: 20px;
+}
+
+.video-trimmer-container {
+    max-width: 980px;
+    margin: 0 auto;
+}
+
+.trimmer-video-stage {
+    position: relative;
+    margin-bottom: 12px;
+}
+
+.trimmer-video {
+    width: 100%;
+    border: 1px solid var(--ffmpeg-trimmer-video-border);
+    border-radius: 12px;
+    background: #0a1017;
+    margin-bottom: 0;
+}
+
+.trimmer-video-hud {
+    position: absolute;
+    left: 12px;
+    right: 12px;
+    bottom: 12px;
+    border: 1px solid var(--ffmpeg-trimmer-hud-border);
+    background: var(--ffmpeg-trimmer-hud-bg);
+    border-radius: 10px;
+    padding: 10px;
+    color: var(--ffmpeg-trimmer-hud-text);
+    backdrop-filter: blur(6px);
+}
+
+.trimmer-video-hud-top {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.trimmer-time-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 8px;
+    border-radius: 999px;
+    background: var(--ffmpeg-trimmer-hud-chip-bg);
+    color: var(--ffmpeg-trimmer-hud-chip-text);
+    font-size: 11px;
+    line-height: 1.3;
+}
+
+.trimmer-time-chip strong {
+    font-weight: 700;
+}
+
+.trimmer-scrubber {
+    width: 100%;
+    margin-bottom: 8px;
+    accent-color: var(--ffmpeg-trimmer-scrubber-accent);
+}
+
+.trimmer-video-hud-controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.trimmer-video-hud-controls .btn {
+    border-radius: 6px;
+}
+
+.trimmer-form {
+    margin-top: 8px;
+}
+
+.video-controls-wrapper {
+    border: 1px solid var(--ffmpeg-trimmer-control-border);
+    border-radius: 12px;
+    background: var(--ffmpeg-trimmer-control-bg);
+    padding: 14px;
+}
+
+.trimmer-range-label {
+    font-size: 14px;
+    font-weight: 700;
+    margin-bottom: 6px;
+    display: block;
+}
+
+.trimmer-duration-hint {
+    margin: 0 0 12px;
+    color: var(--ffmpeg-trimmer-editor-muted);
+    font-size: 12px;
+}
+
+.video-controls-wrapper .control-label {
+    color: var(--ffmpeg-trimmer-editor-text);
+    font-weight: 600;
+    margin-bottom: 5px;
+    display: block;
+}
+
+.video-controls-wrapper .form-control {
+    background: var(--ffmpeg-trimmer-field-bg);
+    border-color: var(--ffmpeg-trimmer-field-border);
+    color: var(--ffmpeg-trimmer-field-text);
+}
+
+.video-controls-wrapper .form-control:focus {
+    border-color: var(--ffmpeg-trimmer-info-btn-border);
+    box-shadow: 0 0 0 2px rgba(47, 127, 210, 0.18);
+}
+
+.video-controls-wrapper .input-group-btn .btn {
+    border-color: var(--ffmpeg-trimmer-info-btn-border);
+}
+
+.video-controls-wrapper .input-group-btn .btn-info,
+.video-controls-wrapper .input-group-btn .trimmer-set-current {
+    background: var(--ffmpeg-trimmer-info-btn-bg);
+    border-color: var(--ffmpeg-trimmer-info-btn-border);
+    color: var(--ffmpeg-trimmer-info-btn-text);
+}
+
+.video-controls-wrapper .input-group-btn .btn-info:hover,
+.video-controls-wrapper .input-group-btn .btn-info:focus,
+.video-controls-wrapper .input-group-btn .trimmer-set-current:hover,
+.video-controls-wrapper .input-group-btn .trimmer-set-current:focus {
+    background: var(--ffmpeg-trimmer-info-btn-border);
+    border-color: var(--ffmpeg-trimmer-info-btn-border);
+    color: var(--ffmpeg-trimmer-info-btn-text);
+}
+
+.video-controls-wrapper .input-group {
+    margin-bottom: 10px;
+}
+
+.trimmer-actions {
+    margin-top: 18px;
+}
+
+.trimmer-actions .btn + .btn {
+    margin-left: 6px;
+}
+
+.trimmer-actions .btn-default {
+    background: var(--ffmpeg-trimmer-default-btn-bg);
+    border-color: var(--ffmpeg-trimmer-default-btn-border);
+    color: var(--ffmpeg-trimmer-default-btn-text);
+}
+
+.trimmer-actions .btn-default:hover,
+.trimmer-actions .btn-default:focus {
+    background: var(--ffmpeg-trimmer-control-bg);
+    border-color: var(--ffmpeg-trimmer-default-btn-border);
+    color: var(--ffmpeg-trimmer-default-btn-text);
+}
+
+.ffmpeg-trimmer-table {
+    margin-bottom: 0;
+}
+
+.ffmpeg-trimmer-table th {
+    background: var(--ffmpeg-trimmer-table-head-bg);
+    border-bottom: 2px solid var(--ffmpeg-trimmer-table-head-border);
+    color: var(--ffmpeg-trimmer-table-head-text);
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.ffmpeg-trimmer-col-file {
+    width: 250px;
+}
+
+.ffmpeg-trimmer-col-size {
+    width: 100px;
+}
+
+.ffmpeg-trimmer-col-date {
+    width: 120px;
+}
+
+.ffmpeg-trimmer-col-actions {
+    width: 180px;
+}
+
+.ffmpeg-trimmer-table .video-filename {
+    max-width: 250px;
+    word-wrap: break-word;
+    word-break: break-all;
+}
+
+.ffmpeg-trimmer-table .filename-truncate {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.ffmpeg-trimmer-table .video-actions .btn {
+    margin-right: 4px;
+}
+
+#videoPreviewModal .modal-content {
+    background: var(--ffmpeg-trimmer-modal-bg);
+    border: 1px solid var(--ffmpeg-trimmer-modal-border);
+    color: var(--ffmpeg-trimmer-modal-text);
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+#videoPreviewModal .modal-header {
+    background: var(--ffmpeg-trimmer-modal-header-bg);
+    border-bottom: 1px solid var(--ffmpeg-trimmer-modal-border);
+}
+
+#videoPreviewModal .modal-title {
+    color: var(--ffmpeg-trimmer-modal-text);
+}
+
+#videoPreviewModal .modal-body {
+    background: var(--ffmpeg-trimmer-modal-bg);
+    color: var(--ffmpeg-trimmer-modal-text);
+    padding: 15px;
+}
+
+#videoPreviewModal .modal-footer {
+    background: var(--ffmpeg-trimmer-modal-bg);
+    border-top: 1px solid var(--ffmpeg-trimmer-modal-border);
+}
+
+#videoPreviewModal .close {
+    color: var(--ffmpeg-trimmer-modal-text);
+    opacity: 0.75;
+}
+
+#videoPreviewModal .close:hover,
+#videoPreviewModal .close:focus {
+    color: var(--ffmpeg-trimmer-modal-text);
+    opacity: 1;
+}
+
+#videoPreviewModal .btn-default {
+    background: var(--ffmpeg-trimmer-modal-btn-bg);
+    border-color: var(--ffmpeg-trimmer-modal-btn-border);
+    color: var(--ffmpeg-trimmer-modal-btn-text);
+}
+
+#videoPreviewModal .btn-default:hover,
+#videoPreviewModal .btn-default:focus {
+    background: var(--ffmpeg-trimmer-modal-header-bg);
+    border-color: var(--ffmpeg-trimmer-modal-btn-border);
+    color: var(--ffmpeg-trimmer-modal-btn-text);
+}
+
+#videoPreviewModal video {
+    width: 100%;
+    max-height: 500px;
+    border: 1px solid #d3dde8;
+    border-radius: 8px;
+    background: #000;
+}
+
+.video-filename-display {
+    margin-top: 10px;
+    font-weight: 600;
+    word-wrap: break-word;
+    font-size: 12px;
+    color: var(--ffmpeg-trimmer-modal-muted);
+}
+
+@media (max-width: 768px) {
+    .ffmpeg-trimmer-editor-panel .panel-body {
+        padding: 14px;
+    }
+
+    .video-trimmer-container {
+        max-width: none;
+        margin: 0;
+    }
+
+    .video-controls-wrapper .row .col-sm-6 {
+        margin-bottom: 14px;
+    }
+
+    .ffmpeg-trimmer-table .video-filename {
+        max-width: 150px;
+    }
+
+    .ffmpeg-trimmer-table .video-actions .btn {
+        margin-bottom: 3px;
+    }
+
+    .trimmer-video-hud {
+        position: static;
+        margin-top: 10px;
+        left: auto;
+        right: auto;
+        bottom: auto;
+    }
+}

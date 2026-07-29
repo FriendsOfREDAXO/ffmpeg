@@ -145,33 +145,57 @@ if (rex_request('debug', 'bool')) {
 if ($videoFile && $videoInfo) {
     // Video-Editor anzeigen
     $content .= '
-    <div class="panel panel-default">
+    <div class="panel panel-default ffmpeg-trimmer-panel ffmpeg-trimmer-editor-panel">
         <div class="panel-heading">
             <h3 class="panel-title">
                 <i class="rex-icon fa-cut"></i> ' . $this->i18n('ffmpeg_trimmer_cut_video') . ': ' . rex_escape($videoInfo['filename']) . '
             </h3>
         </div>
         <div class="panel-body">
-            <div class="video-trimmer-container" style="max-width: 800px; margin: 0 auto;">
-                <video id="trimmer-video" controls style="width: 100%; margin-bottom: 20px;">
-                    <source src="' . rex_url::media($videoFile) . '" type="video/mp4">
-                    ' . $this->i18n('ffmpeg_browser_no_support') . '
-                </video>
-                
-                <form method="post" style="margin-top: 20px;">
+            <div class="video-trimmer-container">
+                <div class="trimmer-video-stage">
+                    <video id="trimmer-video" class="trimmer-video" controls>
+                        <source src="' . rex_url::media($videoFile) . '" type="video/mp4">
+                        ' . $this->i18n('ffmpeg_browser_no_support') . '
+                    </video>
+                    <div class="trimmer-video-hud" aria-label="Video-Steuerung">
+                        <div class="trimmer-video-hud-top">
+                            <span class="trimmer-time-chip">Start <strong id="trimmer-chip-start">0.0s</strong></span>
+                            <span class="trimmer-time-chip">Jetzt <strong id="trimmer-chip-current">0.0s</strong></span>
+                            <span class="trimmer-time-chip">Ende <strong id="trimmer-chip-end">0.0s</strong></span>
+                        </div>
+                        <input id="trimmer-scrubber" class="trimmer-scrubber" type="range" min="0" max="0" step="0.1" value="0" aria-label="Video Position">
+                        <div class="trimmer-video-hud-controls btn-group" role="group" aria-label="Trimmer Schnellsteuerung">
+                            <button type="button" class="btn btn-default btn-sm trimmer-video-control" data-action="seek" data-seconds="-5" title="5 Sekunden zurück">-5s</button>
+                            <button type="button" class="btn btn-default btn-sm trimmer-video-control" data-action="seek" data-seconds="-1" title="1 Sekunde zurück">-1s</button>
+                            <button type="button" class="btn btn-primary btn-sm trimmer-video-control" data-action="toggle-play" title="Abspielen/Pausieren">Play/Pause</button>
+                            <button type="button" class="btn btn-default btn-sm trimmer-video-control" data-action="seek" data-seconds="1" title="1 Sekunde vor">+1s</button>
+                            <button type="button" class="btn btn-default btn-sm trimmer-video-control" data-action="seek" data-seconds="5" title="5 Sekunden vor">+5s</button>
+                            <button type="button" class="btn btn-info btn-sm trimmer-video-control" data-action="mark-start" title="Startzeit setzen">Start setzen</button>
+                            <button type="button" class="btn btn-info btn-sm trimmer-video-control" data-action="mark-end" title="Endzeit setzen">Ende setzen</button>
+                            <button type="button" class="btn btn-success btn-sm trimmer-video-control" data-action="play-selection" title="Ausgewählten Bereich abspielen">Bereich testen</button>
+                            <label class="btn btn-default btn-sm trimmer-loop-toggle-label" style="margin-left: 6px;">
+                                <input type="checkbox" class="trimmer-loop-toggle" data-target="trimmer-video"> ' . $this->i18n('ffmpeg_preview_loop') . '
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <form method="post" class="trimmer-form">
                     ' . $csrf->getHiddenField() . '
                     <input type="hidden" name="video" value="' . rex_escape($videoFile) . '">
                     <input type="hidden" name="action" value="trim">
-                    
+
                     <div class="video-controls-wrapper">
-                        <label class="control-label" style="font-weight: 600; margin-bottom: 15px; display: block;">' . $this->i18n('ffmpeg_trimmer_time_range_label') . '</label>
+                        <label class="control-label trimmer-range-label">' . $this->i18n('ffmpeg_trimmer_time_range_label') . '</label>
+                        <p class="trimmer-duration-hint" id="trimmer-duration-hint">' . str_replace('{0}', '0', $this->i18n('ffmpeg_trimmer_preview')) . '</p>
                         <div class="row">
                             <div class="col-sm-6">
                                 <label class="control-label">' . $this->i18n('ffmpeg_trimmer_start_time') . ':</label>
                                 <div class="input-group">
                                     <input type="number" name="start_time" id="start_time" step="0.1" min="0" class="form-control" required>
                                     <span class="input-group-btn">
-                                        <button type="button" class="btn btn-info" onclick="setCurrentTime(\'start\')" title="' . $this->i18n('ffmpeg_trimmer_set_current') . '">
+                                        <button type="button" class="btn btn-info trimmer-set-current" data-target="start" title="' . $this->i18n('ffmpeg_trimmer_set_current') . '">
                                             <i class="rex-icon fa-clock-o"></i>
                                         </button>
                                     </span>
@@ -182,7 +206,7 @@ if ($videoFile && $videoInfo) {
                                 <div class="input-group">
                                     <input type="number" name="end_time" id="end_time" step="0.1" min="0" class="form-control" required>
                                     <span class="input-group-btn">
-                                        <button type="button" class="btn btn-info" onclick="setCurrentTime(\'end\')" title="' . $this->i18n('ffmpeg_trimmer_set_current') . '">
+                                        <button type="button" class="btn btn-info trimmer-set-current" data-target="end" title="' . $this->i18n('ffmpeg_trimmer_set_current') . '">
                                             <i class="rex-icon fa-clock-o"></i>
                                         </button>
                                     </span>
@@ -190,8 +214,8 @@ if ($videoFile && $videoInfo) {
                             </div>
                         </div>
                     </div>
-                    
-                    <div class="text-center" style="margin-top: 20px;">
+
+                    <div class="text-center trimmer-actions">
                         <button type="submit" class="btn btn-primary">
                             <i class="rex-icon fa-cut"></i> ' . $this->i18n('ffmpeg_trimmer_cut_video') . '
                         </button>
@@ -202,45 +226,11 @@ if ($videoFile && $videoInfo) {
                 </form>
             </div>
         </div>
-    </div>
-    
-    <script>
-    function setCurrentTime(type) {
-        var video = document.getElementById(\'trimmer-video\');
-        var currentTime = video.currentTime;
-        
-        if (type === \'start\') {
-            document.getElementById(\'start_time\').value = currentTime.toFixed(1);
-        } else if (type === \'end\') {
-            document.getElementById(\'end_time\').value = currentTime.toFixed(1);
-        }
-    }
-    
-    // Keyboard shortcuts
-    document.addEventListener(\'keydown\', function(e) {
-        var video = document.getElementById(\'trimmer-video\');
-        
-        if (e.key === \'s\' && e.ctrlKey) {
-            e.preventDefault();
-            setCurrentTime(\'start\');
-        } else if (e.key === \'e\' && e.ctrlKey) {
-            e.preventDefault();
-            setCurrentTime(\'end\');
-        } else if (e.key === \' \') {
-            e.preventDefault();
-            if (video.paused) {
-                video.play();
-            } else {
-                video.pause();
-            }
-        }
-    });
-    </script>';
-    
+    </div>';
 } else {
     // Video-Liste anzeigen
     $content .= '
-    <div class="panel panel-default">
+    <div class="panel panel-default ffmpeg-trimmer-panel ffmpeg-trimmer-list-panel">
         <div class="panel-heading">
             <h3 class="panel-title">
                 <i class="rex-icon fa-cut"></i> ' . $this->i18n('ffmpeg_trimmer') . '
@@ -248,28 +238,27 @@ if ($videoFile && $videoInfo) {
         </div>
         <div class="panel-body">
             <p>' . $this->i18n('ffmpeg_trimmer_select_video') . '</p>';
-    
+
     if (count($videos) > 0) {
         $content .= '
             <div class="table-responsive">
-                <table class="table table-striped">
+                <table class="table table-striped ffmpeg-trimmer-table">
                     <thead>
                         <tr>
-                            <th style="width: 250px;">' . $this->i18n('ffmpeg_trimmer_table_filename') . '</th>
+                            <th class="ffmpeg-trimmer-col-file">' . $this->i18n('ffmpeg_trimmer_table_filename') . '</th>
                             <th>' . $this->i18n('ffmpeg_trimmer_table_title') . '</th>
-                            <th style="width: 100px;">' . $this->i18n('ffmpeg_trimmer_table_size') . '</th>
-                            <th style="width: 120px;">' . $this->i18n('ffmpeg_trimmer_table_date') . '</th>
-                            <th style="width: 180px;">' . $this->i18n('ffmpeg_trimmer_table_actions') . '</th>
+                            <th class="ffmpeg-trimmer-col-size">' . $this->i18n('ffmpeg_trimmer_table_size') . '</th>
+                            <th class="ffmpeg-trimmer-col-date">' . $this->i18n('ffmpeg_trimmer_table_date') . '</th>
+                            <th class="ffmpeg-trimmer-col-actions">' . $this->i18n('ffmpeg_trimmer_table_actions') . '</th>
                         </tr>
                     </thead>
                     <tbody>';
-        
+
         foreach ($videos as $video) {
             $filesize = rex_formatter::bytes($video['filesize']);
             $date = rex_formatter::strftime($video['updatedate'], 'date');
-            // Prepare safe data attributes
             $escapedFilename = rex_escape($video['filename']);
-            
+
             $content .= '
                         <tr>
                             <td class="video-filename" title="' . $escapedFilename . '">
@@ -288,15 +277,13 @@ if ($videoFile && $videoInfo) {
                             </td>
                         </tr>';
         }
-        
+
         $content .= '
                     </tbody>
                 </table>
             </div>';
-        
-        // Add modal for video preview
+
         $content .= '
-            <!-- Video Preview Modal -->
             <div class="modal fade" id="videoPreviewModal" tabindex="-1" role="dialog" aria-labelledby="videoPreviewModalLabel">
                 <div class="modal-dialog modal-lg" role="document">
                     <div class="modal-content">
@@ -307,48 +294,21 @@ if ($videoFile && $videoInfo) {
                             <h4 class="modal-title" id="videoPreviewModalLabel">' . $this->i18n('ffmpeg_trimmer_modal_title') . '</h4>
                         </div>
                         <div class="modal-body">
-                            <video id="modalVideo" controls style="width: 100%; max-height: 500px;">
+                            <video id="modalVideo" controls>
                                 <source id="modalVideoSource" src="" type="video/mp4">
                                 ' . $this->i18n('ffmpeg_browser_no_support') . '
                             </video>
-                            <p class="video-filename-display" style="margin-top: 10px; font-weight: bold;"></p>
+                            <p class="video-filename-display"></p>
                         </div>
                         <div class="modal-footer">
+                            <label class="checkbox-inline" style="margin-right: 15px;">
+                                <input type="checkbox" class="video-preview-loop-toggle" data-preview-target="modalVideo"> ' . $this->i18n('ffmpeg_preview_loop') . '
+                            </label>
                             <button type="button" class="btn btn-default" data-dismiss="modal">' . $this->i18n('ffmpeg_trimmer_modal_close') . '</button>
                         </div>
                     </div>
                 </div>
-            </div>
-            
-            <script>
-            jQuery(document).ready(function($) {
-                // Event delegation for preview buttons
-                $(\'body\').on(\'click\', \'.video-preview-btn\', function() {
-                    var filename = $(this).data(\'filename\');
-                    var modal = $(\'#videoPreviewModal\');
-                    var video = modal.find(\'#modalVideo\')[0];
-                    var source = modal.find(\'#modalVideoSource\')[0];
-                    var filenameDisplay = modal.find(\'.video-filename-display\');
-                    
-                    // Pause video if playing
-                    video.pause();
-                    
-                    // Set new source with proper encoding
-                    source.src = \'' . rex_url::media('') . '\' + encodeURIComponent(filename);
-                    filenameDisplay.text(filename);
-                    
-                    // Load and show modal
-                    video.load();
-                    modal.modal(\'show\');
-                });
-                
-                // Stop video when modal is closed
-                $(\'#videoPreviewModal\').on(\'hidden.bs.modal\', function () {
-                    var video = $(this).find(\'#modalVideo\')[0];
-                    video.pause();
-                });
-            });
-            </script>';
+            </div>';
     } else {
         $content .= '
             <div class="alert alert-info">
@@ -356,96 +316,14 @@ if ($videoFile && $videoInfo) {
                 <p>' . str_replace('{0}', rex_url::backendPage('media'), $this->i18n('ffmpeg_trimmer_upload_videos')) . '</p>
             </div>';
     }
-    
+
     $content .= '
         </div>
     </div>';
 }
 
-// Zusätzliche Styles
-$content .= '
-<style>
-.video-trimmer-container {
-    display: block;
-}
-
-.video-trimmer-container video {
-    border: 1px solid #ddd;
-    border-radius: 4px;
-}
-
-.video-controls-wrapper {
-    width: 100%;
-}
-
-.video-controls-wrapper .control-label {
-    font-weight: 600;
-    margin-bottom: 5px;
-    display: block;
-}
-
-.video-controls-wrapper .input-group {
-    margin-bottom: 10px;
-}
-
-.btn + .btn {
-    margin-left: 5px;
-}
-
-/* Video list table styles */
-.video-filename {
-    max-width: 250px;
-    word-wrap: break-word;
-    word-break: break-all;
-}
-
-.video-filename .filename-truncate {
-    display: block;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.video-actions .btn {
-    margin-right: 3px;
-}
-
-/* Modal styles */
-#videoPreviewModal .modal-body {
-    padding: 15px;
-}
-
-#videoPreviewModal video {
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    background: #000;
-}
-
-.video-filename-display {
-    word-wrap: break-word;
-    font-size: 12px;
-    color: #666;
-}
-
-@media (max-width: 768px) {
-    .video-trimmer-container {
-        max-width: none !important;
-        margin: 0 !important;
-    }
-    
-    .video-controls-wrapper .row .col-sm-6 {
-        margin-bottom: 15px;
-    }
-    
-    .video-filename {
-        max-width: 150px;
-    }
-    
-    .video-actions .btn {
-        margin-bottom: 3px;
-    }
-}
-</style>';
+// Kontext-Daten für Trimmer-JS
+$content .= '<div id="ffmpeg-trimmer-context" data-media-base="' . rex_escape(rex_url::media('')) . '" data-preview-template="' . rex_escape($this->i18n('ffmpeg_trimmer_preview')) . '"></div>';
 
 // Fragment erstellen
 $fragment = new rex_fragment();

@@ -1,4 +1,4 @@
-# REDAXO-AddOn: FFmpeg Video Tools v4.0
+# REDAXO-AddOn: FFmpeg Video Tools v4.1.0
 
 Vollständige Video-Management-Lösung für REDAXO CMS – Konvertierung, Trimming und detaillierte Video-Analyse, alles in einem Addon!
 
@@ -25,7 +25,9 @@ Vollständige Video-Management-Lösung für REDAXO CMS – Konvertierung, Trimmi
 ### 🆕 Video-Trimmer
 - **Präzises Schneiden** direkt im Browser
 - **Verlustfreies Trimming** mit FFmpeg Stream-Copy
-- **Intuitive Bedienung** mit Video-Player-Integration
+- **Intuitive Bedienung** mit Video-Player-Integration, Scrubber und HUD-Steuerung
+- **Bereichstest** für definierte Start-/Endzeit direkt im Player
+- **Loop-Schalter** für einfache Vorschau-Tests
 - **Keyboard-Shortcuts** für professionellen Workflow
 - **Alle Video-Typen** unterstützt (Original + web-optimiert)
 
@@ -51,10 +53,11 @@ Vollständige Video-Management-Lösung für REDAXO CMS – Konvertierung, Trimmi
 
 ### Video-Konverter
 1. **Medienpool → Video-Tools → Video-Konverter** öffnen
-2. Video aus der Liste auswählen
-3. "Video konvertieren" klicken
+2. Gewünschtes Video in der tabellarischen Übersicht finden
+3. Direkt am Eintrag auf **"Dieses Video konvertieren"** klicken
 4. **Browser schließen möglich** – Konvertierung läuft weiter
-5. Später "Status prüfen" → Fertig optimiertes Video im Medienpool
+5. Fortschritt direkt am Eintrag verfolgen (Donut + optionales Protokoll)
+6. Später "Status prüfen" → Fertig optimiertes Video im Medienpool
 
 ### Video-Trimmer
 1. **Medienpool → Video-Tools → Video-Trimmer** aufrufen
@@ -63,7 +66,9 @@ Vollständige Video-Management-Lösung für REDAXO CMS – Konvertierung, Trimmi
 4. **Start-/Endzeit setzen**:
    - Position im Player pausieren
    - "Aktuelle Zeit setzen" klicken (oder Strg+S/E)
-5. "Video schneiden" → Geschnittenes Video als `web_trimmed_*` gespeichert
+5. **Bereich testen** nutzen, um den markierten Abschnitt wiederholt abzuspielen
+6. Optional **Loop-Schalter** aktivieren, damit die Vorschau direkt in Schleife läuft
+7. "Video schneiden" → Geschnittenes Video als `web_trimmed_*` gespeichert
 
 ### Video-Informationen
 1. **Medienpool → Video-Tools → Video-Informationen** öffnen
@@ -229,6 +234,12 @@ echo '</div>';
 - `getAspectRatio($filename)` – Nur Seitenverhältnis
 - `getOptimizationStatus($filename)` – Web-Optimierung mit Score
 - `isMobileOptimized($filename)` – Mobile-Kompatibilität prüfen
+
+## ✨ Neueste Verbesserungen
+- Moderne Vorschau-Modal mit Loop-Option für schnelle Prüfungen
+- Trimmer-UI mit direkt eingebetteten Controls, Scrubber und Bereichstest
+- Theme-optimierte Darstellung für Light-, Dark- und Auto-Theme
+- Zuverlässige Initialisierung im REDAXO-Backend auch nach Navigation ohne kompletten Reload
 
 ## ⚙️ Installation & Konfiguration
 

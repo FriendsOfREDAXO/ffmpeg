@@ -16,6 +16,76 @@
         $('#log pre').scrollTop($('#log pre')[0].scrollHeight);
     }
 
+    function getCurrentVideoItem() {
+        return $('.video-item[data-video-item="' + currentVideoName + '"]').first();
+    }
+
+    function activateInlineStatus(videoName) {
+        if (!videoName) {
+            return;
+        }
+
+        currentVideoName = videoName;
+        $('.video-inline-status').hide();
+        $('.video-item').removeClass('has-inline-status');
+
+        var $item = getCurrentVideoItem();
+        if ($item.length) {
+            $item.addClass('has-inline-status');
+            $item.find('.video-inline-status').show();
+            $item.find('.video-inline-main').css('display', 'flex');
+            $item.find('.video-inline-status-static').hide();
+            $item.find('.video-inline-status-text').text($item.find('.video-inline-status').data('runningLabel') || 'Läuft');
+        }
+    }
+
+    function updateInlineProgress(percent, label) {
+        var $item = getCurrentVideoItem();
+        if (!$item.length) {
+            return;
+        }
+
+        var valueText = Math.max(0, Math.min(100, parseInt(percent, 10) || 0)) + '%';
+        $item.find('.video-inline-donut').css('--progress', String(percent));
+        $item.find('.video-inline-donut-value').text(valueText);
+        $item.find('.video-inline-status-text').removeClass('text-success').text(label || valueText);
+    }
+
+    function updateInlineLog(logText) {
+        var $item = getCurrentVideoItem();
+        if (!$item.length) {
+            return;
+        }
+
+        $item.find('.video-inline-log pre').text(logText || '');
+    }
+
+    function markInlineCompleted() {
+        var $item = getCurrentVideoItem();
+        if (!$item.length) {
+            return;
+        }
+
+        $item.find('.video-inline-donut').css('--progress', '100');
+        $item.find('.video-inline-donut-value').text('100%');
+        $item.find('.video-inline-status-text')
+            .addClass('text-success')
+            .html('<i class="fa fa-check"></i> Fertig!');
+        $item.find('.video-inline-status-static').hide();
+    }
+
+    function updateGlobalProgress(percent, label) {
+        var value = Math.max(0, Math.min(100, parseInt(percent, 10) || 0));
+        $('#global-progress-donut').css('--progress', String(value));
+        $('#global-progress-value').text(value + '%');
+
+        if (label) {
+            $('#progress-text').html(label);
+        } else {
+            $('#progress-text').html(value + '%');
+        }
+    }
+
     function showProgress() {
         $.ajax({
             type: 'get',
@@ -25,7 +95,7 @@
             .fail(function (jqXHR, textStatus) {
                 console.log("Request failed: " + textStatus);
                 $('#log pre').html("Request failed: " + textStatus);
-                $('#start').removeClass('disabled').prop('disabled', false);
+                $('.ffmpeg-start-conversion').removeClass('disabled').prop('disabled', false);
                 clearInterval(doProgress);
                 conversionActive = false;
                 updateUIForConversion(false);
@@ -33,7 +103,7 @@
             .done(function (data) {
                 if (data.error) {
                     $('#log pre').html("Error: " + data.error);
-                    $('#start').removeClass('disabled').prop('disabled', false);
+                    $('.ffmpeg-start-conversion').removeClass('disabled').prop('disabled', false);
                     clearInterval(doProgress);
                     conversionActive = false;
                     updateUIForConversion(false);
@@ -43,6 +113,7 @@
                 // Log aktualisieren
                 $('#log pre').html(data.log);
                 scrolllog();
+                updateInlineLog(data.log || '');
                 
                 // Prüfen, ob das Log auf einen Import-Abschluss hinweist
                 var logText = data.log || '';
@@ -58,8 +129,8 @@
                     showCompleted();
                 } else if (data.status === 'importing') {
                     // Import läuft noch
-                    $('#prog').css('width', '99%');
-                    $('#progress-text').html('Importiere...');
+                    updateGlobalProgress(99, 'Importiere...');
+                    updateInlineProgress(99, 'Importiere...');
                     
                     // Wenn noch nicht gestartet, Import-Prozess starten
                     if (!importStarted) {
@@ -75,6 +146,7 @@
                     if (newProgress > progressValue || progressValue === 0) {
                         progressValue = newProgress;
                         updateProgress(progressValue);
+                        updateInlineProgress(progressValue, progressValue + '%');
                     }
                     
                     // Prüfen auf Abschlusszeichen im Log
@@ -112,13 +184,12 @@
     
     // Fortschrittsanzeige aktualisieren
     function updateProgress(percent) {
-        $('#prog').css('width', percent + '%');
-        $('#progress-text').html(percent + '%');
+        updateGlobalProgress(percent);
     }
     
     // Konvertierung beenden (bei Fehler oder Abbruch)
     function stopConversion() {
-        $('#start').removeClass('disabled').prop('disabled', false);
+        $('.ffmpeg-start-conversion').removeClass('disabled').prop('disabled', false);
         clearInterval(doProgress);
         
         if (completionTimeout) {
@@ -133,13 +204,13 @@
     // Abschluss anzeigen
     function showCompleted() {
         // UI auf 100% setzen
-        $('#prog').css('width', '100%');
-        $('#progress-text').html('100%');
-        $('#start').removeClass('disabled').prop('disabled', false);
+        updateGlobalProgress(100);
+        $('.ffmpeg-start-conversion').removeClass('disabled').prop('disabled', false);
         
         // Erfolgsanimation anzeigen
         $('.spinner').hide();
         $('#progress-text').addClass('text-success').html('<i class="fa fa-check"></i> Fertig!');
+        markInlineCompleted();
         
         // Timer stoppen
         clearInterval(doProgress);
@@ -163,16 +234,17 @@
         if (active) {
             // UI für aktive Konvertierung
             $('.progress-section').show();
-            $('input[name=video]').prop('disabled', true);
-            $('#start').addClass('disabled').prop('disabled', true);
+            $('.ffmpeg-start-conversion').addClass('disabled').prop('disabled', true);
             $('.spinner').show();
             $('#progress-text').removeClass('text-success').html('0%');
+            updateGlobalProgress(0);
             progressValue = 0;
             importStarted = false;
+            activateInlineStatus(currentVideoName);
+            updateInlineProgress(0, '0%');
         } else {
             // UI für inaktive Konvertierung
-            $('input[name=video]').prop('disabled', false);
-            $('#start').removeClass('disabled').prop('disabled', false);
+            $('.ffmpeg-start-conversion').removeClass('disabled').prop('disabled', false);
         }
     }
 
@@ -181,8 +253,8 @@
         console.log("Starting media import process...");
         
         // Fortschrittsanzeige auf 99%
-        $('#prog').css('width', '99%');
-        $('#progress-text').html('Importiere...');
+        updateGlobalProgress(99, 'Importiere...');
+        updateInlineProgress(99, 'Importiere...');
         
         $.ajax({
             type: 'get',
@@ -206,6 +278,7 @@
                 // Log aktualisieren
                 $('#log pre').html(data.log);
                 scrolllog();
+                updateInlineLog(data.log || '');
                 
                 // Prüfen, ob der Import erfolgreich war
                 if (data.status === 'success' || data.log.indexOf('was successfully added to rex_mediapool') !== -1) {
@@ -240,19 +313,15 @@
                     
                     // UI aktualisieren
                     $('.progress-section').show();
-                    $('input[name=video]').prop('disabled', true);
-                    $('#start').addClass('disabled').prop('disabled', true);
+                    $('.ffmpeg-start-conversion').addClass('disabled').prop('disabled', true);
                     
                     // Video-Name speichern
                     if (data.info && data.info.video) {
                         currentVideoName = data.info.video;
+                        activateInlineStatus(currentVideoName);
                         
                         // Markiere das aktive Video in der Liste
-                        $('input[name=video]').each(function() {
-                            if ($(this).data('video') === currentVideoName) {
-                                $(this).closest('.video-item').addClass('processing');
-                            }
-                        });
+                        $('.video-item[data-video-item="' + currentVideoName + '"]').addClass('processing');
                     }
                     
                     if (data.status === 'converting') {
@@ -260,8 +329,8 @@
                         SetProgressStart();
                     } else if (data.status === 'importing') {
                         // Import läuft
-                        $('#prog').css('width', '99%');
-                        $('#progress-text').html('Importiere...');
+                        updateGlobalProgress(99, 'Importiere...');
+                        updateInlineProgress(99, 'Importiere...');
                         
                         if (!importStarted) {
                             importStarted = true;
@@ -296,18 +365,16 @@
                 if (data.info && data.info.log) {
                     $('#log pre').html(data.info.log);
                     scrolllog();
+                    updateInlineLog(data.info.log);
                 }
                 
                 // Video-Name speichern
                 if (data.info && data.info.video) {
                     currentVideoName = data.info.video;
+                    activateInlineStatus(currentVideoName);
                     
                     // Markiere das aktive Video in der Liste
-                    $('input[name=video]').each(function() {
-                        if ($(this).data('video') === currentVideoName) {
-                            $(this).closest('.video-item').addClass('processing');
-                        }
-                    });
+                    $('.video-item[data-video-item="' + currentVideoName + '"]').addClass('processing');
                 }
                 
                 // Starte Fortschrittsanzeige
@@ -325,16 +392,14 @@
         });
     }
 
-    $(document).ready(function () {
+    function initFfmpegConverter() {
         // Bei Seitenladung den Status prüfen
         checkStatus();
         
-        // Start-Button
-        $('#start').on('click', function () {
-            let video = $('input[name=video]:checked').val();
-
-            if (video === undefined) {
-                alert($('.rex-addon-output').data('i18n-select-video') || 'Bitte wählen Sie ein Video zur Konvertierung aus!');
+        // Konvertierung direkt am Video starten
+        $(document).on('click', '.ffmpeg-start-conversion', function () {
+            var video = $(this).data('video');
+            if (!video) {
                 return false;
             }
 
@@ -361,16 +426,64 @@
             return false;
         });
         
-        // Video-Auswahl
-        $('input[name=video]').change(function() {
-            $('.video-item').removeClass('active-video');
-            $(this).closest('.video-item').addClass('active-video');
-            
-            // Aktuell ausgewähltes Video speichern
-            currentVideoName = $(this).val();
+        // Video-Vorschau im Modal öffnen
+        $(document).on('click', '.ffmpeg-preview-link', function (event) {
+            event.preventDefault();
+
+            var mediaUrl = $(this).data('mediaUrl');
+            var previewLabel = $(this).data('previewLabel') || 'Vorschau';
+            var videoTitle = $(this).data('videoTitle') || '';
+
+            if (!mediaUrl) {
+                return;
+            }
+
+            var title = previewLabel + (videoTitle ? ' - ' + videoTitle : '');
+            $('#ffmpeg-video-preview-title').text(title);
+
+            var videoElement = document.getElementById('ffmpeg-preview-video');
+            if (videoElement) {
+                videoElement.pause();
+                videoElement.removeAttribute('src');
+                videoElement.load();
+                videoElement.setAttribute('src', mediaUrl);
+                videoElement.loop = $('.ffmpeg-preview-loop-toggle').is(':checked');
+                videoElement.load();
+            }
+
+            $('#ffmpeg-video-preview-modal').modal('show');
+        });
+
+        $(document).on('change', '.ffmpeg-preview-loop-toggle', function () {
+            var targetId = $(this).data('previewTarget');
+            var videoElement = document.getElementById(targetId);
+            if (videoElement) {
+                videoElement.loop = $(this).is(':checked');
+            }
+        });
+
+        // Inline-Protokoll ein-/ausklappen
+        $(document).on('click', '.ffmpeg-toggle-inline-log', function () {
+            var $button = $(this);
+            var $log = $button.closest('.video-inline-status').find('.video-inline-log');
+            var isVisible = $log.is(':visible');
+            var showLabel = $button.data('showLabel') || 'Protokoll anzeigen';
+            var hideLabel = $button.data('hideLabel') || 'Protokoll ausblenden';
+
+            $log.toggle(!isVisible);
+            $button.attr('aria-expanded', !isVisible ? 'true' : 'false');
+            $button.text(!isVisible ? hideLabel : showLabel);
         });
     });
     
+    $(document).on('rex:ready', function () {
+        initFfmpegConverter();
+    });
+
+    $(document).ready(function () {
+        initFfmpegConverter();
+    });
+
     // Konvertierung starten
     function startConversion(video, confirmOverwrite) {
         let url = 'index.php?rex-api-call=ffmpeg_convert&func=start&video=' + encodeURIComponent(video);
@@ -410,9 +523,11 @@
 
                 // Konvertierung gestartet
                 $('.progress-section').show();
-                $('#prog').css('width', '0%');
-                $('#progress-text').html('0%');
+                updateGlobalProgress(0);
                 $('#log pre').html("Konvertierung gestartet...");
+                activateInlineStatus(video);
+                updateInlineProgress(0, '0%');
+                updateInlineLog('Konvertierung gestartet...');
                 
                 // Fortschrittsüberwachung starten
                 SetProgressStart();
