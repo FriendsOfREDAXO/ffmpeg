@@ -67,6 +67,9 @@ ffmpeg_col_status = Status
 ffmpeg_status_processing = Läuft
 ffmpeg_status_converted = Konvertiert
 ffmpeg_status_ready = Bereit
+ffmpeg_info_original_size = Original
+ffmpeg_info_web_size = Web
+ffmpeg_not_available = -
 
 ffmpeg_config_save = Einstellungen speichern
 ffmpeg_config_saved = Einstellungen wurden gespeichert!

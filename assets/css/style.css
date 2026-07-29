@@ -97,6 +97,18 @@ body.rex-theme-dark .ffmpeg-converter-ui {
     border-color: var(--ffmpeg-border-strong);
 }
 
+.ffmpeg-converter-ui .video-file-date {
+    margin: 2px 0 0;
+    padding: 0 14px;
+    color: var(--ffmpeg-muted);
+    font-size: 11px;
+    line-height: 1.2;
+    opacity: 0.78;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
 .ffmpeg-converter-ui .video-head {
     display: flex;
     align-items: center;
@@ -110,6 +122,11 @@ body.rex-theme-dark .ffmpeg-converter-ui {
     font-size: 15px;
     line-height: 1.3;
     letter-spacing: 0.1px;
+}
+
+.ffmpeg-converter-ui .video-file-cell {
+    display: flex;
+    flex-direction: column;
 }
 
 .ffmpeg-converter-ui .video-title {
@@ -180,6 +197,18 @@ body.rex-theme-dark .ffmpeg-converter-ui {
 .ffmpeg-converter-ui .video-item.already-converted {
     border-color: rgba(var(--ffmpeg-success-rgb), 0.45);
     background: linear-gradient(180deg, rgba(var(--ffmpeg-success-rgb), 0.06), var(--ffmpeg-surface));
+}
+
+.ffmpeg-converter-ui .video-file-date {
+    margin: 2px 0 0;
+    padding: 0 14px;
+    color: var(--ffmpeg-muted);
+    font-size: 11px;
+    line-height: 1.2;
+    opacity: 0.78;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
 }
 
 .ffmpeg-converter-ui .video-inline-status {
@@ -396,41 +425,67 @@ body.rex-theme-dark .ffmpeg-converter-ui {
         display: grid;
         grid-template-columns: 2fr 1.2fr 2fr 1.2fr;
         gap: 12px;
-        align-items: center;
+        align-items: start;
         padding: 12px 14px;
+    }
+
+    .ffmpeg-converter-ui .video-file-cell {
+        grid-column: 1;
+        grid-row: 1;
+        align-self: start;
     }
 
     .ffmpeg-converter-ui .video-head {
         grid-column: 1;
+        grid-row: 1;
         padding: 0;
     }
 
     .ffmpeg-converter-ui .video-title {
         grid-column: 1;
+        grid-row: 1;
         padding: 0;
-        margin-top: 4px;
+        margin-top: 28px;
+        align-self: start;
+    }
+
+    .ffmpeg-converter-ui .video-file-date {
+        grid-column: 1;
+        grid-row: 1;
+        padding: 0;
+        margin-top: 18px;
+        align-self: start;
     }
 
     .ffmpeg-converter-ui .video-meta {
         grid-column: 2;
+        grid-row: 1;
         padding: 0;
         display: grid;
         gap: 6px;
-        align-content: center;
+        align-content: start;
+        align-self: start;
+        margin-top: 4px;
     }
 
     .ffmpeg-converter-ui .video-actions {
         grid-column: 3;
+        grid-row: 1;
         padding: 0;
+        align-self: start;
+        margin-top: 4px;
     }
 
     .ffmpeg-converter-ui .video-inline-status {
         grid-column: 4;
+        grid-row: 1;
         margin: 0;
         padding: 8px;
-        min-height: 60px;
+        min-height: 0;
         display: flex;
-        align-items: center;
+        align-items: flex-start;
+        align-self: start;
+        margin-top: 2px;
     }
 
     .ffmpeg-converter-ui .video-inline-main {
@@ -457,6 +512,7 @@ body.rex-theme-dark .ffmpeg-converter-ui {
     }
 
     .ffmpeg-converter-ui .video-title,
+    .ffmpeg-converter-ui .video-file-date,
     .ffmpeg-converter-ui .video-meta,
     .ffmpeg-converter-ui .video-actions {
         padding-left: 10px;

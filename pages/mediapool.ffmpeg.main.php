@@ -90,7 +90,7 @@ if (empty($allVideos)) {
             $statusBadge = '<span class="badge badge-info conversion-badge"><i class="fa fa-spinner fa-spin" aria-hidden="true"></i> Wird konvertiert...</span>';
         } elseif ($video['isAlreadyConverted']) {
             $statusClass = ' already-converted';
-            $statusBadge = '<span class="badge badge-success conversion-badge"><i class="fa fa-check" aria-hidden="true"></i> ' . $this->i18n('ffmpeg_already_converted') . '</span>';
+            $statusBadge = '';
         }
 
         // Titel des Videos anzeigen, falls vorhanden
@@ -98,6 +98,8 @@ if (empty($allVideos)) {
         if (!empty($video['title'])) {
             $videoTitle = '<div class="video-title">' . $video['title'] . '</div>';
         }
+
+        $fileMetaLine = '<div class="video-file-date"><i class="fa fa-calendar" aria-hidden="true"></i> ' . rex_formatter::strftime(strtotime($video['updatedate']), 'datetime') . '</div>';
 
         $inlineStatusDisplay = 'block';
         $inlineLog = '';
@@ -107,23 +109,33 @@ if (empty($allVideos)) {
 
         $statusText = $video['isProcessing']
             ? $this->i18n('ffmpeg_status_processing')
-            : ($video['isAlreadyConverted'] ? $this->i18n('ffmpeg_status_converted') : $this->i18n('ffmpeg_status_ready'));
+            : ($video['isAlreadyConverted']
+                ? (($video['compressionRate'] > 0)
+                    ? ($video['compressionRate'] . '% ' . $this->i18n('ffmpeg_smaller'))
+                    : $this->i18n('ffmpeg_status_converted'))
+                : $this->i18n('ffmpeg_status_ready'));
         
         $item = '
         <div class="video-item' . $statusClass . '" data-video-item="' . rex_escape($video['filename']) . '">
-            <div class="video-head">
-                <strong class="video-filename">' . $video['filename'] . '</strong>
-                ' . $statusBadge . '
+            <div class="video-file-cell">
+                <div class="video-head">
+                    <strong class="video-filename">' . $video['filename'] . '</strong>
+                    ' . $statusBadge . '
+                </div>
+                ' . $fileMetaLine . '
+                ' . $videoTitle . '
             </div>
-            ' . $videoTitle . '
             <div class="video-meta">
-                <span class="video-size"><i class="fa fa-file" aria-hidden="true"></i> ' . rex_formatter::bytes($video['filesize']) . '</span>
-                <span class="video-date"><i class="fa fa-calendar" aria-hidden="true"></i> ' . rex_formatter::strftime(strtotime($video['updatedate']), 'datetime') . '</span>';
-        
-        // Wenn konvertierte Version existiert, Details anzeigen
-        if ($video['isAlreadyConverted'] && $video['compressionRate'] > 0) {
-            $item .= '<span class="compression-rate badge"><i class="fa fa-compress" aria-hidden="true"></i> ' . $video['compressionRate'] . '% ' . $this->i18n('ffmpeg_smaller') . '</span>';
+                ';
+
+        $item .= '<span class="video-size-original"><i class="fa fa-hdd-o" aria-hidden="true"></i> ' . $this->i18n('ffmpeg_info_original_size') . ': ' . rex_formatter::bytes($video['filesize']) . '</span>';
+        if ($video['isAlreadyConverted'] && isset($video['optimizedData']['filesize'])) {
+            $item .= '<span class="video-size-web"><i class="fa fa-compress" aria-hidden="true"></i> ' . $this->i18n('ffmpeg_info_web_size') . ': ' . rex_formatter::bytes((int) $video['optimizedData']['filesize']) . '</span>';
+        } else {
+            $item .= '<span class="video-size-web"><i class="fa fa-compress" aria-hidden="true"></i> ' . $this->i18n('ffmpeg_info_web_size') . ': ' . $this->i18n('ffmpeg_not_available') . '</span>';
         }
+        
+        // Kompressionsangabe wird in der Status-Spalte dargestellt
         
         $item .= '</div>';
         
