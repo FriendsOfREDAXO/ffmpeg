@@ -25,7 +25,7 @@ if (rex_post('formsubmit', 'string') == '1' && !$csrfToken->isValid()) {
         ['command', 'string'],
         ['delete', 'string'],
         ['preset', 'string'],
-        ['mediapool_category_id', 'int'],
+        ['category_id', 'int'],
     ]);
 
     // Keep the same preset mapping as the top-level one — always include the ffmpeg prefix
@@ -110,6 +110,22 @@ $content .= $fragment->parse('core/form/container.php');
 
 $content .= '<p class="help-block">' . $this->i18n('config_preset_help') . '</p>';
 
+$formElements = [];
+$n = [];
+$n['label'] = '<label for="ffmpeg-config-category">' . $this->i18n('config_media_category') . '</label>';
+$select = new rex_media_category_select();
+$select->setId('ffmpeg-config-category');
+$select->setAttribute('class', 'form-control');
+$select->setName('config[category_id]');
+$select->addOption($this->i18n('config_media_category_none'), 0);
+$select->setSelected((int) $this->getConfig('category_id', 0));
+$n['field'] = $select->get();
+$formElements[] = $n;
+$fragment = new rex_fragment();
+$fragment->setVar('elements', $formElements, false);
+$content .= $fragment->parse('core/form/container.php');
+$content .= '<p class="help-block">' . $this->i18n('config_media_category_help') . '</p>';
+
 // Preset descriptions
 $content .= '<ul class="list-unstyled small">';
 $content .= '<li><strong>' . $this->i18n('config_preset_web') . ':</strong> ' . $this->i18n('config_preset_web_desc') . '</li>';
@@ -138,33 +154,6 @@ $fragment = new rex_fragment();
 $fragment->setVar('elements', $formElements, false);
 $content .= $fragment->parse('core/form/checkbox.php');
 
-// ── Mediapool-Kategorie ───────────────────────────────────────────────────
-$formElements = [];
-$n = [];
-$n['label'] = '<label for="ffmpeg-config-mediapool-category">' . $this->i18n('mediapool_category') . '</label>';
-
-$select = new rex_select();
-$select->setId('ffmpeg-config-mediapool-category');
-$select->setAttribute('class', 'form-control');
-$select->setName('config[mediapool_category_id]');
-$select->addOption($this->i18n('mediapool_category_empty'), 0);
-
-$sql = rex_sql::factory();
-$table = rex::getTable('media_category');
-$sql->setQuery('SELECT id, name FROM ' . $table . ' ORDER BY name');
-foreach ($sql as $row) {
-    $select->addOption($row->getValue('name'), $row->getValue('id'));
-}
-
-$select->setSelected((int) $this->getConfig('mediapool_category_id', 0));
-$n['field'] = $select->get();
-$formElements[] = $n;
-
-$fragment = new rex_fragment();
-$fragment->setVar('elements', $formElements, false);
-$content .= $fragment->parse('core/form/container.php');
-
-$content .= '<p class="text-muted">' . $this->i18n('mediapool_category_description') . '</p>';
 
 /*
  *

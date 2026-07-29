@@ -752,12 +752,13 @@ class Converter extends rex_api_function
         
         // Add converted file to media pool
         // Replace deprecated rex_mediapool_syncFile with rex_media_service::addMedia
+        $configuredCategoryId = (int) rex_addon::get('ffmpeg')->getConfig('category_id', 0);
         $syncData = [
             'file' => [
                 'name' => pathinfo($outputFile, PATHINFO_BASENAME),
                 'path' => $outputFile,
             ],
-            'category_id' => (int) rex_addon::get('ffmpeg')->getConfig('mediapool_category_id', 0),
+            'category_id' => $configuredCategoryId,
             'title' => '',
         ];
         try {
