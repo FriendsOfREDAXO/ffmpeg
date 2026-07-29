@@ -57,6 +57,7 @@ ffmpeg_preview_optimized = Optimized preview
 ffmpeg_preview_optimized_button = Preview (Web)
 ffmpeg_preview_modal_title = Video preview
 ffmpeg_preview_modal_close = Close
+ffmpeg_preview_loop = Loop
 ffmpeg_show_log = Show log
 ffmpeg_hide_log = Hide log
 ffmpeg_convert_this_video = Convert this video

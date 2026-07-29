@@ -108,8 +108,34 @@
         }
 
         selectionPlaybackActive = true;
+        video.loop = false;
         video.currentTime = start;
         video.play();
+    }
+
+    function restartSelectionPlayback() {
+        var video = document.getElementById('trimmer-video');
+        if (!video || !selectionPlaybackActive) {
+            return;
+        }
+
+        var start = toNumber($('#start_time').val());
+        var end = toNumber($('#end_time').val());
+        if (end <= start) {
+            return;
+        }
+
+        if (video.currentTime < end) {
+            return;
+        }
+
+        video.pause();
+        video.currentTime = start;
+        window.setTimeout(function () {
+            if (selectionPlaybackActive && video.paused) {
+                video.play();
+            }
+        }, 50);
     }
 
     function setupEditor() {
@@ -117,6 +143,13 @@
         if (!video) {
             return;
         }
+
+        if (video.dataset.ffmpegReady === '1') {
+            applyVideoMetadata();
+            updateVideoHud();
+            return;
+        }
+        video.dataset.ffmpegReady = '1';
 
         function applyVideoMetadata() {
             if (!Number.isFinite(video.duration) || video.duration <= 0) {
@@ -186,6 +219,14 @@
             updateVideoHud();
         });
 
+        $(document).on('change', '.trimmer-loop-toggle', function () {
+            var targetId = $(this).data('target');
+            var targetVideo = document.getElementById(targetId);
+            if (targetVideo) {
+                targetVideo.loop = $(this).is(':checked');
+            }
+        });
+
         video.addEventListener('timeupdate', function () {
             updateVideoHud();
 
@@ -195,8 +236,7 @@
 
             var end = toNumber($('#end_time').val());
             if (video.currentTime >= end) {
-                video.pause();
-                selectionPlaybackActive = false;
+                restartSelectionPlayback();
             }
         });
 
@@ -263,13 +303,23 @@
 
             var video = modal.find('#modalVideo')[0];
             var source = modal.find('#modalVideoSource')[0];
+            var loopToggle = modal.find('.video-preview-loop-toggle');
 
             video.pause();
             source.src = mediaBase + encodeURIComponent(String(filename));
             modal.find('.video-filename-display').text(String(filename));
+            video.loop = loopToggle.is(':checked');
 
             video.load();
             modal.modal('show');
+        });
+
+        $('#videoPreviewModal').on('change', '.video-preview-loop-toggle', function () {
+            var targetId = $(this).data('previewTarget');
+            var video = document.getElementById(targetId);
+            if (video) {
+                video.loop = $(this).is(':checked');
+            }
         });
 
         $('#videoPreviewModal').on('hidden.bs.modal', function () {
@@ -278,8 +328,16 @@
         });
     }
 
-    $(document).ready(function () {
+    function initFfmpegTrimmer() {
         setupEditor();
         setupListPreview();
+    }
+
+    $(document).on('rex:ready', function () {
+        initFfmpegTrimmer();
+    });
+
+    $(document).ready(function () {
+        initFfmpegTrimmer();
     });
 })(jQuery);

@@ -392,7 +392,7 @@
         });
     }
 
-    $(document).ready(function () {
+    function initFfmpegConverter() {
         // Bei Seitenladung den Status prüfen
         checkStatus();
         
@@ -447,10 +447,19 @@
                 videoElement.removeAttribute('src');
                 videoElement.load();
                 videoElement.setAttribute('src', mediaUrl);
+                videoElement.loop = $('.ffmpeg-preview-loop-toggle').is(':checked');
                 videoElement.load();
             }
 
             $('#ffmpeg-video-preview-modal').modal('show');
+        });
+
+        $(document).on('change', '.ffmpeg-preview-loop-toggle', function () {
+            var targetId = $(this).data('previewTarget');
+            var videoElement = document.getElementById(targetId);
+            if (videoElement) {
+                videoElement.loop = $(this).is(':checked');
+            }
         });
 
         // Inline-Protokoll ein-/ausklappen
@@ -467,6 +476,14 @@
         });
     });
     
+    $(document).on('rex:ready', function () {
+        initFfmpegConverter();
+    });
+
+    $(document).ready(function () {
+        initFfmpegConverter();
+    });
+
     // Konvertierung starten
     function startConversion(video, confirmOverwrite) {
         let url = 'index.php?rex-api-call=ffmpeg_convert&func=start&video=' + encodeURIComponent(video);

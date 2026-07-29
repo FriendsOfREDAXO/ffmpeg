@@ -261,6 +261,9 @@ if (empty($allVideos)) {
                     </div>
                 </div>
                 <div class="modal-footer">
+                    <label class="checkbox-inline" style="margin-right: 15px;">
+                        <input type="checkbox" class="ffmpeg-preview-loop-toggle" data-preview-target="ffmpeg-preview-video"> ' . $this->i18n('ffmpeg_preview_loop') . '
+                    </label>
                     <button type="button" class="btn btn-default" data-dismiss="modal">' . $this->i18n('ffmpeg_preview_modal_close') . '</button>
                 </div>
             </div>

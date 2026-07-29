@@ -174,6 +174,9 @@ if ($videoFile && $videoInfo) {
                             <button type="button" class="btn btn-info btn-sm trimmer-video-control" data-action="mark-start" title="Startzeit setzen">Start setzen</button>
                             <button type="button" class="btn btn-info btn-sm trimmer-video-control" data-action="mark-end" title="Endzeit setzen">Ende setzen</button>
                             <button type="button" class="btn btn-success btn-sm trimmer-video-control" data-action="play-selection" title="Ausgewählten Bereich abspielen">Bereich testen</button>
+                            <label class="btn btn-default btn-sm trimmer-loop-toggle-label" style="margin-left: 6px;">
+                                <input type="checkbox" class="trimmer-loop-toggle" data-target="trimmer-video"> ' . $this->i18n('ffmpeg_preview_loop') . '
+                            </label>
                         </div>
                     </div>
                 </div>
@@ -298,6 +301,9 @@ if ($videoFile && $videoInfo) {
                             <p class="video-filename-display"></p>
                         </div>
                         <div class="modal-footer">
+                            <label class="checkbox-inline" style="margin-right: 15px;">
+                                <input type="checkbox" class="video-preview-loop-toggle" data-preview-target="modalVideo"> ' . $this->i18n('ffmpeg_preview_loop') . '
+                            </label>
                             <button type="button" class="btn btn-default" data-dismiss="modal">' . $this->i18n('ffmpeg_trimmer_modal_close') . '</button>
                         </div>
                     </div>
