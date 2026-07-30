@@ -36,9 +36,16 @@ if ($videoFile) {
 if ($action === 'trim' && $csrf->isValid() && $videoFile && $videoInfo) {
     $startTime = rex_request('start_time', 'string');
     $endTime = rex_request('end_time', 'string');
+    $createLoop = 1 === rex_request('create_loop', 'int', 0);
+    $removeAudio = 1 === rex_request('remove_audio', 'int', 0);
+    if ($createLoop) {
+        $removeAudio = true;
+    }
+    $startSeconds = (float) $startTime;
+    $endSeconds = (float) $endTime;
     
     // Zeiten validieren
-    if (!empty($startTime) && !empty($endTime) && $startTime < $endTime) {
+    if (!empty($startTime) && !empty($endTime) && $startSeconds >= 0 && $endSeconds > $startSeconds) {
         $videoPath = rex_path::media($videoFile);
         
         // Neue Dateinamen erstellen
@@ -60,6 +67,10 @@ if ($action === 'trim' && $csrf->isValid() && $videoFile && $videoInfo) {
             $baseFilename = 'web_trimmed_' . $baseName;
         }
         
+        if ($createLoop && strpos($baseFilename, '_loop') === false) {
+            $baseFilename .= '_loop';
+        }
+
         // Prüfen ob Datei bereits existiert und eindeutigen Namen generieren
         $newFilename = $baseFilename . '.' . $extension;
         $counter = 1;
@@ -72,16 +83,30 @@ if ($action === 'trim' && $csrf->isValid() && $videoFile && $videoInfo) {
         $outputPath = rex_path::media($newFilename);
         
         // Dauer berechnen
-        $duration = $endTime - $startTime;
+        $duration = $endSeconds - $startSeconds;
         
         // FFmpeg-Befehl für Trimming
-        $ffmpegCmd = sprintf(
-            'ffmpeg -y -ss %s -t %s -i "%s" -c copy "%s"',
-            $startTime,
-            $duration,
-            $videoPath,
-            $outputPath
-        );
+        if ($createLoop) {
+            // Ping-Pong-Loop: Ausschnitt vorwaerts + rueckwaerts aneinanderhaengen.
+            // Fuer die Reverse-Operation ist Re-Encoding erforderlich.
+            $ffmpegCmd = sprintf(
+                'ffmpeg -y -ss %.3F -t %.3F -i %s -filter_complex "[0:v]split[vf][vr];[vr]reverse[rev];[vf][rev]concat=n=2:v=1:a=0[v]" -map "[v]" -c:v libx264 -preset medium -crf 23 -an %s',
+                $startSeconds,
+                $duration,
+                escapeshellarg($videoPath),
+                escapeshellarg($outputPath)
+            );
+        } else {
+            $audioArguments = $removeAudio ? ' -an' : ' -c copy';
+            $ffmpegCmd = sprintf(
+                'ffmpeg -y -ss %.3F -t %.3F -i %s%s %s',
+                $startSeconds,
+                $duration,
+                escapeshellarg($videoPath),
+                $audioArguments,
+                escapeshellarg($outputPath)
+            );
+        }
         
         // Trimming ausführen
         exec($ffmpegCmd . ' 2>&1', $output, $returnCode);
@@ -163,6 +188,7 @@ if ($videoFile && $videoInfo) {
                             <span class="trimmer-time-chip">Start <strong id="trimmer-chip-start">0.0s</strong></span>
                             <span class="trimmer-time-chip">Jetzt <strong id="trimmer-chip-current">0.0s</strong></span>
                             <span class="trimmer-time-chip">Ende <strong id="trimmer-chip-end">0.0s</strong></span>
+                            <span class="trimmer-mode-indicator-chip">Modus: <strong id="trimmer-mode-indicator">' . $this->i18n('ffmpeg_trimmer_mode_ready') . '</strong></span>
                         </div>
                         <input id="trimmer-scrubber" class="trimmer-scrubber" type="range" min="0" max="0" step="0.1" value="0" aria-label="Video Position">
                         <div class="trimmer-video-hud-controls btn-group" role="group" aria-label="Trimmer Schnellsteuerung">
@@ -174,6 +200,7 @@ if ($videoFile && $videoInfo) {
                             <button type="button" class="btn btn-info btn-sm trimmer-video-control" data-action="mark-start" title="Startzeit setzen">Start setzen</button>
                             <button type="button" class="btn btn-info btn-sm trimmer-video-control" data-action="mark-end" title="Endzeit setzen">Ende setzen</button>
                             <button type="button" class="btn btn-success btn-sm trimmer-video-control" data-action="play-selection" title="Ausgewählten Bereich abspielen">Bereich testen</button>
+                            <button type="button" class="btn btn-warning btn-sm trimmer-video-control" data-action="play-selection-pingpong" title="Ausgewählten Bereich als Ping-Pong-Vorschau abspielen">' . $this->i18n('ffmpeg_trimmer_pingpong_test') . '</button>
                             <label class="btn btn-default btn-sm trimmer-loop-toggle-label" style="margin-left: 6px;">
                                 <input type="checkbox" class="trimmer-loop-toggle" data-target="trimmer-video"> ' . $this->i18n('ffmpeg_preview_loop') . '
                             </label>
@@ -189,6 +216,16 @@ if ($videoFile && $videoInfo) {
                     <div class="video-controls-wrapper">
                         <label class="control-label trimmer-range-label">' . $this->i18n('ffmpeg_trimmer_time_range_label') . '</label>
                         <p class="trimmer-duration-hint" id="trimmer-duration-hint">' . str_replace('{0}', '0', $this->i18n('ffmpeg_trimmer_preview')) . '</p>
+                        <div class="checkbox" style="margin: 0 0 12px;">
+                            <label class="trimmer-audio-toggle-label">
+                                <input type="checkbox" name="remove_audio" value="1"> ' . $this->i18n('ffmpeg_trimmer_remove_audio') . '
+                            </label>
+                            <p class="help-block" style="margin: 4px 0 10px;">' . $this->i18n('ffmpeg_trimmer_remove_audio_help') . '</p>
+                            <label>
+                                <input type="checkbox" name="create_loop" value="1"> ' . $this->i18n('ffmpeg_trimmer_create_loop') . '
+                            </label>
+                            <p class="help-block" style="margin: 4px 0 0;">' . $this->i18n('ffmpeg_trimmer_create_loop_help') . '</p>
+                        </div>
                         <div class="row">
                             <div class="col-sm-6">
                                 <label class="control-label">' . $this->i18n('ffmpeg_trimmer_start_time') . ':</label>
@@ -323,7 +360,7 @@ if ($videoFile && $videoInfo) {
 }
 
 // Kontext-Daten für Trimmer-JS
-$content .= '<div id="ffmpeg-trimmer-context" data-media-base="' . rex_escape(rex_url::media('')) . '" data-preview-template="' . rex_escape($this->i18n('ffmpeg_trimmer_preview')) . '"></div>';
+$content .= '<div id="ffmpeg-trimmer-context" data-media-base="' . rex_escape(rex_url::media('')) . '" data-preview-template="' . rex_escape($this->i18n('ffmpeg_trimmer_preview')) . '" data-mode-label-ready="' . rex_escape($this->i18n('ffmpeg_trimmer_mode_ready')) . '" data-mode-label-once="' . rex_escape($this->i18n('ffmpeg_trimmer_mode_once')) . '" data-mode-label-loop="' . rex_escape($this->i18n('ffmpeg_trimmer_mode_loop')) . '" data-mode-label-pingpong="' . rex_escape($this->i18n('ffmpeg_trimmer_mode_pingpong')) . '"></div>';
 
 // Fragment erstellen
 $fragment = new rex_fragment();

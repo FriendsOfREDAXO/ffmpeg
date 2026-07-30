@@ -124,6 +124,15 @@ ffmpeg_trimmer_upload_videos = Laden Sie Videos über den <a href="{0}">Medienpo
 ffmpeg_trimmer_error_import = Fehler beim Importieren
 ffmpeg_trimmer_error_cutting = Fehler beim Schneiden des Videos. FFmpeg-Output
 ffmpeg_trimmer_time_range_label = Zeitbereich festlegen:
+ffmpeg_trimmer_pingpong_test = PingPong testen
+ffmpeg_trimmer_mode_ready = Bereit
+ffmpeg_trimmer_mode_once = Einmal
+ffmpeg_trimmer_mode_loop = Schleife
+ffmpeg_trimmer_mode_pingpong = PingPong
+ffmpeg_trimmer_remove_audio = Ton entfernen
+ffmpeg_trimmer_remove_audio_help = Exportiert das Video ohne Ton. Beim Nahtlos-Loop wird das automatisch erzwungen.
+ffmpeg_trimmer_create_loop = Nahtlosen Loop erzeugen (Rückwärts anhängen)
+ffmpeg_trimmer_create_loop_help = Erstellt einen Ping-Pong-Loop aus dem ausgewählten Bereich (vorwärts + rückwärts). Diese Variante benötigt Tonentfernung.
 
 # Video-Informationen API
 ffmpeg_info_no_data = Keine Video-Informationen verfügbar

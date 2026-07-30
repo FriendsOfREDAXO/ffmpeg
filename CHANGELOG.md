@@ -1,5 +1,16 @@
 # Changelog
 
+## 4.4.0 - 2026-07-30
+
+### Neu
+- PingPong-Vorschau im Trimmer mit eigener Taste, unabhängig vom Schleifenmodus.
+- Ton-Option im Trimmer mit wählbarem Audio-Export für normale Schnitte.
+
+### Verbessert
+- Aktiver Wiedergabemodus im Trimmer wird jetzt eindeutig im HUD und an den Buttons angezeigt.
+- Bereichstest und PingPong-Vorschau lassen sich per erneutem Klick wieder abschalten.
+- Nahtlos-Loop erzwingt Tonentfernung technisch sauber und erklärt den Zustand im Formular.
+
 ## 4.3.0 - 2026-07-29
 
 ### Neu

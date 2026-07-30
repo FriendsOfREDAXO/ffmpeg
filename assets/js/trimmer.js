@@ -1,5 +1,110 @@
 (function ($) {
     var selectionPlaybackActive = false;
+    var selectionPlaybackMode = 'once';
+    var pingPongDirection = 'forward';
+    var pingPongTimer = null;
+    var internalPauseForPingPong = false;
+
+    function updatePlaybackUiState() {
+        var context = document.getElementById('ffmpeg-trimmer-context');
+        var modeIndicator = document.getElementById('trimmer-mode-indicator');
+        var playSelectionButton = document.querySelector('.trimmer-video-control[data-action="play-selection"]');
+        var pingPongButton = document.querySelector('.trimmer-video-control[data-action="play-selection-pingpong"]');
+        var loopLabel = document.querySelector('.trimmer-loop-toggle-label');
+        var loopToggle = document.querySelector('.trimmer-loop-toggle');
+
+        var labelReady = 'Bereit';
+        var labelOnce = 'Einmal';
+        var labelLoop = 'Schleife';
+        var labelPingPong = 'PingPong';
+
+        if (context) {
+            labelReady = context.getAttribute('data-mode-label-ready') || labelReady;
+            labelOnce = context.getAttribute('data-mode-label-once') || labelOnce;
+            labelLoop = context.getAttribute('data-mode-label-loop') || labelLoop;
+            labelPingPong = context.getAttribute('data-mode-label-pingpong') || labelPingPong;
+        }
+
+        if (playSelectionButton) {
+            playSelectionButton.classList.remove('is-active', 'mode-once', 'mode-loop');
+            playSelectionButton.setAttribute('aria-pressed', 'false');
+        }
+        if (pingPongButton) {
+            pingPongButton.classList.remove('is-active', 'mode-pingpong');
+            pingPongButton.setAttribute('aria-pressed', 'false');
+        }
+
+        if (loopLabel && loopToggle) {
+            loopLabel.classList.toggle('is-active', loopToggle.checked);
+        }
+
+        var indicatorText = labelReady;
+        if (selectionPlaybackActive) {
+            if (selectionPlaybackMode === 'pingpong') {
+                indicatorText = labelPingPong;
+                if (pingPongButton) {
+                    pingPongButton.classList.add('is-active', 'mode-pingpong');
+                    pingPongButton.setAttribute('aria-pressed', 'true');
+                }
+            } else if (selectionPlaybackMode === 'loop') {
+                indicatorText = labelLoop;
+                if (playSelectionButton) {
+                    playSelectionButton.classList.add('is-active', 'mode-loop');
+                    playSelectionButton.setAttribute('aria-pressed', 'true');
+                }
+            } else {
+                indicatorText = labelOnce;
+                if (playSelectionButton) {
+                    playSelectionButton.classList.add('is-active', 'mode-once');
+                    playSelectionButton.setAttribute('aria-pressed', 'true');
+                }
+            }
+        }
+
+        if (modeIndicator) {
+            modeIndicator.textContent = indicatorText;
+        }
+    }
+
+    function syncAudioRemovalControl() {
+        var loopCheckbox = document.querySelector('input[name="create_loop"]');
+        var removeAudioCheckbox = document.querySelector('input[name="remove_audio"]');
+
+        if (!loopCheckbox || !removeAudioCheckbox) {
+            return;
+        }
+
+        if (loopCheckbox.checked) {
+            removeAudioCheckbox.checked = true;
+            removeAudioCheckbox.disabled = true;
+            var disabledLabel = removeAudioCheckbox.closest('label');
+            if (disabledLabel) {
+                disabledLabel.classList.add('is-disabled');
+            }
+        } else {
+            removeAudioCheckbox.disabled = false;
+            var enabledLabel = removeAudioCheckbox.closest('label');
+            if (enabledLabel) {
+                enabledLabel.classList.remove('is-disabled');
+            }
+        }
+    }
+
+    function stopPingPongTimer() {
+        if (pingPongTimer !== null) {
+            window.clearInterval(pingPongTimer);
+            pingPongTimer = null;
+        }
+    }
+
+    function stopSelectionPlayback() {
+        selectionPlaybackActive = false;
+        selectionPlaybackMode = 'once';
+        pingPongDirection = 'forward';
+        internalPauseForPingPong = false;
+        stopPingPongTimer();
+        updatePlaybackUiState();
+    }
 
     function toNumber(value) {
         var parsed = parseFloat(value);
@@ -94,7 +199,38 @@
         }
     }
 
-    function playSelection() {
+    function startPingPongReverse(video, start) {
+        stopPingPongTimer();
+        pingPongDirection = 'backward';
+        internalPauseForPingPong = true;
+        video.pause();
+        window.setTimeout(function () {
+            internalPauseForPingPong = false;
+        }, 0);
+
+        pingPongTimer = window.setInterval(function () {
+            if (!selectionPlaybackActive || selectionPlaybackMode !== 'pingpong') {
+                stopPingPongTimer();
+                return;
+            }
+
+            var step = 0.04;
+            var next = Math.max(start, toNumber(video.currentTime) - step);
+            video.currentTime = next;
+            updateVideoHud();
+
+            if (next <= start + 0.001) {
+                stopPingPongTimer();
+                pingPongDirection = 'forward';
+                video.currentTime = start;
+                if (selectionPlaybackActive) {
+                    video.play();
+                }
+            }
+        }, 33);
+    }
+
+    function playSelection(mode) {
         var video = document.getElementById('trimmer-video');
         if (!video) {
             return;
@@ -108,14 +244,18 @@
         }
 
         selectionPlaybackActive = true;
+        selectionPlaybackMode = mode === 'pingpong' ? 'pingpong' : (mode === 'loop' ? 'loop' : 'once');
+        pingPongDirection = 'forward';
+        stopPingPongTimer();
         video.loop = false;
         video.currentTime = start;
         video.play();
+        updatePlaybackUiState();
     }
 
     function restartSelectionPlayback() {
         var video = document.getElementById('trimmer-video');
-        if (!video || !selectionPlaybackActive) {
+        if (!video || !selectionPlaybackActive || selectionPlaybackMode !== 'loop') {
             return;
         }
 
@@ -193,7 +333,7 @@
                     video.play();
                 } else {
                     video.pause();
-                    selectionPlaybackActive = false;
+                    stopSelectionPlayback();
                 }
                 return;
             }
@@ -209,7 +349,26 @@
             }
 
             if (action === 'play-selection') {
-                playSelection();
+                var loopEnabled = $('.trimmer-loop-toggle').is(':checked');
+                var normalMode = loopEnabled ? 'loop' : 'once';
+                if (selectionPlaybackActive && selectionPlaybackMode === normalMode) {
+                    stopSelectionPlayback();
+                    video.pause();
+                    return;
+                }
+
+                playSelection(normalMode);
+                return;
+            }
+
+            if (action === 'play-selection-pingpong') {
+                if (selectionPlaybackActive && selectionPlaybackMode === 'pingpong') {
+                    stopSelectionPlayback();
+                    video.pause();
+                    return;
+                }
+
+                playSelection('pingpong');
             }
         });
 
@@ -224,6 +383,15 @@
             if (targetVideo) {
                 targetVideo.loop = $(this).is(':checked');
             }
+            updatePlaybackUiState();
+        });
+
+        $(document).on('change', 'input[name="create_loop"]', function () {
+            syncAudioRemovalControl();
+        });
+
+        $(document).on('change', 'input[name="remove_audio"]', function () {
+            syncAudioRemovalControl();
         });
 
         video.addEventListener('timeupdate', function () {
@@ -233,14 +401,37 @@
                 return;
             }
 
+            if (selectionPlaybackMode === 'pingpong') {
+                var pingPongStart = toNumber($('#start_time').val());
+                var pingPongEnd = toNumber($('#end_time').val());
+                if (pingPongEnd <= pingPongStart) {
+                    return;
+                }
+
+                if (pingPongDirection === 'forward' && video.currentTime >= pingPongEnd) {
+                    startPingPongReverse(video, pingPongStart);
+                }
+
+                return;
+            }
+
             var end = toNumber($('#end_time').val());
-            if (video.currentTime >= end) {
+            if (video.currentTime >= end && selectionPlaybackMode === 'loop') {
                 restartSelectionPlayback();
+                return;
+            }
+
+            if (video.currentTime >= end && selectionPlaybackMode === 'once') {
+                stopSelectionPlayback();
+                video.pause();
             }
         });
 
         video.addEventListener('pause', function () {
-            selectionPlaybackActive = false;
+            if (internalPauseForPingPong) {
+                return;
+            }
+            stopSelectionPlayback();
         });
 
         // Prefill and sync metadata-dependent controls.
@@ -272,13 +463,15 @@
                     video.play();
                 } else {
                     video.pause();
-                    selectionPlaybackActive = false;
+                    stopSelectionPlayback();
                 }
             }
         });
 
         applyVideoMetadata();
         updateVideoHud();
+        updatePlaybackUiState();
+        syncAudioRemovalControl();
     }
 
     function setupListPreview() {
