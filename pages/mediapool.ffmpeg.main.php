@@ -77,6 +77,31 @@ if (empty($allVideos)) {
     if ($conversionActive) {
         $content .= rex_view::warning($this->i18n('ffmpeg_conversion_in_progress'));
     }
+
+    $content .= '<div class="ffmpeg-header-actions">'
+        . '<button class="btn btn-default ffmpeg-status-check" id="check_status" type="button" name="check" value="' . $this->i18n('ffmpeg_check_status') . '"><i class="fa fa-refresh" aria-hidden="true"></i> ' . $this->i18n('ffmpeg_check_status') . '</button>'
+        . '</div>';
+
+    $content .= '<div class="progress-section" style="display:' . ($conversionActive ? 'block' : 'none') . ';">'
+        . '<div class="panel panel-info ffmpeg-global-status-panel">'
+        . '<div class="conversion-status ffmpeg-global-status">'
+        . '<div class="video-inline-donut video-inline-donut-global" id="global-progress-donut" style="--progress:' . ($conversionActive ? '99' : '0') . ';">'
+        . '<span class="video-inline-donut-value" id="global-progress-value">' . ($conversionActive ? '99%' : '0%') . '</span>'
+        . '</div>'
+        . '<div class="conversion-details">'
+        . '<div class="spinner global-spinner">'
+        . '<div class="bounce1"></div>'
+        . '<div class="bounce2"></div>'
+        . '<div class="bounce3"></div>'
+        . '</div>'
+        . '<span id="progress-text">' . ($conversionActive ? 'Konvertierung läuft…' : '0%') . '</span>'
+        . '</div>'
+        . '</div>'
+        . '<div id="log" class="log" style="padding:15px;margin:5px 0;display:none;"><pre style="height:200px;overflow-y: auto">'
+        . ($conversionActive && isset($conversionInfo['log']) ? $conversionInfo['log'] : '')
+        . '</pre></div>'
+        . '</div>'
+        . '</div>';
     
     $content .= '<fieldset class="ffmpeg-video-list"><legend>' . $this->i18n('legend_video') . '</legend>';
     
@@ -116,7 +141,7 @@ if (empty($allVideos)) {
                 : $this->i18n('ffmpeg_status_ready'));
         
         $item = '
-        <div class="video-item' . $statusClass . '" data-video-item="' . rex_escape($video['filename']) . '">
+        <div class="video-item' . $statusClass . '" data-video-item="' . rex_escape($video['filename']) . '" data-convert-label="' . rex_escape($this->i18n('ffmpeg_convert_this_video')) . '" data-reconvert-label="' . rex_escape($this->i18n('ffmpeg_reconvert_this_video')) . '" data-converted-label="' . rex_escape($this->i18n('ffmpeg_status_converted')) . '">
             <div class="video-file-cell">
                 <div class="video-head">
                     <strong class="video-filename">' . $video['filename'] . '</strong>
@@ -142,10 +167,12 @@ if (empty($allVideos)) {
         // Aktionsbereich für Konvertierung und Links
         $item .= '<div class="video-actions">';
 
-        $canConvert = !$video['isAlreadyConverted'] && !$video['isProcessing'];
+        $canConvert = !$video['isProcessing'];
         if ($canConvert) {
+            $convertButtonLabel = $video['isAlreadyConverted'] ? $this->i18n('ffmpeg_reconvert_this_video') : $this->i18n('ffmpeg_convert_this_video');
+            $convertButtonClass = $video['isAlreadyConverted'] ? 'btn-default ffmpeg-start-conversion-secondary' : 'btn-primary';
             $item .= '<div class="video-actions-group video-actions-group-primary">';
-            $item .= '<button class="btn btn-xs btn-primary ffmpeg-start-conversion" type="button" data-video="' . rex_escape($video['filename']) . '"' . ($conversionActive ? ' disabled' : '') . '><i class="fa fa-cogs" aria-hidden="true"></i> ' . $this->i18n('ffmpeg_convert_this_video') . '</button>';
+            $item .= '<button class="btn btn-xs ' . $convertButtonClass . ' ffmpeg-start-conversion" type="button" data-video="' . rex_escape($video['filename']) . '"' . ($conversionActive ? ' disabled' : '') . '><i class="fa-solid fa-arrows-rotate" aria-hidden="true"></i> ' . $convertButtonLabel . '</button>';
             $item .= '</div>';
         }
 
@@ -184,12 +211,13 @@ if (empty($allVideos)) {
         $item .= '<button type="button" class="btn btn-xs btn-link ffmpeg-toggle-inline-log" aria-expanded="false" data-show-label="' . rex_escape($this->i18n('ffmpeg_show_log')) . '" data-hide-label="' . rex_escape($this->i18n('ffmpeg_hide_log')) . '">' . $this->i18n('ffmpeg_show_log') . '</button>';
         $item .= '</div>';
         $item .= '</div>';
-        $item .= '<div class="video-inline-log" style="display:none;"><pre>' . $inlineLog . '</pre></div>';
 
         $statusClass = $video['isAlreadyConverted'] ? 'is-converted' : 'is-ready';
         $statusIcon = $video['isAlreadyConverted'] ? 'fa-check-circle' : 'fa-clock-o';
         $item .= '<span class="video-inline-status-static ' . $statusClass . '" style="display:' . ($video['isProcessing'] ? 'none' : 'inline-flex') . ';"><i class="fa ' . $statusIcon . '" aria-hidden="true"></i> ' . $statusText . '</span>';
         $item .= '</div>';
+
+        $item .= '<div class="video-inline-log video-inline-log-row" style="display:none;"><pre>' . $inlineLog . '</pre></div>';
 
         $item .= '</div>';
         
@@ -206,9 +234,7 @@ if (empty($allVideos)) {
     
     $content .= '</fieldset>';
     
-    $buttons = '<div class="ffmpeg-footer-actions">'
-        . '<button class="btn btn-default ffmpeg-status-check" id="check_status" type="button" name="check" value="' . $this->i18n('ffmpeg_check_status') . '"><i class="fa fa-refresh" aria-hidden="true"></i> ' . $this->i18n('ffmpeg_check_status') . '</button>'
-        . '</div>';
+    $buttons = '';
 
     // Ausgabe Formular
     $fragment = new rex_fragment();
@@ -223,27 +249,6 @@ if (empty($allVideos)) {
         <input type="hidden" name="formsubmit" value="1" />
         ' . $csrfToken->getHiddenField() . '
         ' . $output . '
-        
-        <div class="rex-page-section progress-section" style="display:' . ($conversionActive ? 'block' : 'none') . ';">
-            <div class="panel panel-info ffmpeg-global-status-panel">
-                <div class="conversion-status ffmpeg-global-status">
-                    <div class="video-inline-donut video-inline-donut-global" id="global-progress-donut" style="--progress:' . ($conversionActive ? '99' : '0') . ';">
-                        <span class="video-inline-donut-value" id="global-progress-value">' . ($conversionActive ? '99%' : '0%') . '</span>
-                    </div>
-                    <div class="conversion-details">
-                        <div class="spinner global-spinner">
-                            <div class="bounce1"></div>
-                            <div class="bounce2"></div>
-                            <div class="bounce3"></div>
-                        </div>
-                        <span id="progress-text">' . ($conversionActive ? 'Konvertierung läuft…' : '0%') . '</span>
-                    </div>
-                </div>
-                <div id="log" class="log" style="padding:15px;margin:5px 0;display:none;"><pre style="height:200px;overflow-y: auto">' . 
-                ($conversionActive && isset($conversionInfo['log']) ? $conversionInfo['log'] : '') . 
-                '</pre></div>
-            </div>
-        </div>
     </form>';
 
     echo $output;

@@ -6,6 +6,7 @@
     var importStarted = false;
     var completionTimeout = null;
     var currentVideoName = '';
+    var converterInitialized = false;
 
     function SetProgressStart() {
         // Fortschrittsabfrage alle 2 Sekunden
@@ -68,10 +69,33 @@
 
         $item.find('.video-inline-donut').css('--progress', '100');
         $item.find('.video-inline-donut-value').text('100%');
+        var convertedLabel = $item.data('convertedLabel') || 'Konvertiert';
         $item.find('.video-inline-status-text')
             .addClass('text-success')
-            .html('<i class="fa fa-check"></i> Fertig!');
+            .html('<i class="fa fa-check"></i> ' + convertedLabel);
         $item.find('.video-inline-status-static').hide();
+
+        // Nach Abschluss als konvertiert markieren und den Aktion-Button dezent halten.
+        $item.removeClass('processing').addClass('already-converted');
+
+        var reconvertLabel = $item.data('reconvertLabel') || 'Erneut konvertieren';
+        var $actionGroup = $item.find('.video-actions-group-primary').first();
+        if (!$actionGroup.length) {
+            $actionGroup = $('<div class="video-actions-group video-actions-group-primary"></div>').prependTo($item.find('.video-actions').first());
+        }
+
+        var $button = $actionGroup.find('.ffmpeg-start-conversion').first();
+        if (!$button.length) {
+            $button = $('<button type="button" class="btn btn-xs ffmpeg-start-conversion" data-video="' + currentVideoName + '"></button>');
+            $actionGroup.append($button);
+        }
+
+        $button
+            .removeClass('btn-primary')
+            .addClass('btn-default ffmpeg-start-conversion-secondary')
+            .html('<i class="fa-solid fa-arrows-rotate" aria-hidden="true"></i> ' + reconvertLabel)
+            .prop('disabled', false)
+            .removeClass('disabled');
     }
 
     function updateGlobalProgress(percent, label) {
@@ -218,12 +242,11 @@
         if (completionTimeout) {
             clearTimeout(completionTimeout);
         }
-        
-        // Nach 3 Sekunden Seite neu laden
-        completionTimeout = setTimeout(function() {
-            window.location.reload();
-        }, 3000);
-        
+
+        // Kein Auto-Reload: Protokoll und Status sollen sichtbar bleiben,
+        // damit man die Ausgabe nach Abschluss weiter prüfen kann.
+        completionTimeout = null;
+
         conversionActive = false;
         updateUIForConversion(false);
     }
@@ -393,6 +416,11 @@
     }
 
     function initFfmpegConverter() {
+        if (converterInitialized) {
+            return;
+        }
+        converterInitialized = true;
+
         // Bei Seitenladung den Status prüfen
         checkStatus();
         
@@ -463,9 +491,14 @@
         });
 
         // Inline-Protokoll ein-/ausklappen
-        $(document).on('click', '.ffmpeg-toggle-inline-log', function () {
+        $(document).on('click', '.ffmpeg-toggle-inline-log', function (event) {
+            event.preventDefault();
             var $button = $(this);
-            var $log = $button.closest('.video-inline-status').find('.video-inline-log');
+            var $item = $button.closest('.video-item');
+            var $log = $item.find('.video-inline-log-row').first();
+            if (!$log.length) {
+                return;
+            }
             var isVisible = $log.is(':visible');
             var showLabel = $button.data('showLabel') || 'Protokoll anzeigen';
             var hideLabel = $button.data('hideLabel') || 'Protokoll ausblenden';
@@ -474,7 +507,7 @@
             $button.attr('aria-expanded', !isVisible ? 'true' : 'false');
             $button.text(!isVisible ? hideLabel : showLabel);
         });
-    });
+    }
     
     $(document).on('rex:ready', function () {
         initFfmpegConverter();

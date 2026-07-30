@@ -64,6 +64,7 @@ ffmpeg_preview_loop = Loop
 ffmpeg_show_log = Show log
 ffmpeg_hide_log = Hide log
 ffmpeg_convert_this_video = Convert this video
+ffmpeg_reconvert_this_video = Reconvert video
 ffmpeg_col_file = File
 ffmpeg_col_info = Information
 ffmpeg_col_actions = Actions

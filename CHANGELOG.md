@@ -14,6 +14,10 @@
 - Deutlich reduzierte visuelle Unruhe durch kompaktere Abstände, konsistente Button-Gruppen und klarere Kartenstruktur.
 - Statusdarstellung pro Zeile: Bereit, Konvertiert oder Laufend.
 - Globaler Statusbereich als kompakter Technik-Block statt dominanter Fortschrittsleiste.
+- Status-Prüfen-Aktion und globaler Statusblock im Konverter nach oben verlegt, damit Fortschritt und Aktionen direkt sichtbar sind.
+- Inline-Protokoll je Video als aufklappbare Vollbreiten-Zeile umgesetzt.
+- Nach Abschluss bleibt die Seite stehen (kein Auto-Reload), damit Logs und Status weiterhin einsehbar sind.
+- Bereits konvertierte Videos können gezielt erneut konvertiert werden (dezentere Aktion "Erneut konvertieren").
 - Trimmer-, Tabellen- und Modal-Oberfläche für Light-, Dark- und Auto-Theme optimiert.
 - Trimmer-Editor, Eingabefelder und Buttons erhalten nun konsistente Theme-Farben und bessere Lesbarkeit im Dark Mode.
 - Vorschau- und Trimmer-Interaktionen laufen zuverlässig über REDAXO-Backend-Navigationen ohne kompletten Reload.
@@ -22,3 +26,5 @@
 - Asset-Cache-Busting fuer CSS/JS in `boot.php`.
 - JavaScript auf Donut-Fortschritt und zeilenbezogene Statussteuerung umgestellt.
 - Trimmer-Logik für Scrubber, HUD-Buttons, Loop-Schalter und Auswahl-Wiedergabe erweitert.
+- JavaScript-Initialisierung gegen doppelte Event-Bindings abgesichert (einmalige Initialisierung), um doppelte Start-Requests zu vermeiden.
+- Fehlerhafte Script-Auslieferung in den öffentlichen Addon-Assets korrigiert und synchronisiert.
