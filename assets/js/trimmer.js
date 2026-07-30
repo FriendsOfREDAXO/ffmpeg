@@ -129,13 +129,12 @@
             return;
         }
 
-        video.pause();
+        // Wichtig: Kein pause(), sonst setzt der pause-Handler selectionPlaybackActive auf false.
+        // Dadurch würde der Bereichstest nach einem Durchlauf stoppen.
         video.currentTime = start;
-        window.setTimeout(function () {
-            if (selectionPlaybackActive && video.paused) {
-                video.play();
-            }
-        }, 50);
+        if (video.paused && selectionPlaybackActive) {
+            video.play();
+        }
     }
 
     function setupEditor() {
