@@ -1,5 +1,39 @@
 # Changelog
 
+## 4.7.0 - 2026-08-28
+
+### Neu
+- "Optimieren"-Button jetzt auch im **klassischen** Medienpool-Bearbeiten-Formular (`mediapool/media`), nicht mehr nur in der eigenen Video-Tools-Seite oder im MediaPlace-Addon. Gleicher Hook wie das cropper-Addon (`MEDIA_FORM_EDIT`), gleiche Job-Engine wie überall sonst. Zeigt "Erneut optimieren" + Kompressionsrate an, wenn die Datei bereits optimiert wurde, läuft inline per AJAX (kein Seitenwechsel), lädt die Seite nach Abschluss neu.
+
+### Bugfix
+- `VideoInfo` bekommt öffentliche `isAvailable()`/`isSupportedVideoFile()`-Methoden statt die ffmpeg-Verfügbarkeitsprüfung ein drittes Mal zu duplizieren.
+
+## 4.6.0 - 2026-08-28
+
+### Neu
+- Der neue "Original ersetzen"-Modus (siehe 4.5.0) war bisher nur über die API bzw. das MediaPlace-Addon erreichbar – die eigene Video-Tools-Seite bot ihn nicht an. Pro Video jetzt zwei getrennte, eindeutig beschriftete Aktionen: **"Optimieren"** (ersetzt das Original, gleicher Dateiname – nur bei mp4-Quellen angeboten, da die Ausgabe-Extension zwingend identisch zur Quelle bleibt) und **"Webversion erstellen"** (bisheriges Verhalten, separate "web_"-Datei, für jedes Quellformat). Bei mp4-Quellen stehen beide Optionen nebeneinander zur Wahl.
+- Eigener Status-Badge "Optimiert: X% kleiner" pro Video, unabhängig vom bestehenden Web-Versions-Badge – beide Zustände sind unabhängig voneinander möglich.
+
+## 4.5.1 - 2026-08-28
+
+### Neu
+- Neue `OptimizedVideoRegistry`: merkt sich (Dateigröße + updatedate als Fingerabdruck, kein separates Flag), dass eine Datei per `overwrite`-Modus optimiert wurde – im bisherigen `new_file`-Modus erkennt die Video-Liste "bereits optimiert" an der separaten "web_"-Datei, die es beim Überschreiben-Modus nicht gibt. Wird automatisch ungültig, sobald sich die Datei danach ändert (erneuter Upload, o.ä.).
+
+### Bugfix
+- `formatDuration()` auf der Info-Seite löste eine PHP-Deprecation-Warnung aus (Modulo mit Float-Operand). Behoben – `lib/VideoInfo.php` hatte dieselbe Logik bereits korrekt implementiert, die Info-Seite nutzte stattdessen eine eigene, ältere Kopie.
+
+## 4.5.0 - 2026-08-28
+
+### Verbessert
+- Job-Engine neu aufgebaut: Konvertierungsstatus ist jetzt global statt session-gebunden (zwei User sehen denselben "läuft bereits eine Konvertierung"-Zustand, statt sich unbemerkt gegenseitig zu überschreiben), Abschluss wird über einen echten ffmpeg-Exit-Code erkannt statt über Text-Suche im Log ("Konvertierung abgeschlossen", "was successfully added to rex_mediapool"). Bestehende Kommando-Konfiguration (INPUT/OUTPUT-Platzhalter) und die "web_"-Namenskonvention für optimierte Kopien bleiben unverändert.
+- Konverter-Oberfläche nutzt jetzt einen einzelnen Polling-Endpunkt statt vier verschiedener (progress/done/status/check_all) – weniger Requests, ein aktiver Job wird beim Laden der Seite direkt eingebettet statt per zusätzlichem Request nachgeladen.
+
+### Neu
+- Neuer "Original ersetzen"-Modus (`mode=overwrite`) für die Konvertierung: ersetzt die Original-Mediendatei direkt (gleicher Dateiname, gleiche Datenbank-Zeile), statt wie bisher immer eine neue "web_"-Datei anzulegen – Titel/Kategorie/Metainfo-Felder bleiben dadurch automatisch erhalten. Wird vom MediaPlace-Addon für dessen "Video optimieren"-Button genutzt, steht aber auch für andere Integrationen offen.
+
+### Bugfix
+- `rex_effect_video_to_webp`/`rex_effect_video_to_preview` legten das Ziel-Cache-Verzeichnis (`var/cache/addons/media_manager/`) nicht selbst an – auf einer frischen Installation bzw. nach geleertem Cache brach ffmpeg mit "No such file or directory" ab, bevor überhaupt ein erstes Bild anderen Typs dort geschrieben wurde. Beide Effekte legen das Verzeichnis jetzt bei Bedarf selbst an.
+
 ## 4.4.0 - 2026-07-30
 
 ### Neu

@@ -60,8 +60,11 @@ class rex_effect_video_to_preview extends rex_effect_abstract
                 $startPosition
             ));
             
-            $outputFile = rex_path::addonCache('media_manager', 
+            $outputFile = rex_path::addonCache('media_manager',
                 'media_manager__video_preview_' . md5($inputFile) . '.mp4');
+            // Siehe gleicher Kommentar in rex_effect_video_to_webp.php --
+            // ffmpeg legt den Zielordner nicht selbst an.
+            rex_dir::create(dirname($outputFile));
 
             $this->convertToMp4(
                 $inputFile,

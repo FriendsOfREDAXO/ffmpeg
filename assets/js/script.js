@@ -1,17 +1,16 @@
 (function ($) {
-    var doProgress;
-    var conversionActive = false;
-    var lastStatus = '';
-    var progressValue = 0;
-    var importStarted = false;
-    var completionTimeout = null;
+    // Redesign: ein einziger Polling-Endpunkt (func=job_status) statt der
+    // bisherigen vier (progress/done/status/check_all), die alle denselben
+    // Zustand ueber Session + Text-Suche im ffmpeg-Log rekonstruiert haben
+    // ("was successfully added to rex_mediapool", "Konvertierung
+    // abgeschlossen" o.ae.). Der Server liefert jetzt einen echten Status
+    // (running/finalizing/done/error), der Abschluss wird dort per
+    // Exit-Code-Datei erkannt, nicht per Text-Heuristik -- siehe
+    // FriendsOfRedaxo\FFmpeg\Api\Converter::handleJobStatus().
+    var doPoll = null;
+    var currentJobId = '';
     var currentVideoName = '';
     var converterInitialized = false;
-
-    function SetProgressStart() {
-        // Fortschrittsabfrage alle 2 Sekunden
-        doProgress = setInterval(showProgress, 2000);
-    }
 
     function scrolllog() {
         $('#log pre').scrollTop($('#log pre')[0].scrollHeight);
@@ -28,11 +27,11 @@
 
         currentVideoName = videoName;
         $('.video-inline-status').hide();
-        $('.video-item').removeClass('has-inline-status');
+        $('.video-item').removeClass('has-inline-status processing');
 
         var $item = getCurrentVideoItem();
         if ($item.length) {
-            $item.addClass('has-inline-status');
+            $item.addClass('has-inline-status processing');
             $item.find('.video-inline-status').show();
             $item.find('.video-inline-main').css('display', 'flex');
             $item.find('.video-inline-status-static').hide();
@@ -61,7 +60,14 @@
         $item.find('.video-inline-log pre').text(logText || '');
     }
 
-    function markInlineCompleted() {
+    // Zwei unabhaengige Modi pro Zeile moeglich (Optimieren + Webversion,
+    // siehe mediapool.ffmpeg.main.php) -- nur den Button/das Badge des
+    // GERADE abgeschlossenen Modus aktualisieren, den jeweils anderen
+    // unangetastet lassen. Kompressionsrate wird bewusst NICHT clientseitig
+    // nachgerechnet (dafuer bräuchte es die Original-/Ziel-Dateigroesse, die
+    // hier nicht vorliegen) -- ein generisches "Fertig" reicht, die exakte
+    // Prozentzahl zeigt sich nach einem Neuladen der Seite/Liste.
+    function markInlineCompleted(mode) {
         var $item = getCurrentVideoItem();
         if (!$item.length) {
             return;
@@ -69,350 +75,182 @@
 
         $item.find('.video-inline-donut').css('--progress', '100');
         $item.find('.video-inline-donut-value').text('100%');
-        var convertedLabel = $item.data('convertedLabel') || 'Konvertiert';
+        var convertedLabel = $item.data('convertedLabel') || 'Fertig';
         $item.find('.video-inline-status-text')
             .addClass('text-success')
             .html('<i class="fa fa-check"></i> ' + convertedLabel);
         $item.find('.video-inline-status-static').hide();
 
-        // Nach Abschluss als konvertiert markieren und den Aktion-Button dezent halten.
-        $item.removeClass('processing').addClass('already-converted');
+        $item.removeClass('processing');
 
-        var reconvertLabel = $item.data('reconvertLabel') || 'Erneut konvertieren';
-        var $actionGroup = $item.find('.video-actions-group-primary').first();
-        if (!$actionGroup.length) {
-            $actionGroup = $('<div class="video-actions-group video-actions-group-primary"></div>').prependTo($item.find('.video-actions').first());
+        var $button = $item.find('.ffmpeg-start-conversion[data-mode="' + mode + '"]').first();
+        if ($button.length) {
+            var reconvertLabel = 'overwrite' === mode
+                ? ($button.data('reoptimizeLabel') || 'Erneut optimieren')
+                : ($button.data('recreateLabel') || 'Webversion erneut erstellen');
+            $button
+                .removeClass('btn-primary')
+                .addClass('btn-default ffmpeg-start-conversion-secondary')
+                .html('<i class="fa-solid ' + ('overwrite' === mode ? 'fa-arrows-rotate' : 'fa-globe') + '" aria-hidden="true"></i> ' + reconvertLabel);
         }
+        $item.find('.ffmpeg-start-conversion').prop('disabled', false).removeClass('disabled');
+    }
 
-        var $button = $actionGroup.find('.ffmpeg-start-conversion').first();
-        if (!$button.length) {
-            $button = $('<button type="button" class="btn btn-xs ffmpeg-start-conversion" data-video="' + currentVideoName + '"></button>');
-            $actionGroup.append($button);
+    function markInlineError(message) {
+        var $item = getCurrentVideoItem();
+        if ($item.length) {
+            $item.find('.video-inline-status-text').removeClass('text-success').addClass('text-danger').html('<i class="fa fa-exclamation-triangle"></i> ' + (message || 'Fehler'));
         }
-
-        $button
-            .removeClass('btn-primary')
-            .addClass('btn-default ffmpeg-start-conversion-secondary')
-            .html('<i class="fa-solid fa-arrows-rotate" aria-hidden="true"></i> ' + reconvertLabel)
-            .prop('disabled', false)
-            .removeClass('disabled');
+        $('.ffmpeg-start-conversion').removeClass('disabled').prop('disabled', false);
     }
 
     function updateGlobalProgress(percent, label) {
         var value = Math.max(0, Math.min(100, parseInt(percent, 10) || 0));
         $('#global-progress-donut').css('--progress', String(value));
         $('#global-progress-value').text(value + '%');
-
-        if (label) {
-            $('#progress-text').html(label);
-        } else {
-            $('#progress-text').html(value + '%');
-        }
-    }
-
-    function showProgress() {
-        $.ajax({
-            type: 'get',
-            url: 'index.php?rex-api-call=ffmpeg_convert&func=progress&video=' + encodeURIComponent(currentVideoName),
-            dataType: 'json',
-        })
-            .fail(function (jqXHR, textStatus) {
-                console.log("Request failed: " + textStatus);
-                $('#log pre').html("Request failed: " + textStatus);
-                $('.ffmpeg-start-conversion').removeClass('disabled').prop('disabled', false);
-                clearInterval(doProgress);
-                conversionActive = false;
-                updateUIForConversion(false);
-            })
-            .done(function (data) {
-                if (data.error) {
-                    $('#log pre').html("Error: " + data.error);
-                    $('.ffmpeg-start-conversion').removeClass('disabled').prop('disabled', false);
-                    clearInterval(doProgress);
-                    conversionActive = false;
-                    updateUIForConversion(false);
-                    return;
-                }
-
-                // Log aktualisieren
-                $('#log pre').html(data.log);
-                scrolllog();
-                updateInlineLog(data.log || '');
-                
-                // Prüfen, ob das Log auf einen Import-Abschluss hinweist
-                var logText = data.log || '';
-                var isImportComplete = logText.indexOf('was successfully added to rex_mediapool') !== -1;
-                var isConversionDone = logText.indexOf('Konvertierung abgeschlossen') !== -1;
-                
-                // Fortschritt verarbeiten
-                if (data.progress === 'error') {
-                    // Fehler beim Fortschritt
-                    stopConversion();
-                } else if (data.progress === 'done' || isImportComplete || isConversionDone) {
-                    // Konvertierung und Import abgeschlossen
-                    showCompleted();
-                } else if (data.status === 'importing') {
-                    // Import läuft noch
-                    updateGlobalProgress(99, 'Importiere...');
-                    updateInlineProgress(99, 'Importiere...');
-                    
-                    // Wenn noch nicht gestartet, Import-Prozess starten
-                    if (!importStarted) {
-                        importStarted = true;
-                        startImport();
-                    }
-                } else {
-                    // Normaler Fortschritt
-                    var newProgress = parseInt(data.progress);
-                    
-                    // Nur aktualisieren, wenn der neue Wert größer ist
-                    // oder der aktuelle Wert 0 ist (neue Konvertierung)
-                    if (newProgress > progressValue || progressValue === 0) {
-                        progressValue = newProgress;
-                        updateProgress(progressValue);
-                        updateInlineProgress(progressValue, progressValue + '%');
-                    }
-                    
-                    // Prüfen auf Abschlusszeichen im Log
-                    if (progressValue > 95 && logContainsCompletionMarkers(logText)) {
-                        // FFMPEG scheint fertig zu sein, aber der Importprozess wurde noch nicht gestartet
-                        if (!importStarted) {
-                            importStarted = true;
-                            startImport();
-                        }
-                    }
-                }
-            });
-    }
-    
-    // Prüft, ob das Log typische Hinweise auf einen abgeschlossenen FFMPEG-Prozess enthält
-    function logContainsCompletionMarkers(logText) {
-        var markers = [
-            'video:', 
-            'audio:', 
-            'Konvertierung abgeschlossen',
-            'muxing overhead',
-            'fps=0.0',
-            'bitrate=',
-            'speed='
-        ];
-        
-        for (var i = 0; i < markers.length; i++) {
-            if (logText.indexOf(markers[i]) !== -1) {
-                return true;
-            }
-        }
-        
-        return false;
-    }
-    
-    // Fortschrittsanzeige aktualisieren
-    function updateProgress(percent) {
-        updateGlobalProgress(percent);
-    }
-    
-    // Konvertierung beenden (bei Fehler oder Abbruch)
-    function stopConversion() {
-        $('.ffmpeg-start-conversion').removeClass('disabled').prop('disabled', false);
-        clearInterval(doProgress);
-        
-        if (completionTimeout) {
-            clearTimeout(completionTimeout);
-            completionTimeout = null;
-        }
-        
-        conversionActive = false;
-        updateUIForConversion(false);
-    }
-    
-    // Abschluss anzeigen
-    function showCompleted() {
-        // UI auf 100% setzen
-        updateGlobalProgress(100);
-        $('.ffmpeg-start-conversion').removeClass('disabled').prop('disabled', false);
-        
-        // Erfolgsanimation anzeigen
-        $('.spinner').hide();
-        $('#progress-text').addClass('text-success').html('<i class="fa fa-check"></i> Fertig!');
-        markInlineCompleted();
-        
-        // Timer stoppen
-        clearInterval(doProgress);
-        
-        if (completionTimeout) {
-            clearTimeout(completionTimeout);
-        }
-
-        // Kein Auto-Reload: Protokoll und Status sollen sichtbar bleiben,
-        // damit man die Ausgabe nach Abschluss weiter prüfen kann.
-        completionTimeout = null;
-
-        conversionActive = false;
-        updateUIForConversion(false);
+        $('#progress-text').html(label || (value + '%'));
     }
 
     function updateUIForConversion(active) {
-        conversionActive = active;
-        
         if (active) {
-            // UI für aktive Konvertierung
             $('.progress-section').show();
             $('.ffmpeg-start-conversion').addClass('disabled').prop('disabled', true);
             $('.spinner').show();
             $('#progress-text').removeClass('text-success').html('0%');
             updateGlobalProgress(0);
-            progressValue = 0;
-            importStarted = false;
             activateInlineStatus(currentVideoName);
             updateInlineProgress(0, '0%');
         } else {
-            // UI für inaktive Konvertierung
             $('.ffmpeg-start-conversion').removeClass('disabled').prop('disabled', false);
         }
     }
 
-    // Import-Prozess starten
-    function startImport() {
-        console.log("Starting media import process...");
-        
-        // Fortschrittsanzeige auf 99%
-        updateGlobalProgress(99, 'Importiere...');
-        updateInlineProgress(99, 'Importiere...');
-        
+    function showCompleted(mode) {
+        updateGlobalProgress(100);
+        $('.ffmpeg-start-conversion').removeClass('disabled').prop('disabled', false);
+        $('.spinner').hide();
+        $('#progress-text').addClass('text-success').html('<i class="fa fa-check"></i> Fertig!');
+        markInlineCompleted(mode || 'new_file');
+        stopPolling();
+    }
+
+    function showError(message) {
+        $('.spinner').hide();
+        $('#progress-text').removeClass('text-success').html('<i class="fa fa-exclamation-triangle"></i> ' + (message || 'Fehler'));
+        markInlineError(message);
+        stopPolling();
+    }
+
+    function stopPolling() {
+        if (doPoll) {
+            clearInterval(doPoll);
+            doPoll = null;
+        }
+    }
+
+    // Ein Tick des Polling-Loops -- fragt den Job einmal ab und reagiert auf
+    // dessen (echten) Status. "finalizing" ist ein Zwischenzustand (ffmpeg
+    // fertig, Medienpool-Registrierung laeuft server-seitig gerade) und wird
+    // wie "laeuft noch" behandelt, kein Extra-Request noetig wie vorher bei
+    // startImport().
+    function pollOnce(jobId) {
         $.ajax({
             type: 'get',
-            url: 'index.php?rex-api-call=ffmpeg_convert&func=done&video=' + encodeURIComponent(currentVideoName),
+            url: 'index.php?rex-api-call=ffmpeg_convert&func=job_status&job=' + encodeURIComponent(jobId),
             dataType: 'json',
         })
             .fail(function (jqXHR, textStatus) {
-                console.error("Import failed: " + textStatus);
-                // Bei Fehler nochmal versuchen
-                setTimeout(function() {
-                    importStarted = false;
-                    startImport();
-                }, 2000);
+                showError('Anfrage fehlgeschlagen: ' + textStatus);
             })
             .done(function (data) {
-                if (data.error) {
-                    console.error("Import error: " + data.error);
-                    return;
+                if (data.video) {
+                    currentVideoName = data.video;
                 }
-                
-                // Log aktualisieren
-                $('#log pre').html(data.log);
+                $('#log pre').html(data.log || '');
                 scrolllog();
                 updateInlineLog(data.log || '');
-                
-                // Prüfen, ob der Import erfolgreich war
-                if (data.status === 'success' || data.log.indexOf('was successfully added to rex_mediapool') !== -1) {
-                    showCompleted();
+
+                if ('done' === data.status) {
+                    showCompleted(data.mode);
+                } else if ('error' === data.status) {
+                    showError(data.message || 'Konvertierung fehlgeschlagen');
                 } else {
-                    // Bei unvollständigem Import erneut versuchen
-                    setTimeout(function() {
-                        startImport();
-                    }, 2000);
+                    var progress = 'finalizing' === data.status ? 99 : (parseInt(data.progress, 10) || 0);
+                    var label = 'finalizing' === data.status ? 'Importiere...' : progress + '%';
+                    updateGlobalProgress(progress, label);
+                    updateInlineProgress(progress, label);
                 }
             });
     }
 
-    // Konvertierungsstatus vom Server abrufen
-    function checkStatus() {
-        $.ajax({
-            type: 'get',
-            url: 'index.php?rex-api-call=ffmpeg_convert&func=status',
-            dataType: 'json',
-        })
-            .done(function (data) {
-                if (data.active) {
-                    // Es läuft eine Konvertierung
-                    conversionActive = true;
-                    lastStatus = data.status || '';
-                    
-                    // Log anzeigen
-                    if (data.info && data.info.log) {
-                        $('#log pre').html(data.info.log);
-                        scrolllog();
-                    }
-                    
-                    // UI aktualisieren
-                    $('.progress-section').show();
-                    $('.ffmpeg-start-conversion').addClass('disabled').prop('disabled', true);
-                    
-                    // Video-Name speichern
-                    if (data.info && data.info.video) {
-                        currentVideoName = data.info.video;
-                        activateInlineStatus(currentVideoName);
-                        
-                        // Markiere das aktive Video in der Liste
-                        $('.video-item[data-video-item="' + currentVideoName + '"]').addClass('processing');
-                    }
-                    
-                    if (data.status === 'converting') {
-                        // Fortschrittsanzeige starten
-                        SetProgressStart();
-                    } else if (data.status === 'importing') {
-                        // Import läuft
-                        updateGlobalProgress(99, 'Importiere...');
-                        updateInlineProgress(99, 'Importiere...');
-                        
-                        if (!importStarted) {
-                            importStarted = true;
-                            startImport();
-                        }
-                    } else if (data.status === 'done') {
-                        // Bereits abgeschlossen
-                        showCompleted();
-                    }
-                }
-            });
+    function startPolling(jobId) {
+        currentJobId = jobId;
+        stopPolling();
+        pollOnce(jobId);
+        doPoll = setInterval(function () {
+            pollOnce(jobId);
+        }, 1500);
     }
-    
-    // Funktion zum Prüfen aller Videos
-    function checkAllVideoStatus() {
-        // Fortschrittsanzeige zeigen
-        $('.progress-section').show();
-        $('#progress-text').html('Prüfe Status...');
-        
+
+    // Bei Seitenladung pruefen, ob bereits (von diesem oder einem anderen
+    // Backend-User, z.B. ueber MediaPlace's "Video optimieren"-Button)
+    // ein Job laeuft -- server-seitig global, nicht mehr session-gebunden.
+    function resumeActiveJobIfAny() {
+        if (!window.ffmpegActiveJob || !window.ffmpegActiveJob.id) {
+            return;
+        }
+
+        currentVideoName = window.ffmpegActiveJob.video || '';
+        updateUIForConversion(true);
+        startPolling(window.ffmpegActiveJob.id);
+    }
+
+    function startConversion(video, mode, confirmOverwrite) {
+        var url = 'index.php?rex-api-call=ffmpeg_convert&func=start&video=' + encodeURIComponent(video) + '&mode=' + encodeURIComponent(mode || 'new_file');
+        if (confirmOverwrite) {
+            url += '&confirm_overwrite=1';
+        }
+
         $.ajax({
             type: 'get',
-            url: 'index.php?rex-api-call=ffmpeg_convert&func=check_all',
+            url: url,
             dataType: 'json',
         })
-        .done(function(data) {
-            if (data.active) {
-                // Es läuft eine Konvertierung
-                conversionActive = true;
-                updateUIForConversion(true);
-                
-                // Log anzeigen
-                if (data.info && data.info.log) {
-                    $('#log pre').html(data.info.log);
-                    scrolllog();
-                    updateInlineLog(data.info.log);
+            .fail(function (jqXHR, textStatus) {
+                $('.progress-section').show();
+                $('#log pre').html('Request failed: ' + textStatus);
+                updateUIForConversion(false);
+            })
+            .done(function (data) {
+                if (data.error) {
+                    $('.progress-section').show();
+                    $('#log pre').html('Error: ' + data.error);
+                    updateUIForConversion(false);
+                    return;
                 }
-                
-                // Video-Name speichern
-                if (data.info && data.info.video) {
-                    currentVideoName = data.info.video;
-                    activateInlineStatus(currentVideoName);
-                    
-                    // Markiere das aktive Video in der Liste
-                    $('.video-item[data-video-item="' + currentVideoName + '"]').addClass('processing');
+
+                if ('confirm_overwrite' === data.status) {
+                    updateUIForConversion(false);
+                    if (confirm(data.message)) {
+                        startConversion(video, mode, true);
+                    }
+                    return;
                 }
-                
-                // Starte Fortschrittsanzeige
-                SetProgressStart();
-            } else {
-                // Keine Konvertierung aktiv
-                $('#progress-text').html('Keine aktive Konvertierung gefunden');
-                setTimeout(function() {
-                    window.location.reload(); // Liste aktualisieren
-                }, 2000);
-            }
-        })
-        .fail(function() {
-            $('#progress-text').html('Fehler beim Prüfen des Status');
-        });
+
+                if ('busy' === data.status) {
+                    updateUIForConversion(false);
+                    alert(data.message || 'Es läuft bereits eine Konvertierung.');
+                    return;
+                }
+
+                $('.progress-section').show();
+                updateGlobalProgress(0);
+                $('#log pre').html('Konvertierung gestartet...');
+                activateInlineStatus(video);
+                updateInlineProgress(0, '0%');
+                updateInlineLog('Konvertierung gestartet...');
+                startPolling(data.job);
+            });
     }
 
     function initFfmpegConverter() {
@@ -421,40 +259,27 @@
         }
         converterInitialized = true;
 
-        // Bei Seitenladung den Status prüfen
-        checkStatus();
-        
-        // Konvertierung direkt am Video starten
+        resumeActiveJobIfAny();
+
         $(document).on('click', '.ffmpeg-start-conversion', function () {
             var video = $(this).data('video');
             if (!video) {
                 return false;
             }
+            var mode = $(this).data('mode') || 'new_file';
 
-            // Video-Namen speichern für spätere Statusabfragen
             currentVideoName = video;
-            
-            // Variablen zurücksetzen
-            progressValue = 0;
-            importStarted = false;
-            lastStatus = '';
-            
-            // UI aktualisieren
             updateUIForConversion(true);
-            
-            // Konvertierung starten
-            startConversion(video);
-            
+            startConversion(video, mode);
+
             return false;
         });
 
-        // Status-Button
-        $('#check_status').on('click', function() {
-            checkAllVideoStatus();
+        $('#check_status').on('click', function () {
+            window.location.reload();
             return false;
         });
-        
-        // Video-Vorschau im Modal öffnen
+
         $(document).on('click', '.ffmpeg-preview-link', function (event) {
             event.preventDefault();
 
@@ -490,7 +315,6 @@
             }
         });
 
-        // Inline-Protokoll ein-/ausklappen
         $(document).on('click', '.ffmpeg-toggle-inline-log', function (event) {
             event.preventDefault();
             var $button = $(this);
@@ -508,7 +332,7 @@
             $button.text(!isVisible ? hideLabel : showLabel);
         });
     }
-    
+
     $(document).on('rex:ready', function () {
         initFfmpegConverter();
     });
@@ -516,54 +340,4 @@
     $(document).ready(function () {
         initFfmpegConverter();
     });
-
-    // Konvertierung starten
-    function startConversion(video, confirmOverwrite) {
-        let url = 'index.php?rex-api-call=ffmpeg_convert&func=start&video=' + encodeURIComponent(video);
-        
-        if (confirmOverwrite) {
-            url += '&confirm_overwrite=1';
-        }
-
-        $.ajax({
-            type: 'get',
-            url: url,
-            dataType: 'json'
-        })
-            .fail(function (jqXHR, textStatus) {
-                console.log("Start failed: " + textStatus);
-                $('.progress-section').show();
-                $('#log pre').html("Request failed: " + textStatus);
-                updateUIForConversion(false);
-            })
-            .done(function (data) {
-                if (data.error) {
-                    $('.progress-section').show();
-                    $('#log pre').html("Error: " + data.error);
-                    updateUIForConversion(false);
-                    return;
-                }
-                
-                // Überschreiben bestätigen
-                if (data.status === 'confirm_overwrite') {
-                    updateUIForConversion(false);
-                    
-                    if (confirm(data.message)) {
-                        startConversion(video, true);
-                    }
-                    return;
-                }
-
-                // Konvertierung gestartet
-                $('.progress-section').show();
-                updateGlobalProgress(0);
-                $('#log pre').html("Konvertierung gestartet...");
-                activateInlineStatus(video);
-                updateInlineProgress(0, '0%');
-                updateInlineLog('Konvertierung gestartet...');
-                
-                // Fortschrittsüberwachung starten
-                SetProgressStart();
-            });
-    }
 })(jQuery);

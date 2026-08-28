@@ -72,6 +72,7 @@ function getVideoInfo($videoPath) {
 }
 
 function formatDuration($seconds) {
+    $seconds = (int) round($seconds);
     $hours = floor($seconds / 3600);
     $minutes = floor(($seconds % 3600) / 60);
     $seconds = $seconds % 60;

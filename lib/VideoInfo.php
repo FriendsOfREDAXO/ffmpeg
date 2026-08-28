@@ -18,6 +18,33 @@ use rex_url;
 
 class VideoInfo
 {
+    /** Deckungsgleich mit rex_effect_video_to_webp::VIDEO_TYPES/rex_effect_video_to_preview::VIDEO_TYPES. */
+    private const VIDEO_TYPES = ['mp4', 'm4v', 'avi', 'mov', 'webm'];
+
+    /**
+     * Oeffentlicher Wrapper um die bisher private isFFmpegAvailable() --
+     * genutzt von boot.php (MEDIA_FORM_EDIT-Button im klassischen Medienpool)
+     * und anderen Addons, die pruefen wollen, ob ffmpeg auf diesem Server
+     * tatsaechlich lauffaehig ist (nicht nur ob das Addon installiert ist).
+     */
+    public static function isAvailable(): bool
+    {
+        return self::isFFmpegAvailable();
+    }
+
+    /**
+     * @param string $filename Dateiname im Medienpool
+     */
+    public static function isSupportedVideoFile($filename): bool
+    {
+        if ('' === (string) $filename) {
+            return false;
+        }
+        $extension = strtolower(pathinfo((string) $filename, PATHINFO_EXTENSION));
+
+        return in_array($extension, self::VIDEO_TYPES, true);
+    }
+
     /**
      * Video-Informationen für eine Datei ermitteln
      * 

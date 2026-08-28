@@ -1,20 +1,22 @@
 <?php
 
 use FriendsOfRedaxo\FFmpeg\Api\Converter;
+use FriendsOfRedaxo\FFmpeg\Job\OptimizedVideoRegistry;
 
 $content = '';
 $buttons = '';
 
 $csrfToken = rex_csrf_token::factory('ffmpeg');
 
-// Prüfen, ob eine aktive Konvertierung läuft
-$conversionActive = false;
-$conversionInfo = [];
-
-// Konversionsstatus aus API-Klasse ermitteln
-$conversionData = Converter::getConversionInfo();
-$conversionActive = $conversionData['active'];
-$conversionInfo = $conversionData['info'];
+// Prüfen, ob eine aktive Konvertierung läuft -- siehe Converter::getActiveJobInfo()
+// (Redesign: globaler Job-Status statt session-gebundener Konversion, siehe
+// FriendsOfRedaxo\FFmpeg\Job\VideoJob)
+$activeJob = Converter::getActiveJobInfo();
+$conversionActive = null !== $activeJob;
+$conversionInfo = $activeJob ?? [];
+if ($conversionActive) {
+    $conversionInfo['log'] = '';
+}
 
 // Alle Videos einlesen (sowohl normale als auch konvertierte)
 $sql = rex_sql::factory();
@@ -52,7 +54,25 @@ foreach ($allMediaFiles as $media) {
         if ($isAlreadyConverted && $media['filesize'] > 0) {
             $compressionRate = round(100 - (($optimizedData['filesize'] / $media['filesize']) * 100));
         }
-        
+
+        // "Optimieren" (Original ersetzen, siehe Converter::finalizeOverwrite())
+        // bleibt bewusst nur fuer mp4-Quellen angeboten: die Ausgabe-Extension
+        // ist beim Ueberschreiben-Modus zwingend identisch zur Quelle (die
+        // Datei-Identitaet in REDAXO ist der Dateiname inkl. Extension) --
+        // ein re-encodetes .mov/.avi bringt fuer die Web-Nutzung wenig, dafuer
+        // gibt es weiterhin "Webversion erstellen" (immer mp4). Fingerabdruck-
+        // Registry (siehe OptimizedVideoRegistry) erkennt "bereits optimiert"
+        // unabhaengig von der "web_"-Datei-Konvention, die es hier nicht gibt.
+        $isMp4 = 'mp4' === strtolower(pathinfo($originalName, PATHINFO_EXTENSION));
+        $optimizedFingerprint = $isMp4
+            ? OptimizedVideoRegistry::getIfCurrent($originalName, (int) $media['filesize'], (int) strtotime($media['updatedate']))
+            : null;
+        $isOptimizedInPlace = null !== $optimizedFingerprint;
+        $optimizeCompressionRate = 0;
+        if ($isOptimizedInPlace && $optimizedFingerprint['originalSize'] > 0) {
+            $optimizeCompressionRate = round(100 - (($media['filesize'] / $optimizedFingerprint['originalSize']) * 100));
+        }
+
         $allVideos[] = [
             'id' => $media['id'],
             'filename' => $media['filename'],
@@ -62,7 +82,10 @@ foreach ($allMediaFiles as $media) {
             'isProcessing' => $isProcessing,
             'isAlreadyConverted' => $isAlreadyConverted,
             'optimizedData' => $optimizedData,
-            'compressionRate' => $compressionRate
+            'compressionRate' => $compressionRate,
+            'isMp4' => $isMp4,
+            'isOptimizedInPlace' => $isOptimizedInPlace,
+            'optimizeCompressionRate' => $optimizeCompressionRate,
         ];
     }
 }
@@ -141,7 +164,7 @@ if (empty($allVideos)) {
                 : $this->i18n('ffmpeg_status_ready'));
         
         $item = '
-        <div class="video-item' . $statusClass . '" data-video-item="' . rex_escape($video['filename']) . '" data-convert-label="' . rex_escape($this->i18n('ffmpeg_convert_this_video')) . '" data-reconvert-label="' . rex_escape($this->i18n('ffmpeg_reconvert_this_video')) . '" data-converted-label="' . rex_escape($this->i18n('ffmpeg_status_converted')) . '">
+        <div class="video-item' . $statusClass . '" data-video-item="' . rex_escape($video['filename']) . '" data-convert-label="' . rex_escape($this->i18n('ffmpeg_convert_this_video')) . '" data-reconvert-label="' . rex_escape($this->i18n('ffmpeg_reconvert_this_video')) . '" data-converted-label="' . rex_escape($this->i18n('ffmpeg_status_converted')) . '" data-reoptimize-label="' . rex_escape($this->i18n('ffmpeg_reoptimize_this_video')) . '" data-recreate-label="' . rex_escape($this->i18n('ffmpeg_recreate_web_version')) . '">
             <div class="video-file-cell">
                 <div class="video-head">
                     <strong class="video-filename">' . $video['filename'] . '</strong>
@@ -169,10 +192,23 @@ if (empty($allVideos)) {
 
         $canConvert = !$video['isProcessing'];
         if ($canConvert) {
-            $convertButtonLabel = $video['isAlreadyConverted'] ? $this->i18n('ffmpeg_reconvert_this_video') : $this->i18n('ffmpeg_convert_this_video');
-            $convertButtonClass = $video['isAlreadyConverted'] ? 'btn-default ffmpeg-start-conversion-secondary' : 'btn-primary';
             $item .= '<div class="video-actions-group video-actions-group-primary">';
-            $item .= '<button class="btn btn-xs ' . $convertButtonClass . ' ffmpeg-start-conversion" type="button" data-video="' . rex_escape($video['filename']) . '"' . ($conversionActive ? ' disabled' : '') . '><i class="fa-solid fa-arrows-rotate" aria-hidden="true"></i> ' . $convertButtonLabel . '</button>';
+
+            // "Optimieren" (Original ersetzen, gleicher Dateiname) -- nur bei
+            // mp4-Quellen sinnvoll anbietbar, siehe Kommentar beim Aufbau von
+            // $allVideos oben.
+            if ($video['isMp4']) {
+                $optimizeLabel = $video['isOptimizedInPlace'] ? $this->i18n('ffmpeg_reoptimize_this_video') : $this->i18n('ffmpeg_optimize_this_video');
+                $optimizeClass = $video['isOptimizedInPlace'] ? 'btn-default ffmpeg-start-conversion-secondary' : 'btn-primary';
+                $item .= '<button class="btn btn-xs ' . $optimizeClass . ' ffmpeg-start-conversion" type="button" data-video="' . rex_escape($video['filename']) . '" data-mode="overwrite"' . ($conversionActive ? ' disabled' : '') . '><i class="fa-solid fa-arrows-rotate" aria-hidden="true"></i> ' . $optimizeLabel . '</button>';
+            }
+
+            // "Webversion erstellen" (separate "web_"-Datei, Original bleibt
+            // unangetastet) -- immer verfuegbar, unabhaengig vom Quellformat.
+            $webLabel = $video['isAlreadyConverted'] ? $this->i18n('ffmpeg_recreate_web_version') : $this->i18n('ffmpeg_create_web_version');
+            $webClass = $video['isMp4'] ? 'btn-default ffmpeg-start-conversion-secondary' : ($video['isAlreadyConverted'] ? 'btn-default ffmpeg-start-conversion-secondary' : 'btn-primary');
+            $item .= '<button class="btn btn-xs ' . $webClass . ' ffmpeg-start-conversion" type="button" data-video="' . rex_escape($video['filename']) . '" data-mode="new_file"' . ($conversionActive ? ' disabled' : '') . '><i class="fa-solid fa-globe" aria-hidden="true"></i> ' . $webLabel . '</button>';
+
             $item .= '</div>';
         }
 
@@ -215,6 +251,12 @@ if (empty($allVideos)) {
         $statusClass = $video['isAlreadyConverted'] ? 'is-converted' : 'is-ready';
         $statusIcon = $video['isAlreadyConverted'] ? 'fa-check-circle' : 'fa-clock-o';
         $item .= '<span class="video-inline-status-static ' . $statusClass . '" style="display:' . ($video['isProcessing'] ? 'none' : 'inline-flex') . ';"><i class="fa ' . $statusIcon . '" aria-hidden="true"></i> ' . $statusText . '</span>';
+        if ($video['isOptimizedInPlace'] && !$video['isProcessing']) {
+            $optimizeStatusText = $video['optimizeCompressionRate'] > 0
+                ? ($video['optimizeCompressionRate'] . '% ' . $this->i18n('ffmpeg_smaller'))
+                : $this->i18n('ffmpeg_status_optimized');
+            $item .= '<span class="video-inline-status-static is-converted" style="display:inline-flex;"><i class="fa fa-arrows-rotate" aria-hidden="true"></i> ' . rex_escape($this->i18n('ffmpeg_status_optimized_prefix')) . ' ' . $optimizeStatusText . '</span>';
+        }
         $item .= '</div>';
 
         $item .= '<div class="video-inline-log video-inline-log-row" style="display:none;"><pre>' . $inlineLog . '</pre></div>';
@@ -277,5 +319,10 @@ if (empty($allVideos)) {
     
     // Füge Data-Attribute für JavaScript hinzu
     echo '<div class="rex-addon-output" data-i18n-select-video="' . $this->i18n('ffmpeg_select_video') . '"></div>';
+
+    // Aktiven Job (falls vorhanden) direkt einbetten, damit script.js beim
+    // Laden nicht erst per AJAX danach fragen muss (ersetzt die bisherigen
+    // checkStatus()/checkAllVideoStatus()-Requests).
+    echo '<script>window.ffmpegActiveJob = ' . json_encode($activeJob) . ';</script>';
 }
 ?>

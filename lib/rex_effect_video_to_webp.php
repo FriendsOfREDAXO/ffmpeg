@@ -32,8 +32,15 @@ class rex_effect_video_to_webp extends rex_effect_abstract
 
             // Generate cache key based on input file and parameters
             $cacheKey = md5($inputFile . serialize($this->params));
-            $outputFile = rex_path::addonCache('media_manager', 
+            $outputFile = rex_path::addonCache('media_manager',
                 'media_manager__video2webp_' . $cacheKey . '.webp');
+            // Auf einer frischen Installation (oder nachdem der Media-Manager-
+            // Cache-Ordner geleert wurde) existiert dieses Verzeichnis
+            // moeglicherweise noch nicht -- ffmpeg legt es (anders als PHPs
+            // eigene Bildfunktionen, die ueber diesen Pfad idR schon einmal
+            // gelaufen sind) nicht selbst an und bricht sonst mit "No such
+            // file or directory" ab.
+            rex_dir::create(dirname($outputFile));
 
             // Check if cached version exists and is valid
             if ($this->isValidCache($outputFile)) {
