@@ -1,5 +1,10 @@
 # Changelog
 
+## 4.8.0 - 2026-08-29
+
+### Neu
+- `rex_effect_video_to_webp` kann jetzt auch ein einzelnes Standbild statt einer animierten Vorschau extrahieren (neuer Parameter "Animiert", Standard weiterhin "Ja" – bestehende Typen verhalten sich unverändert). Bei "Nein" wird nur ein einzelnes Frame an der gewählten Position extrahiert (`-frames:v 1` statt `-t`/`-loop 0`) – deutlich günstiger in Erzeugung und Dateigröße. Wird vom MediaPlace-Addon für dessen neue Einstellung "Video-Vorschau im Grid" (aus/Einzelbild/animiert) genutzt.
+
 ## 4.7.1 - 2026-08-29
 
 ### Bugfix

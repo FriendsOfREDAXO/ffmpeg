@@ -98,7 +98,10 @@ class rex_effect_video_to_webp extends rex_effect_abstract
             'quality' => $this->getQualityForCompression(intval($this->params['compression_level'] ?? 3)),
             'snippetLength' => min(floatval($this->params['snippet_length'] ?? 2), self::MAX_DURATION),
             'compression' => max(1, min(5, intval($this->params['compression_level'] ?? 3))),
-            'position' => $this->normalizePosition($this->params['position'] ?? 'middle')
+            'position' => $this->normalizePosition($this->params['position'] ?? 'middle'),
+            // Default "1"/animiert: bestehende Typen ohne diesen Parameter
+            // verhalten sich unveraendert wie bisher.
+            'animated' => filter_var($this->params['animated'] ?? '1', FILTER_VALIDATE_BOOLEAN),
         ];
     }
 
@@ -169,41 +172,43 @@ class rex_effect_video_to_webp extends rex_effect_abstract
     {
         // Optimized filters based on browser and compression level
         $filters = $this->getOptimizedFilters($params);
+        $animated = $params['animated'];
 
-        $cmd = sprintf(
-            'ffmpeg -y ' .
-            // %F statt %f: sprintf()'s %f ist locale-abhaengig (PHP-Doku) --
-            // auf Servern mit z.B. de_DE-Locale (Komma als Dezimaltrennzeichen)
-            // erzeugt %f einen fuer ffmpeg ungueltigen Wert wie "1,318983"
-            // statt "1.318983" ("Invalid duration specification for ss").
-            // %F ist laut PHP-Doku ausdruecklich NICHT locale-abhaengig.
-            '-ss %F -t %F '.
-            '-i %s '.
-            '-vf "%s" '.
-            '-vcodec libwebp '.
-            '-preset picture '.
-            '-compression_level %d '. 
-            '-lossless 0 '.
-            '-quality %d '.
-            '-loop 0 '.
-            '-vsync 0 '.
-            '-qmin %d '.
-            '-qmax %d '.
-            '-metadata author="" '.
-            '-an -threads 4 '.
-            '%s 2>&1',
-            $params['startPosition'],
-            $params['snippetLength'],
-            escapeshellarg($inputFile),
-            implode(',', $filters),
-            min(4, $params['compression']),
-            $params['quality'],
-            max(1, $params['compression']),
-            min(20, $params['compression'] * 4),
-            escapeshellarg($outputFile)
-        );
+        // %F statt %f: sprintf()'s %f ist locale-abhaengig (PHP-Doku) -- auf
+        // Servern mit z.B. de_DE-Locale (Komma als Dezimaltrennzeichen)
+        // erzeugt %f einen fuer ffmpeg ungueltigen Wert wie "1,318983" statt
+        // "1.318983" ("Invalid duration specification for ss"). %F ist laut
+        // PHP-Doku ausdruecklich NICHT locale-abhaengig.
+        $parts = ['ffmpeg -y'];
+        $parts[] = sprintf('-ss %F', $params['startPosition']);
+        // Statisches Einzelbild (siehe "video_thumb_mode" in MediaPlace):
+        // kein "-t" (Dauer), stattdessen "-frames:v 1" unten -- ffmpeg
+        // extrahiert dann genau ein Frame an Position -ss statt eines
+        // Zeitausschnitts.
+        if ($animated) {
+            $parts[] = sprintf('-t %F', $params['snippetLength']);
+        }
+        $parts[] = sprintf('-i %s', escapeshellarg($inputFile));
+        $parts[] = sprintf('-vf "%s"', implode(',', $filters));
+        $parts[] = '-vcodec libwebp';
+        $parts[] = '-preset picture';
+        $parts[] = sprintf('-compression_level %d', min(4, $params['compression']));
+        $parts[] = '-lossless 0';
+        $parts[] = sprintf('-quality %d', $params['quality']);
+        if ($animated) {
+            $parts[] = '-loop 0';
+        } else {
+            $parts[] = '-frames:v 1';
+        }
+        $parts[] = '-vsync 0';
+        $parts[] = sprintf('-qmin %d', max(1, $params['compression']));
+        $parts[] = sprintf('-qmax %d', min(20, $params['compression'] * 4));
+        $parts[] = '-metadata author=""';
+        $parts[] = '-an -threads 4';
+        $parts[] = escapeshellarg($outputFile);
+        $parts[] = '2>&1';
 
-        $this->executeCommand($cmd);
+        $this->executeCommand(implode(' ', $parts));
     }
 
     private function getOptimizedFilters(array $params): array
@@ -324,6 +329,17 @@ class rex_effect_video_to_webp extends rex_effect_abstract
         }
 
         return [
+            [
+                'label' => rex_i18n::msg('videopreview_animated_label'),
+                'name' => 'animated',
+                'type' => 'select',
+                'options' => [
+                    '1' => rex_i18n::msg('videopreview_animated_yes'),
+                    '0' => rex_i18n::msg('videopreview_animated_no'),
+                ],
+                'default' => '1',
+                'notice' => rex_i18n::msg('videopreview_animated_notice'),
+            ],
             [
                 'label' => rex_i18n::msg('videopreview_position_label'),
                 'name' => 'position',

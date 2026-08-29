@@ -20,6 +20,11 @@ videopreview_compression_standard = Standard (balanced)
 videopreview_compression_high = High (small file)
 videopreview_compression_maximum = Maximum (smallest file)
 
+videopreview_animated_label = Animated
+videopreview_animated_yes = Yes, animated preview
+videopreview_animated_no = No, single still frame
+videopreview_animated_notice = With "No", only a single frame is extracted at the chosen position instead of an animated snippet – notably cheaper to generate and smaller in file size.
+
 videopreview_position_label = Position in video
 videopreview_position_notice = Choose the position in the video from which the snippet should be created
 videopreview_position_end = 10 seconds before end

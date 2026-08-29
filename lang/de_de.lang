@@ -20,6 +20,11 @@ videopreview_compression_standard = Standard (ausgewogen)
 videopreview_compression_high = Hoch (kleine Datei)
 videopreview_compression_maximum = Maximal (kleinste Datei)
 
+videopreview_animated_label = Animiert
+videopreview_animated_yes = Ja, animierte Vorschau
+videopreview_animated_no = Nein, einzelnes Standbild
+videopreview_animated_notice = Bei "Nein" wird nur ein einzelnes Bild an der gewählten Position extrahiert statt eines animierten Ausschnitts – deutlich günstiger in Erzeugung und Dateigröße.
+
 videopreview_position_label = Position im Video
 videopreview_position_notice = Wähle die Stelle im Video, von der der Ausschnitt erstellt werden soll
 videopreview_position_end = 10 Sekunden vor Ende
