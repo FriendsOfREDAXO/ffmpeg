@@ -78,7 +78,15 @@ class rex_effect_video_to_webp extends rex_effect_abstract
 
         } catch (rex_exception $e) {
             rex_logger::factory()->logException($e);
-            return;
+            // rex_media_manager_not_found_exception statt einfach "return":
+            // ohne diese hier bleibt $this->media unveraendert -- also die
+            // VOLLE Originaldatei (Video, oft mehrstellige MB, native
+            // Aufloesung) -- applyEffects() im Media-Manager haette diese dann
+            // als "erfolgreich generiertes Vorschaubild" gecacht und
+            // ausgeliefert. Die eigens dafuer vorgesehene Exception laesst
+            // applyEffects() stattdessen sauber "nicht gefunden" melden
+            // (siehe Media-Manager-Kern, effect-Schleife in applyEffects()).
+            throw new rex_media_manager_not_found_exception($e->getMessage());
         }
     }
 
@@ -164,7 +172,12 @@ class rex_effect_video_to_webp extends rex_effect_abstract
 
         $cmd = sprintf(
             'ffmpeg -y ' .
-            '-ss %f -t %f '.
+            // %F statt %f: sprintf()'s %f ist locale-abhaengig (PHP-Doku) --
+            // auf Servern mit z.B. de_DE-Locale (Komma als Dezimaltrennzeichen)
+            // erzeugt %f einen fuer ffmpeg ungueltigen Wert wie "1,318983"
+            // statt "1.318983" ("Invalid duration specification for ss").
+            // %F ist laut PHP-Doku ausdruecklich NICHT locale-abhaengig.
+            '-ss %F -t %F '.
             '-i %s '.
             '-vf "%s" '.
             '-vcodec libwebp '.
