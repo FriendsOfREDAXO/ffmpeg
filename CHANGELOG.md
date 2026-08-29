@@ -1,5 +1,11 @@
 # Changelog
 
+## 4.7.1 - 2026-08-29
+
+### Bugfix
+- Video-Vorschaubild-Generierung (`rex_effect_video_to_webp`/`rex_effect_video_to_preview`) schlug auf Servern mit einer Locale fehl, die Komma statt Punkt als Dezimaltrennzeichen nutzt (z.B. `de_DE`): `sprintf('%f', ...)` ist entgegen der Erwartung locale-abhängig, erzeugte dort einen für ffmpeg ungültigen Zeitstempel wie `-ss 1,318983` statt `-ss 1.318983` ("Invalid duration specification"). Auf `%F` (laut PHP-Doku ausdrücklich nicht locale-abhängig) umgestellt – bereits das Muster, das `pages/mediapool.ffmpeg.trimmer.php` an derselben Stelle schon korrekt nutzte.
+- Schwerwiegender Folgefehler bei jedem ffmpeg-Fehlschlag (nicht nur beim oben genannten Locale-Bug, z.B. auch bei kaputten/beschädigten Videodateien): Beide Effekte fingen jede `rex_exception` ab, loggten sie und kehrten dann kommentarlos zurück – dabei blieb `$this->media` unverändert, also die **volle Originaldatei** (Video, oft mehrstellige MB, native Auflösung). Der Media-Manager cachte und lieferte diese Originaldatei daraufhin so aus, als wäre sie das erfolgreich generierte kleine Vorschaubild. Beide Effekte werfen bei einem Fehlschlag jetzt eine `rex_media_manager_not_found_exception`, die vom Media-Manager-Kern als "nicht gefunden" behandelt wird – kein Cache-Eintrag, kein Ausliefern der Originaldatei als falsches Vorschaubild.
+
 ## 4.7.0 - 2026-08-28
 
 ### Neu
