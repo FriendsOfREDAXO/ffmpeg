@@ -1,5 +1,10 @@
 # Changelog
 
+## 4.8.1 - 2026-10-10
+
+### Bugfix
+- `rex_effect_video_to_preview` schrieb bei jeder neu erzeugten Vorschau vier Debug-Zeilen (Video Info, Position Debug, Raw Params Debug, Calculated start position) ins REDAXO-Systemlog. Diese Ausgaben erscheinen jetzt nur noch im Debug-Modus (`rex::isDebugMode()`); Fehler werden weiterhin immer protokolliert.
+
 ## 4.8.0 - 2026-08-29
 
 ### Neu

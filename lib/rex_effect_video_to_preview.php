@@ -41,7 +41,7 @@ class rex_effect_video_to_preview extends rex_effect_abstract
             }
             
             // Position Debug Logging
-            rex_logger::factory()->log('media_manager', sprintf(
+            $this->debugLog(sprintf(
                 'Video Info: Length=%f, Position=%s, SnippetLength=%f', 
                 $duration, 
                 $params['position'], 
@@ -55,7 +55,7 @@ class rex_effect_video_to_preview extends rex_effect_abstract
             );
             
             // Position Debug Logging
-            rex_logger::factory()->log('media_manager', sprintf(
+            $this->debugLog(sprintf(
                 'Calculated start position: %f seconds', 
                 $startPosition
             ));
@@ -106,7 +106,7 @@ class rex_effect_video_to_preview extends rex_effect_abstract
     private function validateAndGetParams(): array
     {
         // Debug raw values
-        rex_logger::factory()->log('media_manager', sprintf(
+        $this->debugLog(sprintf(
             'Raw Params Debug: position=%s', 
             $this->params['position'] ?? 'not set'
         ));
@@ -142,7 +142,7 @@ class rex_effect_video_to_preview extends rex_effect_abstract
         $snippetLength = min($snippetLength, $duration);
         
         // Position Debug Logging
-        rex_logger::factory()->log('media_manager', sprintf(
+        $this->debugLog(sprintf(
             'Position Debug: position=%s, duration=%f, snippetLength=%f', 
             $position,
             $duration,
@@ -274,6 +274,17 @@ class rex_effect_video_to_preview extends rex_effect_abstract
         
         exec('ffmpeg -version', $output, $returnCode);
         return $returnCode === 0;
+    }
+
+    /**
+     * Debug-Ausgaben nur im REDAXO-Debug-Modus ins Systemlog schreiben
+     * (sonst bei jeder neu erzeugten Vorschau mehrere Zeilen im Log).
+     */
+    private function debugLog(string $message): void
+    {
+        if (rex::isDebugMode()) {
+            rex_logger::factory()->log('media_manager', $message);
+        }
     }
 
     public function getName()
