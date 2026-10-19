@@ -4,12 +4,14 @@ namespace FriendsOfRedaxo\FFmpeg\Api;
 
 use Exception;
 use FriendsOfRedaxo\FFmpeg\Job\VideoJob;
+use FriendsOfRedaxo\FFmpeg\Shell;
 use rex;
 use rex_addon;
 use rex_api_exception;
 use rex_api_function;
 use rex_backend_login;
 use rex_file;
+use rex_i18n;
 use rex_logger;
 use rex_media_service;
 use rex_path;
@@ -235,9 +237,13 @@ class Converter extends rex_api_function
         $exitFile = escapeshellarg($job->exitCodePath);
         $logFile = $job->logPath;
         if (str_starts_with(PHP_OS, 'WIN')) {
-            pclose(popen('start /B cmd /C "' . $command . ' 1> "' . $logFile . '" 2>&1 & echo %errorlevel% > ' . $exitFile . '"', 'r'));
+            $started = Shell::background('start /B cmd /C "' . $command . ' 1> "' . $logFile . '" 2>&1 & echo %errorlevel% > ' . $exitFile . '"');
         } else {
-            shell_exec('(' . $command . ' 1> ' . escapeshellarg($logFile) . ' 2>&1; echo $? > ' . $exitFile . ') > /dev/null 2>&1 &');
+            $started = Shell::background('(' . $command . ' 1> ' . escapeshellarg($logFile) . ' 2>&1; echo $? > ' . $exitFile . ')');
+        }
+        if (!$started) {
+            rex_file::put($job->logPath, rex_i18n::msg('ffmpeg_shell_disabled') . "\n", FILE_APPEND);
+            return ['status' => 'error', 'message' => rex_i18n::msg('ffmpeg_shell_disabled'), 'job' => $job->id];
         }
 
         return ['status' => 'started', 'job' => $job->id];

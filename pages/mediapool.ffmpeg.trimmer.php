@@ -8,9 +8,8 @@ $csrf = rex_csrf_token::factory('ffmpeg_trimmer');
 
 // Prüfen ob FFmpeg verfügbar ist
 $ffmpegPath = 'ffmpeg';
-exec('which ffmpeg', $ffmpegCheck, $ffmpegReturn);
-if ($ffmpegReturn !== 0) {
-    echo rex_view::error($this->i18n('ffmpeg_info_ffmpeg_missing'));
+if (!\FriendsOfRedaxo\FFmpeg\VideoInfo::isAvailable()) {
+    echo rex_view::error($this->i18n(\FriendsOfRedaxo\FFmpeg\Shell::canRun() ? 'ffmpeg_info_ffmpeg_missing' : 'ffmpeg_shell_disabled'));
     return;
 }
 
@@ -109,7 +108,7 @@ if ($action === 'trim' && $csrf->isValid() && $videoFile && $videoInfo) {
         }
         
         // Trimming ausführen
-        exec($ffmpegCmd . ' 2>&1', $output, $returnCode);
+        $returnCode = \FriendsOfRedaxo\FFmpeg\Shell::run($ffmpegCmd . ' 2>&1', $output);
         
         if ($returnCode === 0 && file_exists($outputPath)) {
             // Video in Medienpool importieren

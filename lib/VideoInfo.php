@@ -113,7 +113,7 @@ class VideoInfo
         
         // Schnelle Dauer-Abfrage mit ffprobe
         $cmd = 'ffprobe -v quiet -show_entries format=duration -of csv=p=0 ' . escapeshellarg($videoPath);
-        $duration = shell_exec($cmd);
+        $duration = Shell::output($cmd);
         
         return $duration ? (float) trim($duration) : null;
     }
@@ -276,8 +276,13 @@ class VideoInfo
      */
     private static function isFFmpegAvailable()
     {
-        $output = shell_exec('ffmpeg -version 2>&1');
-        return $output && strpos($output, 'ffmpeg version') !== false;
+        // Einmal pro Request prüfen; ohne erlaubte Shell-Funktion ist FFmpeg nicht nutzbar (Issue #18)
+        static $available = null;
+        if (null === $available) {
+            $output = Shell::canRun() ? Shell::output('ffmpeg -version 2>&1') : null;
+            $available = is_string($output) && str_contains($output, 'ffmpeg version');
+        }
+        return $available;
     }
     
     /**
@@ -291,7 +296,7 @@ class VideoInfo
     {
         // FFprobe für detaillierte Video-Informationen verwenden
         $cmd = 'ffprobe -v quiet -print_format json -show_format -show_streams ' . escapeshellarg($videoPath);
-        $output = shell_exec($cmd);
+        $output = Shell::output($cmd);
         
         if (!$output) {
             \rex_logger::factory()->log('warning', 'ffprobe returned no output for {file}', ['file' => $filename, 'cmd' => $cmd]);
