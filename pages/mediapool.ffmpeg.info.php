@@ -9,6 +9,13 @@ if (empty($videoFile)) {
     $videoFile = html_entity_decode(rex_request('video', 'string', ''));
 }
 $videoInfo = null;
+// Nur Dateien aus dem Medienpool (kein Pfad in den Parameter)
+if ('' !== $videoFile && ($videoFile !== basename($videoFile) || null === rex_media::get($videoFile))) {
+    $videoFile = '';
+}
+if (!\FriendsOfRedaxo\FFmpeg\Shell::canRun()) {
+    echo rex_view::warning(rex_i18n::msg('ffmpeg_shell_disabled'));
+}
 
 if ($videoFile) {
     $videoPath = rex_path::media($videoFile);
@@ -26,8 +33,8 @@ if ($videoFile) {
  */
 function getVideoInfo($videoPath) {
     // FFprobe für detaillierte Video-Informationen verwenden
-    $cmd = 'ffprobe -v quiet -print_format json -show_format -show_streams "' . $videoPath . '"';
-    $output = shell_exec($cmd);
+    $cmd = 'ffprobe -v quiet -print_format json -show_format -show_streams ' . escapeshellarg($videoPath);
+    $output = \FriendsOfRedaxo\FFmpeg\Shell::output($cmd);
     
     if (!$output) {
         return null;

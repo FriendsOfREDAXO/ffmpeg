@@ -1,5 +1,11 @@
 # Changelog
 
+## 4.8.2 - 2026-10-19
+
+### Bugfix
+- Server mit gesperrten Shell-Funktionen (`disable_functions`: shell_exec, exec, proc_open): Das Öffnen eines Videos im Medienpool, die Info-Seite und der Trimmer brachen mit „Call to undefined function shell_exec()“ ab (#18). Alle Aufrufe laufen jetzt über `FriendsOfRedaxo\FFmpeg\Shell`, das die erlaubte Funktion wählt; ist keine erlaubt, gilt FFmpeg als nicht verfügbar, Videos lassen sich im Medienpool normal bearbeiten, und die FFmpeg-Seiten zeigen einen Hinweis. Konvertierungen melden einen Fehler statt still zu scheitern.
+- Info-Seite: Es werden nur noch Dateien aus dem Medienpool ausgewertet (kein Pfad im Parameter `video`); der Pfad wird für ffprobe maskiert.
+
 ## 4.8.1 - 2026-10-10
 
 ### Bugfix

@@ -180,3 +180,6 @@ media_manager_effect_video_preview_height = Höhe
 # Benennung für die Addonrechte, sichtbar innerhalb der REDAXO-Administration unter Benutzer > Rollen > Allgemein
 #perm_general_ffmpeg[] = ffmpeg[] - Rechte für Video-Konverter
 #perm_general_ffmpeg[config] = ffmpeg[config] - Video-Konverter (Settings)
+
+# Shell-Funktionen gesperrt (Issue #18)
+ffmpeg_shell_disabled = Auf diesem Server sind die PHP-Funktionen zum Ausführen von Programmen (shell_exec, exec, proc_open) gesperrt. FFmpeg kann daher nicht genutzt werden; Videos lassen sich im Medienpool trotzdem normal bearbeiten. Bitten Sie Ihren Hoster, eine dieser Funktionen freizugeben.

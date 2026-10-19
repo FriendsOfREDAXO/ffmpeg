@@ -8,6 +8,11 @@ $buttons = '';
 
 $csrfToken = rex_csrf_token::factory('ffmpeg');
 
+// Ohne erlaubte Shell-Funktion (disable_functions) kann nichts konvertiert werden (Issue #18)
+if (!\FriendsOfRedaxo\FFmpeg\Shell::canRun()) {
+    echo rex_view::warning(rex_i18n::msg('ffmpeg_shell_disabled'));
+}
+
 // Prüfen, ob eine aktive Konvertierung läuft -- siehe Converter::getActiveJobInfo()
 // (Redesign: globaler Job-Status statt session-gebundener Konversion, siehe
 // FriendsOfRedaxo\FFmpeg\Job\VideoJob)
