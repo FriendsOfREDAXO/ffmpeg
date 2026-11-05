@@ -153,6 +153,87 @@ if ($action === 'trim' && $csrf->isValid() && $videoFile && $videoInfo) {
     }
 }
 
+// Poster-Bild erzeugen: Standbild an einer Zeitposition exportieren, z.B.
+// fuer <video poster="..."> (siehe Usability-Review -- bisher gab es dafuer
+// keine Funktion im Addon, der Trimmer hat aber bereits eine Scrub-Vorschau
+// mit bekannter aktueller Position, daher hier statt eines eigenen
+// Werkzeugs). Synchron wie das Trimmen selbst (kein Hintergrund-Job).
+if ('poster' === $action && $csrf->isValid() && $videoFile && $videoInfo) {
+    $posterTime = (float) rex_request('poster_time', 'string', '0');
+
+    if ($posterTime < 0) {
+        echo rex_view::error($this->i18n('ffmpeg_trimmer_error_times'));
+    } else {
+        $videoPath = rex_path::media($videoFile);
+        $pathInfo = pathinfo($videoFile);
+        $baseName = $pathInfo['filename'];
+
+        $posterBaseFilename = $baseName . '_poster';
+        $posterFilename = $posterBaseFilename . '.jpg';
+        $counter = 1;
+        while (rex_media::get($posterFilename) !== null) {
+            $posterFilename = $posterBaseFilename . '_' . $counter . '.jpg';
+            ++$counter;
+        }
+
+        $posterPath = rex_path::media($posterFilename);
+
+        // -vframes 1 statt -frames:v 1 (gleichbedeutend, hier konsistent
+        // zum Rest des Addons bei "ein Einzelbild extrahieren"); -ss VOR
+        // -i fuer schnelles Seeking (Keyframe-naeherung reicht fuer ein
+        // Vorschaubild, kein frame-exaktes Seeking noetig).
+        $ffmpegCmd = sprintf(
+            'ffmpeg -y -ss %.3F -i %s -vframes 1 -q:v 2 %s',
+            $posterTime,
+            escapeshellarg($videoPath),
+            escapeshellarg($posterPath),
+        );
+
+        $returnCode = \FriendsOfRedaxo\FFmpeg\Shell::run($ffmpegCmd . ' 2>&1', $output);
+
+        if (0 === $returnCode && file_exists($posterPath)) {
+            try {
+                $checkSql = rex_sql::factory();
+                $existingMedia = $checkSql->getArray('SELECT id FROM ' . rex::getTable('media') . ' WHERE filename = ?', [$posterFilename]);
+
+                $sql = rex_sql::factory();
+                $sql->setTable(rex::getTable('media'));
+                $sql->setValue('filename', $posterFilename);
+                $sql->setValue('originalname', $posterFilename);
+                $sql->setValue('filetype', 'image/jpeg');
+                $sql->setValue('filesize', filesize($posterPath));
+                [$posterWidth, $posterHeight] = getimagesize($posterPath) ?: [0, 0];
+                $sql->setValue('width', $posterWidth);
+                $sql->setValue('height', $posterHeight);
+                $sql->setValue('title', ($videoInfo['title'] ?: $videoFile) . ' (Poster)');
+                $sql->setValue('updatedate', date('Y-m-d H:i:s'));
+                $sql->setValue('updateuser', rex::getUser()->getLogin());
+
+                if (count($existingMedia) > 0) {
+                    $sql->setWhere('filename = :filename', ['filename' => $posterFilename]);
+                    $sql->update();
+                } else {
+                    $sql->setValue('createdate', date('Y-m-d H:i:s'));
+                    $sql->setValue('createuser', rex::getUser()->getLogin());
+                    $sql->insert();
+                }
+
+                echo rex_view::success($this->i18n('ffmpeg_trimmer_poster_success') . ': ' . $posterFilename);
+            } catch (Exception $e) {
+                echo rex_view::error($this->i18n('ffmpeg_trimmer_error_import') . ': ' . $e->getMessage());
+            }
+        } else {
+            // Zeilen einzeln escapen (nicht den fertigen <br>-String), sonst
+            // wuerden die <br>-Tags selbst mit-escaped und der Zeilenumbruch
+            // ginge verloren. Anders als die Trim-Fehlermeldung weiter oben
+            // (bestehender Code, Zeile ~149) wird hier bewusst escaped --
+            // FFmpeg-Stderr kann im Fehlerfall Pfad-/Dateinamen-Fragmente
+            // enthalten, die theoretisch HTML-Sonderzeichen tragen koennten.
+            echo rex_view::error($this->i18n('ffmpeg_trimmer_poster_error') . ': ' . implode('<br>', array_map('rex_escape', $output)));
+        }
+    }
+}
+
 // Video-Liste laden - alle Videos anzeigen (auch web-optimierte)
 $sql = rex_sql::factory();
 $videos = $sql->getArray('SELECT filename, title, filesize, updatedate, filetype FROM ' . rex::getTable('media') . ' WHERE (filetype LIKE \'video/%\' OR filetype IN (\'video/mp4\', \'video/avi\', \'video/mov\', \'video/wmv\', \'video/webm\', \'video/mkv\')) ORDER BY updatedate DESC');
@@ -258,6 +339,24 @@ if ($videoFile && $videoInfo) {
                         <a href="' . rex_url::currentBackendPage() . '" class="btn btn-default">
                             <i class="rex-icon fa-arrow-left"></i> ' . $this->i18n('ffmpeg_trimmer_back_to_list') . '
                         </a>
+                    </div>
+                </form>
+
+                <hr>
+
+                <form method="post" class="trimmer-poster-form">
+                    ' . $csrf->getHiddenField() . '
+                    <input type="hidden" name="video" value="' . rex_escape($videoFile) . '">
+                    <input type="hidden" name="action" value="poster">
+                    <input type="hidden" name="poster_time" id="poster_time" value="0">
+
+                    <label class="control-label">' . $this->i18n('ffmpeg_trimmer_poster_label') . '</label>
+                    <p class="help-block" style="margin: 4px 0 10px;">' . $this->i18n('ffmpeg_trimmer_poster_help') . '</p>
+
+                    <div class="text-center trimmer-actions">
+                        <button type="submit" class="btn btn-default">
+                            <i class="rex-icon fa-camera"></i> ' . $this->i18n('ffmpeg_trimmer_poster_save') . '
+                        </button>
                     </div>
                 </form>
             </div>

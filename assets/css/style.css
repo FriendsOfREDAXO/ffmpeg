@@ -121,6 +121,7 @@ body.rex-theme-dark .ffmpeg-converter-ui {
     gap: 10px;
     flex-wrap: wrap;
     padding: 12px 14px 8px;
+    min-width: 0;
 }
 
 .ffmpeg-converter-ui .video-filename {
@@ -128,11 +129,24 @@ body.rex-theme-dark .ffmpeg-converter-ui {
     font-size: 15px;
     line-height: 1.3;
     letter-spacing: 0.1px;
+    /* Sehr lange, bindestrichfreie Dateinamen (z.B. generierte Exporte mit
+       UUID-Suffixen) sonst ohne Umbruchstelle -- sprengen damit den
+       Flex-/Grid-Container nach rechts statt im Container umzubrechen.
+       max-width:100% statt eines festen Pixelwerts, damit der Name immer
+       genau die Breite seiner Grid-Spalte ausnutzt (bleibt buendig mit den
+       anderen Zeilen) statt bei breiten Viewports unnoetig schmal zu
+       wirken oder bei schmalen zu ueberlaufen. */
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    min-width: 0;
+    display: block;
+    max-width: 100%;
 }
 
 .ffmpeg-converter-ui .video-file-cell {
     display: flex;
     flex-direction: column;
+    min-width: 0;
 }
 
 .ffmpeg-converter-ui .video-title {

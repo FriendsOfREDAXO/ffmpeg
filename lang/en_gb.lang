@@ -47,6 +47,13 @@ ffmpeg_legend_video = Videos to convert
 ffmpeg_convert_info = Please ensure that the video is not currently in use. <br> The converted file will be stored in the media pool in the configured category (or under "No category" if none is selected). <br> The conversion runs in the background, you can close the browser. Check the status later to complete the process.
 ffmpeg_config_legend1 = FFmpeg Settings
 ffmpeg_config_delete = Delete source file after successful compression
+config_legend_overwrite = Overwrite original ("Optimize")
+config_intro_overwrite = Applies to the "Optimize" button in the video converter: the original video is re-encoded with this command and replaces the existing media file. Metadata (title, category, usage in the project) is preserved since it remains the same record.
+config_legend_new_file = Create web version (new file)
+config_intro_new_file = Applies to the "Create web version" button: the original stays unchanged, and an additional media file with the "web_" prefix is created. Useful for a smaller, web-optimized variant alongside the untouched original.
+config_delete_help = Deletes the original file after creating the web version. Does not apply to "Optimize" (there is no separate source file there, the original is replaced directly).
+config_legend_general = General
+config_legend_preset_reference = Preset overview
 ffmpeg_config_media_category = Media category
 ffmpeg_config_media_category_none = No category
 ffmpeg_config_media_category_help = Select the media category where converted files should be stored in the media pool.
@@ -71,6 +78,8 @@ ffmpeg_overwrite_choice_intro = A web version with this name already exists
 ffmpeg_overwrite_choice_cancel = Cancel
 ffmpeg_overwrite_choice_new = Create additional variant
 ffmpeg_overwrite_choice_overwrite = Overwrite
+ffmpeg_overwrite_choice_preset_label = Preset for the new variant
+ffmpeg_overwrite_choice_preset_help = Only applies to this additional variant, the base setting in the addon settings stays unchanged.
 ffmpeg_show_log = Show log
 ffmpeg_hide_log = Hide log
 ffmpeg_convert_this_video = Convert this video
@@ -81,6 +90,8 @@ ffmpeg_optimize_this_video = Optimize
 ffmpeg_reoptimize_this_video = Re-optimize
 ffmpeg_status_optimized = Optimized
 ffmpeg_status_optimized_prefix = Optimized:
+ffmpeg_status_web_prefix = Web version:
+ffmpeg_preset_hint = Uses preset:
 ffmpeg_optimize_video_starting_short = Starting…
 ffmpeg_optimize_video_busy_short = A conversion is already running.
 ffmpeg_col_file = File
@@ -111,6 +122,14 @@ config_preset_archive_desc = Example: ffmpeg -y -i INPUT -c:v libx264 -preset ve
 config_preset_custom_desc = Your own custom ffmpeg command; use placeholders INPUT and OUTPUT.
 config_preset_standard = Default (legacy)
 config_preset_standard_desc = Example: ffmpeg -y -i INPUT -vcodec h264 OUTPUT.mp4 (standard/default)
+config_preset_1080p = 1080p (Full HD)
+config_preset_1080p_desc = Example: ffmpeg -y -i INPUT -c:v libx264 -preset medium -crf 23 -c:a aac -b:a 128k -vf scale=-2:1080 OUTPUT.mp4 (1080p)
+config_preset_720p = 720p (HD)
+config_preset_720p_desc = Example: ffmpeg -y -i INPUT -c:v libx264 -preset medium -crf 23 -c:a aac -b:a 128k -vf scale=-2:720 OUTPUT.mp4 (720p)
+config_preset_480p = 480p
+config_preset_480p_desc = Example: ffmpeg -y -i INPUT -c:v libx264 -preset faster -crf 23 -c:a aac -b:a 96k -vf scale=-2:480 OUTPUT.mp4 (480p)
+config_preset_360p = 360p
+config_preset_360p_desc = Example: ffmpeg -y -i INPUT -c:v libx264 -preset faster -crf 23 -c:a aac -b:a 96k -vf scale=-2:360 OUTPUT.mp4 (360p)
 config_command_help = The actual FFmpeg command executed. Placeholders: INPUT, OUTPUT
 config_preview_label = Effective FFmpeg command preview
 config_preset_priority = Priority: preset (unless preset=custom) > command field
@@ -142,6 +161,11 @@ ffmpeg_trimmer_back_to_list = Back to overview
 ffmpeg_trimmer_upload_videos = Upload videos via the <a href="{0}">media pool</a>.
 ffmpeg_trimmer_error_import = Error importing
 ffmpeg_trimmer_error_cutting = Error cutting the video. FFmpeg output
+ffmpeg_trimmer_poster_label = Create poster image
+ffmpeg_trimmer_poster_help = Saves the current playback position as a still image (JPEG) in the media pool, e.g. for a video element's poster image.
+ffmpeg_trimmer_poster_save = Save poster image
+ffmpeg_trimmer_poster_success = Poster image created and saved successfully
+ffmpeg_trimmer_poster_error = Error creating the poster image. FFmpeg output
 ffmpeg_trimmer_time_range_label = Set time range:
 ffmpeg_trimmer_pingpong_test = Test ping-pong
 ffmpeg_trimmer_mode_ready = Ready

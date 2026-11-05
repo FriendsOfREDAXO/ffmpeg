@@ -8,6 +8,21 @@ $buttons = '';
 
 $csrfToken = rex_csrf_token::factory('ffmpeg');
 
+// Aktuell konfiguriertes Preset je Modus als Anzeigename fuer die
+// Button-Hinweise (siehe Usability-Review: vorher unklar, welches Preset
+// ein Klick auf "Optimieren"/"Webversion erstellen" tatsaechlich
+// verwendet). 'custom' oder ein fehlender/unbekannter Preset-Name zeigt
+// "Benutzerdefiniert" -- siehe Settings-Seite fuer dieselbe Fallback-Logik.
+$presetLabelFor = function (string $presetKey) {
+    $knownPresets = ['standard', 'web', 'mobile', 'archive', '1080p', '720p', '480p', '360p'];
+    if (in_array($presetKey, $knownPresets, true)) {
+        return $this->i18n('config_preset_' . $presetKey);
+    }
+    return $this->i18n('config_preset_custom');
+};
+$activePresetOverwrite = $presetLabelFor((string) $this->getConfig('preset_overwrite', 'archive'));
+$activePresetNewFile = $presetLabelFor((string) $this->getConfig('preset_new_file', '' !== (string) $this->getConfig('command', '') ? 'custom' : 'web'));
+
 // Ohne erlaubte Shell-Funktion (disable_functions) kann nichts konvertiert werden (Issue #18)
 if (!\FriendsOfRedaxo\FFmpeg\Shell::canRun()) {
     echo rex_view::warning(rex_i18n::msg('ffmpeg_shell_disabled'));
@@ -160,11 +175,15 @@ if (empty($allVideos)) {
             $inlineLog = rex_escape($conversionInfo['log']);
         }
 
+        // Praefix "Webversion:" explizit, siehe Usability-Review: zwei
+        // unabhaengige Prozentangaben (Webversion vs. Optimiert, siehe
+        // optimizeCompressionRate weiter unten) sahen ohne Bezug aus wie
+        // Duplikate/widerspruechliche Werte statt zwei verschiedener Dinge.
         $statusText = $video['isProcessing']
             ? $this->i18n('ffmpeg_status_processing')
             : ($video['isAlreadyConverted']
                 ? (($video['compressionRate'] > 0)
-                    ? ($video['compressionRate'] . '% ' . $this->i18n('ffmpeg_smaller'))
+                    ? ($this->i18n('ffmpeg_status_web_prefix') . ' ' . $video['compressionRate'] . '% ' . $this->i18n('ffmpeg_smaller'))
                     : $this->i18n('ffmpeg_status_converted'))
                 : $this->i18n('ffmpeg_status_ready'));
         
@@ -205,15 +224,25 @@ if (empty($allVideos)) {
             if ($video['isMp4']) {
                 $optimizeLabel = $video['isOptimizedInPlace'] ? $this->i18n('ffmpeg_reoptimize_this_video') : $this->i18n('ffmpeg_optimize_this_video');
                 $optimizeClass = $video['isOptimizedInPlace'] ? 'btn-default ffmpeg-start-conversion-secondary' : 'btn-primary';
-                $item .= '<button class="btn btn-xs ' . $optimizeClass . ' ffmpeg-start-conversion" type="button" data-video="' . rex_escape($video['filename']) . '" data-mode="overwrite"' . ($conversionActive ? ' disabled' : '') . '><i class="fa-solid fa-arrows-rotate" aria-hidden="true"></i> ' . $optimizeLabel . '</button>';
+                $item .= '<button class="btn btn-xs ' . $optimizeClass . ' ffmpeg-start-conversion" type="button" data-video="' . rex_escape($video['filename']) . '" data-mode="overwrite" title="' . rex_escape($this->i18n('ffmpeg_preset_hint') . ' ' . $activePresetOverwrite) . '"' . ($conversionActive ? ' disabled' : '') . '><i class="fa-solid fa-arrows-rotate" aria-hidden="true"></i> ' . $optimizeLabel . '</button>';
             }
 
             // "Webversion erstellen" (separate "web_"-Datei, Original bleibt
             // unangetastet) -- immer verfuegbar, unabhaengig vom Quellformat.
             $webLabel = $video['isAlreadyConverted'] ? $this->i18n('ffmpeg_recreate_web_version') : $this->i18n('ffmpeg_create_web_version');
             $webClass = $video['isMp4'] ? 'btn-default ffmpeg-start-conversion-secondary' : ($video['isAlreadyConverted'] ? 'btn-default ffmpeg-start-conversion-secondary' : 'btn-primary');
-            $item .= '<button class="btn btn-xs ' . $webClass . ' ffmpeg-start-conversion" type="button" data-video="' . rex_escape($video['filename']) . '" data-mode="new_file"' . ($conversionActive ? ' disabled' : '') . '><i class="fa-solid fa-globe" aria-hidden="true"></i> ' . $webLabel . '</button>';
+            $item .= '<button class="btn btn-xs ' . $webClass . ' ffmpeg-start-conversion" type="button" data-video="' . rex_escape($video['filename']) . '" data-mode="new_file" title="' . rex_escape($this->i18n('ffmpeg_preset_hint') . ' ' . $activePresetNewFile) . '"' . ($conversionActive ? ' disabled' : '') . '><i class="fa-solid fa-globe" aria-hidden="true"></i> ' . $webLabel . '</button>';
 
+            $item .= '</div>';
+            // Sichtbarer Preset-Hinweis unter den Buttons -- Tooltip (title)
+            // allein wird von Erstnutzern leicht uebersehen, siehe
+            // Usability-Review: vorher kein Hinweis, mit welchem Preset ein
+            // Klick tatsaechlich arbeitet.
+            $item .= '<div class="video-actions-preset-hint text-muted small">';
+            if ($video['isMp4']) {
+                $item .= '<span>' . rex_escape($this->i18n('ffmpeg_optimize_this_video')) . ': ' . rex_escape($activePresetOverwrite) . '</span> · ';
+            }
+            $item .= '<span>' . rex_escape($this->i18n('ffmpeg_create_web_version')) . ': ' . rex_escape($activePresetNewFile) . '</span>';
             $item .= '</div>';
         }
 
@@ -334,6 +363,20 @@ if (empty($allVideos)) {
                 </div>
                 <div class="modal-body">
                     <p>' . $this->i18n('ffmpeg_overwrite_choice_intro') . ' <strong class="ffmpeg-overwrite-choice-filename"></strong></p>
+                    <div class="form-group">
+                        <label for="ffmpeg-overwrite-choice-preset">' . $this->i18n('ffmpeg_overwrite_choice_preset_label') . '</label>
+                        <select id="ffmpeg-overwrite-choice-preset" class="form-control">
+                            <option value="standard">' . $this->i18n('config_preset_standard') . '</option>
+                            <option value="web">' . $this->i18n('config_preset_web') . '</option>
+                            <option value="mobile">' . $this->i18n('config_preset_mobile') . '</option>
+                            <option value="archive">' . $this->i18n('config_preset_archive') . '</option>
+                            <option value="1080p">' . $this->i18n('config_preset_1080p') . '</option>
+                            <option value="720p">' . $this->i18n('config_preset_720p') . '</option>
+                            <option value="480p">' . $this->i18n('config_preset_480p') . '</option>
+                            <option value="360p">' . $this->i18n('config_preset_360p') . '</option>
+                        </select>
+                        <p class="help-block">' . $this->i18n('ffmpeg_overwrite_choice_preset_help') . '</p>
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-default" data-dismiss="modal">' . $this->i18n('ffmpeg_overwrite_choice_cancel') . '</button>

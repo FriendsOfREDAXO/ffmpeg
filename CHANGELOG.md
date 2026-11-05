@@ -1,5 +1,21 @@
 # Changelog
 
+## 4.9.0 - 2026-11-06
+
+### Neue Features
+- **Poster-Bild erstellen**: Der Video-Trimmer kann jetzt die aktuelle Abspielposition als Standbild (JPEG) im Medienpool speichern (`<name>_poster.jpg`), z. B. für das Poster-Attribut eines Video-Elements.
+- **Preset-Auswahl für zusätzliche Varianten** (#20): Beim Anlegen einer weiteren Webversion (siehe 4.8.3) kann jetzt ein Preset gewählt werden, das nur für diese eine Variante gilt – der Sinn einer weiteren Variante ist meist gerade eine andere Qualität/Größe als die erste.
+- **Vier neue Auflösungs-Presets**: 1080p, 720p, 480p, 360p, zusätzlich zu den bestehenden Standard/Web/Mobile/Archive-Presets.
+- **Getrennte Presets/Kommandos für „Optimieren“ und „Webversion erstellen“**: Beide Buttons hatten bisher ein gemeinsames Preset, obwohl sie fachlich unterschiedliche Ziele haben (Original ersetzen vs. schlanke Web-Variante). Jetzt zwei eigene Einstellungen; bestehende Installationen fallen automatisch auf ihr bisheriges `command` als Webversion-Preset zurück.
+
+### Verbesserungen
+- Einstellungsseite neu strukturiert: eigene Panels für Allgemein/Optimieren/Webversion statt unklarer gemeinsamer Fieldsets, Preset-Übersicht als aufklappbares Akkordeon, Medien-Kategorie an den Anfang.
+- Video-Konverter-Liste: Status-Badges eindeutiger beschriftet („Webversion: X% kleiner“ statt nur „X% kleiner“), Preset-Hinweis direkt an den Buttons, welches Preset ein Klick tatsächlich verwendet.
+- Lange Dateinamen (z. B. generierte Exporte mit UUID-Suffixen) brechen jetzt bündig in ihrer eigenen Spalte um, statt das Layout zu sprengen – sowohl in der Konverter-Liste als auch im Überschreiben-Dialog.
+
+### Sicherheit
+- FFmpeg-Fehlerausgabe im Poster-Dialog wird jetzt escaped, bevor sie in die Fehlermeldung eingebettet wird.
+
 ## 4.8.3 - 2026-11-05
 
 ### Bugfix

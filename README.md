@@ -1,4 +1,4 @@
-# REDAXO-AddOn: FFmpeg Video Tools v4.1.0
+# REDAXO-AddOn: FFmpeg Video Tools
 
 Vollständige Video-Management-Lösung für REDAXO CMS – Konvertierung, Trimming und detaillierte Video-Analyse, alles in einem Addon!
 
@@ -16,13 +16,16 @@ Vollständige Video-Management-Lösung für REDAXO CMS – Konvertierung, Trimmi
 - **Hintergrundverarbeitung** – Browser schließen während der Konvertierung möglich
 - **Intelligente Medienpool-Integration** mit `web_`-Prefix
 - **Metadaten-Erhaltung** (Titel, Beschreibung, Copyright)
-- **Kompressionsanzeige** zeigt eingesparten Speicherplatz
-- **Auto-Cleanup** für Originaldateien nach erfolgreicher Konvertierung
-- **🆕 Vorgefertigte Presets** für Web, Mobile, Archive und Standard-Konvertierungen
-- **🆕 Command-Vorschau** zeigt das generierte FFmpeg-Kommando in Echtzeit
-- **🆕 Direkte Command-Eingabe** ohne separate Textarea
+- **Kompressionsanzeige** zeigt eingesparten Speicherplatz, getrennt ausgewiesen für Webversion und Optimieren
+- **Auto-Cleanup** für Originaldateien nach erfolgreicher Konvertierung (nur Webversion-Modus)
+- **Getrennte Presets** für „Optimieren“ (Original ersetzen) und „Webversion erstellen“ (neue Datei) – beides hat unterschiedliche Ziele und verdient eigene Einstellungen
+- **Vorgefertigte Presets**: Web, Mobile, Archive, Standard sowie Auflösungs-Presets 1080p/720p/480p/360p
+- **Mehrere Varianten pro Video**: existiert bereits eine Webversion, bietet ein Dialog neben „Überschreiben“ auch „Zusätzliche Variante anlegen“ mit eigener Preset-Wahl (`web_<name>_2.mp4`, `_3.mp4`, …)
+- **Command-Vorschau** zeigt das generierte FFmpeg-Kommando in Echtzeit
+- **Direkte Command-Eingabe** ohne separate Textarea
+- **Preset-Hinweis** direkt an den Buttons, welches Preset ein Klick tatsächlich verwendet
 
-### 🆕 Video-Trimmer
+### Video-Trimmer
 - **Präzises Schneiden** direkt im Browser
 - **Verlustfreies Trimming** mit FFmpeg Stream-Copy
 - **Intuitive Bedienung** mit Video-Player-Integration, Scrubber und HUD-Steuerung
@@ -30,6 +33,7 @@ Vollständige Video-Management-Lösung für REDAXO CMS – Konvertierung, Trimmi
 - **Loop-Schalter** für einfache Vorschau-Tests
 - **Keyboard-Shortcuts** für professionellen Workflow
 - **Alle Video-Typen** unterstützt (Original + web-optimiert)
+- **Poster-Bild erstellen**: aktuelle Abspielposition als Standbild (JPEG) im Medienpool speichern, z. B. für das Poster-Attribut eines Video-Elements
 
 ### 🆕 Video-Informationen 
 - **Detaillierte technische Analyse** aller Video-Parameter
@@ -69,6 +73,7 @@ Vollständige Video-Management-Lösung für REDAXO CMS – Konvertierung, Trimmi
 5. **Bereich testen** nutzen, um den markierten Abschnitt wiederholt abzuspielen
 6. Optional **Loop-Schalter** aktivieren, damit die Vorschau direkt in Schleife läuft
 7. "Video schneiden" → Geschnittenes Video als `web_trimmed_*` gespeichert
+8. **Poster-Bild erstellen** (optional): gewünschte Position im Player anfahren, dann „Poster-Bild speichern“ klicken → Standbild als `<name>_poster.jpg` im Medienpool
 
 ### Video-Informationen
 1. **Medienpool → Video-Tools → Video-Informationen** öffnen
@@ -294,7 +299,9 @@ ffmpeg -y -i INPUT -vcodec h264 OUTPUT.mp4
 
 ### Naming-Konventionen
 - **Konvertierte Videos:** `web_originalname.mp4`
+- **Zusätzliche Varianten:** `web_originalname_2.mp4`, `_3.mp4`, … (nächster freier Name)
 - **Getrimmte Videos:** `web_trimmed_originalname.mp4`
+- **Poster-Bilder:** `originalname_poster.jpg`
 - **Duplikate:** Automatischer Counter-Suffix
 
 ### Performance-Optimierungen

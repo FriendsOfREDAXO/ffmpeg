@@ -4,6 +4,7 @@ namespace FriendsOfRedaxo\FFmpeg\Api;
 
 use Exception;
 use FriendsOfRedaxo\FFmpeg\Job\VideoJob;
+use FriendsOfRedaxo\FFmpeg\Presets;
 use FriendsOfRedaxo\FFmpeg\Shell;
 use rex;
 use rex_addon;
@@ -64,6 +65,7 @@ class Converter extends rex_api_function
                         (bool) rex_request('confirm_overwrite', 'boolean', false),
                         $user,
                         (bool) rex_request('create_new', 'boolean', false),
+                        rex_request('preset', 'string', ''),
                     );
                     rex_response::cleanOutputBuffers();
                     rex_response::sendJson($result);
@@ -151,7 +153,7 @@ class Converter extends rex_api_function
     /**
      * @return array<string, mixed>
      */
-    protected function handleStart(string $video, string $mode, bool $confirmOverwrite, \rex_user $user, bool $createNew = false): array
+    protected function handleStart(string $video, string $mode, bool $confirmOverwrite, \rex_user $user, bool $createNew = false, string $preset = ''): array
     {
         if ('' === $video) {
             throw new rex_api_exception('No video file selected');
@@ -202,8 +204,13 @@ class Converter extends rex_api_function
 
         // Kommando aus Konfiguration -- unveraendertes Platzhalter-Prinzip
         // (INPUT/OUTPUT.<ext>), damit bestehende individuelle Kommandos
-        // weiter funktionieren.
-        $command = trim((string) rex_addon::get('ffmpeg')->getConfig('command')) . ' ';
+        // weiter funktionieren. Beim Anlegen einer zusaetzlichen Variante
+        // (siehe Issue #20) kann ein Preset NUR fuer diesen einen Lauf das
+        // konfigurierte Preset ueberschreiben -- Sinn einer weiteren
+        // Variante ist ja meist gerade eine andere Qualitaet/Groesse als
+        // die erste.
+        $presetCommand = $createNew && '' !== $preset ? Presets::command($preset) : null;
+        $command = trim((string) ($presetCommand ?? $this->resolveBaseCommand($mode))) . ' ';
         preg_match('/OUTPUT\.([^\s]+)/', $command, $extMatch);
         $fileExt = '' !== ($extMatch[1] ?? '') ? trim($extMatch[1]) : 'mp4';
 
@@ -263,6 +270,35 @@ class Converter extends rex_api_function
         }
 
         return ['status' => 'started', 'job' => $job->id];
+    }
+
+    /**
+     * Konfiguriertes Basis-Kommando fuer den jeweiligen Modus -- "Original
+     * ueberschreiben" und "Webversion erstellen" hatten bisher EIN
+     * gemeinsames Preset/Kommando (config['command']), obwohl beide Faelle
+     * fachlich unterschiedliche Ziele haben (Original ersetzen vs. schlanke
+     * Web-Variante). Getrennte Einstellungen, siehe Settings-Seite.
+     *
+     * Abwaertskompatibilitaet: existiert noch kein eigenes
+     * config['command_new_file'], aber das alte config['command'] ist
+     * gesetzt, gilt dieses weiterhin als Webversion-Kommando -- das war der
+     * bisher einzige tatsaechlich variabel genutzte Pfad (vor Einfuehrung
+     * von 'overwrite' lief ohnehin nur 'new_file').
+     */
+    private function resolveBaseCommand(string $mode): string
+    {
+        $addon = rex_addon::get('ffmpeg');
+
+        if ('overwrite' === $mode) {
+            return (string) $addon->getConfig('command_overwrite', (string) Presets::command('archive'));
+        }
+
+        $newFileCommand = $addon->getConfig('command_new_file');
+        if (null !== $newFileCommand && '' !== $newFileCommand) {
+            return (string) $newFileCommand;
+        }
+
+        return (string) $addon->getConfig('command', (string) Presets::command('web'));
     }
 
     /**

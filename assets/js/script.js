@@ -205,13 +205,16 @@
         startPolling(window.ffmpegActiveJob.id);
     }
 
-    function startConversion(video, mode, confirmOverwrite, createNew) {
+    function startConversion(video, mode, confirmOverwrite, createNew, preset) {
         var url = 'index.php?rex-api-call=ffmpeg_convert&func=start&video=' + encodeURIComponent(video) + '&mode=' + encodeURIComponent(mode || 'new_file');
         if (confirmOverwrite) {
             url += '&confirm_overwrite=1';
         }
         if (createNew) {
             url += '&create_new=1';
+            if (preset) {
+                url += '&preset=' + encodeURIComponent(preset);
+            }
         }
 
         $.ajax({
@@ -254,6 +257,26 @@
             });
     }
 
+    // Lange, technische Dateinamen (z.B. Exporte von KI-Video-Tools mit
+    // UUID-artigen Suffixen) sprengen sonst die Modal-Breite -- Anfang und
+    // Dateiendung bleiben sichtbar (fuer Wiedererkennung/Extension
+    // relevant), die Mitte wird gekuerzt. Der volle Name bleibt im
+    // title-Attribut fuers Hover-Tooltip.
+    function shortenFilename(filename, maxLength) {
+        if (filename.length <= maxLength) {
+            return filename;
+        }
+
+        var dotIndex = filename.lastIndexOf('.');
+        var ext = dotIndex > -1 ? filename.slice(dotIndex) : '';
+        var base = dotIndex > -1 ? filename.slice(0, dotIndex) : filename;
+        var keep = Math.max(4, maxLength - ext.length - 1);
+        var headLength = Math.ceil(keep / 2);
+        var tailLength = Math.floor(keep / 2);
+
+        return base.slice(0, headLength) + '…' + base.slice(base.length - tailLength) + ext;
+    }
+
     // Statt des frueheren nativen confirm() (nur Ueberschreiben/Abbrechen,
     // siehe Issue #20) ein eigenes Modal mit drei Optionen: Ueberschreiben,
     // zusaetzliche Variante anlegen (web_<name>_2.mp4, ...), Abbrechen.
@@ -269,7 +292,9 @@
             return;
         }
 
-        $modal.find('.ffmpeg-overwrite-choice-filename').text(existingFilename);
+        $modal.find('.ffmpeg-overwrite-choice-filename')
+            .text(shortenFilename(existingFilename, 50))
+            .attr('title', existingFilename);
         $modal.data('video', video).data('mode', mode);
         $modal.modal('show');
     }
@@ -315,9 +340,10 @@
             var $modal = $('#ffmpeg-overwrite-choice-modal');
             var video = $modal.data('video');
             var mode = $modal.data('mode');
+            var preset = $modal.find('#ffmpeg-overwrite-choice-preset').val();
             $modal.modal('hide');
             updateUIForConversion(true);
-            startConversion(video, mode, false, true);
+            startConversion(video, mode, false, true, preset);
             return false;
         });
 
