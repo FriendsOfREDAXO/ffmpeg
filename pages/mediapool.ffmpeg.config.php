@@ -105,6 +105,26 @@ $renderModeBlock = static function (rex_addon $addon, array $presets, string $id
     return $block;
 };
 
+$content .= '<fieldset><legend>' . $this->i18n('config_legend_general') . '</legend>';
+
+$formElements = [];
+$n = [];
+$n['label'] = '<label for="ffmpeg-config-category">' . $this->i18n('config_media_category') . '</label>';
+$select = new rex_media_category_select();
+$select->setId('ffmpeg-config-category');
+$select->setAttribute('class', 'form-control');
+$select->setName('config[category_id]');
+$select->addOption($this->i18n('config_media_category_none'), 0);
+$select->setSelected((int) $this->getConfig('category_id', 0));
+$n['field'] = $select->get();
+$formElements[] = $n;
+$fragment = new rex_fragment();
+$fragment->setVar('elements', $formElements, false);
+$content .= $fragment->parse('core/form/container.php');
+$content .= '<p class="help-block">' . $this->i18n('config_media_category_help') . '</p>';
+
+$content .= '</fieldset>';
+
 $content .= '<fieldset><legend>' . $this->i18n('config_legend_overwrite') . '</legend>';
 $content .= $renderModeBlock($this, $presets, 'overwrite', 'overwrite', 'config_intro_overwrite', $commandOverwrite, $presetOverwrite);
 $content .= '</fieldset>';
@@ -128,29 +148,22 @@ $content .= '<p class="help-block">' . $this->i18n('config_delete_help') . '</p>
 
 $content .= '</fieldset>';
 
-$content .= '<fieldset><legend>' . $this->i18n('config_legend_general') . '</legend>';
-
-$formElements = [];
-$n = [];
-$n['label'] = '<label for="ffmpeg-config-category">' . $this->i18n('config_media_category') . '</label>';
-$select = new rex_media_category_select();
-$select->setId('ffmpeg-config-category');
-$select->setAttribute('class', 'form-control');
-$select->setName('config[category_id]');
-$select->addOption($this->i18n('config_media_category_none'), 0);
-$select->setSelected((int) $this->getConfig('category_id', 0));
-$n['field'] = $select->get();
-$formElements[] = $n;
-$fragment = new rex_fragment();
-$fragment->setVar('elements', $formElements, false);
-$content .= $fragment->parse('core/form/container.php');
-$content .= '<p class="help-block">' . $this->i18n('config_media_category_help') . '</p>';
-
-$content .= '</fieldset>';
-
-// Preset descriptions (gelten fuer beide Bloecke oben, daher gemeinsam am Ende)
-$content .= '<fieldset><legend>' . $this->i18n('config_legend_preset_reference') . '</legend>';
-$content .= '<ul class="list-unstyled small">';
+// Preset-Uebersicht als aufklappbares Akkordeon statt dauerhaft sichtbarer
+// Liste -- reine Referenz/Nachschlagehilfe, muss nicht permanent Platz auf
+// der Seite beanspruchen (Bootstrap panel-collapse, bereits an anderer
+// Stelle im Backend verwendet, z.B. snippets-Addon). Pfeil-Icon dreht sich
+// per reinem CSS (kein zusaetzliches JS) je nach aria-expanded-Zustand, den
+// Bootstraps collapse-Plugin selbst auf dem Toggle-Link pflegt.
+$content .= '<style>
+    .ffmpeg-preset-reference-toggle .rex-icon { transition: transform 0.15s ease; }
+    .ffmpeg-preset-reference-toggle[aria-expanded="true"] .rex-icon { transform: rotate(90deg); }
+</style>';
+$content .= '<fieldset><div class="panel panel-default" style="margin-bottom:0; border:0; box-shadow:none;">
+    <a data-toggle="collapse" href="#ffmpeg-preset-reference" class="collapsed panel-title ffmpeg-preset-reference-toggle" style="display:block;" aria-expanded="false">
+        <i class="rex-icon fa-solid fa-angle-right"></i> ' . $this->i18n('config_legend_preset_reference') . '
+    </a>
+    <div id="ffmpeg-preset-reference" class="panel-collapse collapse">
+        <ul class="list-unstyled small" style="margin-top:10px;">';
 $content .= '<li><strong>' . $this->i18n('config_preset_web') . ':</strong> ' . $this->i18n('config_preset_web_desc') . '</li>';
 $content .= '<li><strong>' . $this->i18n('config_preset_mobile') . ':</strong> ' . $this->i18n('config_preset_mobile_desc') . '</li>';
 $content .= '<li><strong>' . $this->i18n('config_preset_archive') . ':</strong> ' . $this->i18n('config_preset_archive_desc') . '</li>';
@@ -160,8 +173,9 @@ $content .= '<li><strong>' . $this->i18n('config_preset_720p') . ':</strong> ' .
 $content .= '<li><strong>' . $this->i18n('config_preset_480p') . ':</strong> ' . $this->i18n('config_preset_480p_desc') . '</li>';
 $content .= '<li><strong>' . $this->i18n('config_preset_360p') . ':</strong> ' . $this->i18n('config_preset_360p_desc') . '</li>';
 $content .= '<li><strong>' . $this->i18n('config_preset_custom') . ':</strong> ' . $this->i18n('config_preset_custom_desc') . '</li>';
-$content .= '</ul>' . PHP_EOL;
-$content .= '</fieldset>';
+$content .= '</ul>
+    </div>
+</div></fieldset>';
 
 // Preset-Auswahl -> Kommandofeld + Vorschau live aktualisieren, getrennt
 // pro Block (Suffixe 'overwrite'/'new-file'). Vorschau nur sichtbar bzw.
