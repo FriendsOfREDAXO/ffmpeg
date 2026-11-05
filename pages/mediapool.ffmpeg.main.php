@@ -321,6 +321,28 @@ if (empty($allVideos)) {
             </div>
         </div>
     </div>';
+
+    // Entscheidungs-Dialog statt nativem confirm() bei bereits vorhandener
+    // Webversion (siehe Issue #20): Ueberschreiben, zusaetzliche Variante
+    // anlegen, oder Abbrechen.
+    echo '<div class="modal fade" id="ffmpeg-overwrite-choice-modal" tabindex="-1" role="dialog" aria-labelledby="ffmpeg-overwrite-choice-title" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Schließen"><span aria-hidden="true">&times;</span></button>
+                    <h4 class="modal-title" id="ffmpeg-overwrite-choice-title">' . $this->i18n('ffmpeg_overwrite_choice_title') . '</h4>
+                </div>
+                <div class="modal-body">
+                    <p>' . $this->i18n('ffmpeg_overwrite_choice_intro') . ' <strong class="ffmpeg-overwrite-choice-filename"></strong></p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default" data-dismiss="modal">' . $this->i18n('ffmpeg_overwrite_choice_cancel') . '</button>
+                    <button type="button" class="btn btn-default ffmpeg-overwrite-choice-new">' . $this->i18n('ffmpeg_overwrite_choice_new') . '</button>
+                    <button type="button" class="btn btn-primary ffmpeg-overwrite-choice-overwrite">' . $this->i18n('ffmpeg_overwrite_choice_overwrite') . '</button>
+                </div>
+            </div>
+        </div>
+    </div>';
     
     // Füge Data-Attribute für JavaScript hinzu
     echo '<div class="rex-addon-output" data-i18n-select-video="' . $this->i18n('ffmpeg_select_video') . '"></div>';

@@ -205,10 +205,13 @@
         startPolling(window.ffmpegActiveJob.id);
     }
 
-    function startConversion(video, mode, confirmOverwrite) {
+    function startConversion(video, mode, confirmOverwrite, createNew) {
         var url = 'index.php?rex-api-call=ffmpeg_convert&func=start&video=' + encodeURIComponent(video) + '&mode=' + encodeURIComponent(mode || 'new_file');
         if (confirmOverwrite) {
             url += '&confirm_overwrite=1';
+        }
+        if (createNew) {
+            url += '&create_new=1';
         }
 
         $.ajax({
@@ -231,9 +234,7 @@
 
                 if ('confirm_overwrite' === data.status) {
                     updateUIForConversion(false);
-                    if (confirm(data.message)) {
-                        startConversion(video, mode, true);
-                    }
+                    showOverwriteChoiceModal(video, mode, data.existing_filename || '');
                     return;
                 }
 
@@ -251,6 +252,26 @@
                 updateInlineLog('Konvertierung gestartet...');
                 startPolling(data.job);
             });
+    }
+
+    // Statt des frueheren nativen confirm() (nur Ueberschreiben/Abbrechen,
+    // siehe Issue #20) ein eigenes Modal mit drei Optionen: Ueberschreiben,
+    // zusaetzliche Variante anlegen (web_<name>_2.mp4, ...), Abbrechen.
+    function showOverwriteChoiceModal(video, mode, existingFilename) {
+        var $modal = $('#ffmpeg-overwrite-choice-modal');
+        if (!$modal.length) {
+            // Fallback falls das Modal-Markup fehlt (z.B. aeltere main.php
+            // beim Zwischenstand eines Updates) -- besser ein einfacher
+            // confirm() als eine kaputte Seite.
+            if (confirm(existingFilename ? 'Ein Video mit dem Namen "' + existingFilename + '" existiert bereits. Überschreiben?' : 'Datei existiert bereits. Überschreiben?')) {
+                startConversion(video, mode, true, false);
+            }
+            return;
+        }
+
+        $modal.find('.ffmpeg-overwrite-choice-filename').text(existingFilename);
+        $modal.data('video', video).data('mode', mode);
+        $modal.modal('show');
     }
 
     function initFfmpegConverter() {
@@ -277,6 +298,26 @@
 
         $('#check_status').on('click', function () {
             window.location.reload();
+            return false;
+        });
+
+        $(document).on('click', '.ffmpeg-overwrite-choice-overwrite', function () {
+            var $modal = $('#ffmpeg-overwrite-choice-modal');
+            var video = $modal.data('video');
+            var mode = $modal.data('mode');
+            $modal.modal('hide');
+            updateUIForConversion(true);
+            startConversion(video, mode, true, false);
+            return false;
+        });
+
+        $(document).on('click', '.ffmpeg-overwrite-choice-new', function () {
+            var $modal = $('#ffmpeg-overwrite-choice-modal');
+            var video = $modal.data('video');
+            var mode = $modal.data('mode');
+            $modal.modal('hide');
+            updateUIForConversion(true);
+            startConversion(video, mode, false, true);
             return false;
         });
 
