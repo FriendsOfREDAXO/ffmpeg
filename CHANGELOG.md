@@ -1,5 +1,13 @@
 # Changelog
 
+## 4.8.3 - 2026-11-05
+
+### Bugfix
+- „Webversion erstellen" scheiterte, wenn für ein Original bereits eine Webversion existierte: `finalizeNewFile()` rief immer `rex_media_service::addMedia()` (INSERT) auf, auch bei bereits vorhandenem Dateinamen (#21). Die Webversion wird jetzt in diesem Fall direkt ersetzt (wie bei „Original überschreiben"), bestehende Metadaten bleiben erhalten.
+
+### Verbesserung
+- Bisher ließ sich pro Original nur eine Webversion anlegen; ein erneuter Lauf bot nur „Überschreiben" oder „Abbrechen" (#20). Neuer Dialog mit einer dritten Option „Zusätzliche Variante anlegen" – der nächste freie Dateiname (`web_<name>_2.mp4`, `_3.mp4`, …) wird automatisch ermittelt.
+
 ## 4.8.2 - 2026-10-19
 
 ### Bugfix
