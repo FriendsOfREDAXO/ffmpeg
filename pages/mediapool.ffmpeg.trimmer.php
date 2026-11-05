@@ -223,7 +223,13 @@ if ('poster' === $action && $csrf->isValid() && $videoFile && $videoInfo) {
                 echo rex_view::error($this->i18n('ffmpeg_trimmer_error_import') . ': ' . $e->getMessage());
             }
         } else {
-            echo rex_view::error($this->i18n('ffmpeg_trimmer_poster_error') . ': ' . implode('<br>', $output));
+            // Zeilen einzeln escapen (nicht den fertigen <br>-String), sonst
+            // wuerden die <br>-Tags selbst mit-escaped und der Zeilenumbruch
+            // ginge verloren. Anders als die Trim-Fehlermeldung weiter oben
+            // (bestehender Code, Zeile ~149) wird hier bewusst escaped --
+            // FFmpeg-Stderr kann im Fehlerfall Pfad-/Dateinamen-Fragmente
+            // enthalten, die theoretisch HTML-Sonderzeichen tragen koennten.
+            echo rex_view::error($this->i18n('ffmpeg_trimmer_poster_error') . ': ' . implode('<br>', array_map('rex_escape', $output)));
         }
     }
 }
