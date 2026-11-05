@@ -334,6 +334,20 @@ if (empty($allVideos)) {
                 </div>
                 <div class="modal-body">
                     <p>' . $this->i18n('ffmpeg_overwrite_choice_intro') . ' <strong class="ffmpeg-overwrite-choice-filename"></strong></p>
+                    <div class="form-group">
+                        <label for="ffmpeg-overwrite-choice-preset">' . $this->i18n('ffmpeg_overwrite_choice_preset_label') . '</label>
+                        <select id="ffmpeg-overwrite-choice-preset" class="form-control">
+                            <option value="standard">' . $this->i18n('config_preset_standard') . '</option>
+                            <option value="web">' . $this->i18n('config_preset_web') . '</option>
+                            <option value="mobile">' . $this->i18n('config_preset_mobile') . '</option>
+                            <option value="archive">' . $this->i18n('config_preset_archive') . '</option>
+                            <option value="1080p">' . $this->i18n('config_preset_1080p') . '</option>
+                            <option value="720p">' . $this->i18n('config_preset_720p') . '</option>
+                            <option value="480p">' . $this->i18n('config_preset_480p') . '</option>
+                            <option value="360p">' . $this->i18n('config_preset_360p') . '</option>
+                        </select>
+                        <p class="help-block">' . $this->i18n('ffmpeg_overwrite_choice_preset_help') . '</p>
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-default" data-dismiss="modal">' . $this->i18n('ffmpeg_overwrite_choice_cancel') . '</button>

@@ -205,13 +205,16 @@
         startPolling(window.ffmpegActiveJob.id);
     }
 
-    function startConversion(video, mode, confirmOverwrite, createNew) {
+    function startConversion(video, mode, confirmOverwrite, createNew, preset) {
         var url = 'index.php?rex-api-call=ffmpeg_convert&func=start&video=' + encodeURIComponent(video) + '&mode=' + encodeURIComponent(mode || 'new_file');
         if (confirmOverwrite) {
             url += '&confirm_overwrite=1';
         }
         if (createNew) {
             url += '&create_new=1';
+            if (preset) {
+                url += '&preset=' + encodeURIComponent(preset);
+            }
         }
 
         $.ajax({
@@ -315,9 +318,10 @@
             var $modal = $('#ffmpeg-overwrite-choice-modal');
             var video = $modal.data('video');
             var mode = $modal.data('mode');
+            var preset = $modal.find('#ffmpeg-overwrite-choice-preset').val();
             $modal.modal('hide');
             updateUIForConversion(true);
-            startConversion(video, mode, false, true);
+            startConversion(video, mode, false, true, preset);
             return false;
         });
 

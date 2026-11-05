@@ -71,6 +71,8 @@ ffmpeg_overwrite_choice_intro = A web version with this name already exists
 ffmpeg_overwrite_choice_cancel = Cancel
 ffmpeg_overwrite_choice_new = Create additional variant
 ffmpeg_overwrite_choice_overwrite = Overwrite
+ffmpeg_overwrite_choice_preset_label = Preset for the new variant
+ffmpeg_overwrite_choice_preset_help = Only applies to this additional variant, the base setting in the addon settings stays unchanged.
 ffmpeg_show_log = Show log
 ffmpeg_hide_log = Hide log
 ffmpeg_convert_this_video = Convert this video
@@ -111,6 +113,14 @@ config_preset_archive_desc = Example: ffmpeg -y -i INPUT -c:v libx264 -preset ve
 config_preset_custom_desc = Your own custom ffmpeg command; use placeholders INPUT and OUTPUT.
 config_preset_standard = Default (legacy)
 config_preset_standard_desc = Example: ffmpeg -y -i INPUT -vcodec h264 OUTPUT.mp4 (standard/default)
+config_preset_1080p = 1080p (Full HD)
+config_preset_1080p_desc = Example: ffmpeg -y -i INPUT -c:v libx264 -preset medium -crf 23 -c:a aac -b:a 128k -vf scale=-2:1080 OUTPUT.mp4 (1080p)
+config_preset_720p = 720p (HD)
+config_preset_720p_desc = Example: ffmpeg -y -i INPUT -c:v libx264 -preset medium -crf 23 -c:a aac -b:a 128k -vf scale=-2:720 OUTPUT.mp4 (720p)
+config_preset_480p = 480p
+config_preset_480p_desc = Example: ffmpeg -y -i INPUT -c:v libx264 -preset faster -crf 23 -c:a aac -b:a 96k -vf scale=-2:480 OUTPUT.mp4 (480p)
+config_preset_360p = 360p
+config_preset_360p_desc = Example: ffmpeg -y -i INPUT -c:v libx264 -preset faster -crf 23 -c:a aac -b:a 96k -vf scale=-2:360 OUTPUT.mp4 (360p)
 config_command_help = The actual FFmpeg command executed. Placeholders: INPUT, OUTPUT
 config_preview_label = Effective FFmpeg command preview
 config_preset_priority = Priority: preset (unless preset=custom) > command field

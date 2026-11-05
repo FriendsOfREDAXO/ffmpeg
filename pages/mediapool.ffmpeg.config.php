@@ -6,16 +6,13 @@ $buttons = '';
 $csrfToken = rex_csrf_token::factory('ffmpeg');
 /** @var rex_addon $this */
 
-// Preset mapping for UI (available both when saving and when rendering)
-$presets = [
-    // Standard legacy setting (keeps the old default command and extension)
-    'standard' => 'ffmpeg -y -i INPUT -vcodec h264 OUTPUT.mp4',
-    'web' => 'ffmpeg -y -i INPUT -c:v libx264 -preset slow -crf 28 -c:a aac -b:a 128k OUTPUT.mp4',
-    'mobile' => 'ffmpeg -y -i INPUT -c:v libx264 -preset veryfast -crf 30 -c:a aac -b:a 96k -vf scale=-2:720 OUTPUT.mp4',
-    'archive' => 'ffmpeg -y -i INPUT -c:v libx264 -preset veryslow -crf 22 -c:a copy OUTPUT.mp4',
-    // 'custom' allows keeping the current 'command' field for manual editing
-    'custom' => '',
-];
+// Preset mapping for UI (available both when saving and when rendering) --
+// zentrale Definition in FriendsOfRedaxo\FFmpeg\Presets, auch von
+// Api\Converter genutzt (Preset-Wahl beim Anlegen einer zusaetzlichen
+// Variante, siehe Issue #20).
+$presets = \FriendsOfRedaxo\FFmpeg\Presets::all();
+// 'custom' allows keeping the current 'command' field for manual editing
+$presets['custom'] = '';
 
 // Einstellungen speichern
 if (rex_post('formsubmit', 'string') == '1' && !$csrfToken->isValid()) {
@@ -99,6 +96,10 @@ $select->addOption($this->i18n('config_preset_standard'), 'standard');
 $select->addOption($this->i18n('config_preset_web'), 'web');
 $select->addOption($this->i18n('config_preset_mobile'), 'mobile');
 $select->addOption($this->i18n('config_preset_archive'), 'archive');
+$select->addOption($this->i18n('config_preset_1080p'), '1080p');
+$select->addOption($this->i18n('config_preset_720p'), '720p');
+$select->addOption($this->i18n('config_preset_480p'), '480p');
+$select->addOption($this->i18n('config_preset_360p'), '360p');
 // Allow the user to select "Custom" — do not overwrite the command field
 $select->addOption($this->i18n('config_preset_custom'), 'custom');
 $select->setSelected($this->getConfig('preset', 'none'));
@@ -132,6 +133,10 @@ $content .= '<li><strong>' . $this->i18n('config_preset_web') . ':</strong> ' . 
 $content .= '<li><strong>' . $this->i18n('config_preset_mobile') . ':</strong> ' . $this->i18n('config_preset_mobile_desc') . '</li>';
 $content .= '<li><strong>' . $this->i18n('config_preset_archive') . ':</strong> ' . $this->i18n('config_preset_archive_desc') . '</li>';
 $content .= '<li><strong>' . $this->i18n('config_preset_standard') . ':</strong> ' . $this->i18n('config_preset_standard_desc') . '</li>';
+$content .= '<li><strong>' . $this->i18n('config_preset_1080p') . ':</strong> ' . $this->i18n('config_preset_1080p_desc') . '</li>';
+$content .= '<li><strong>' . $this->i18n('config_preset_720p') . ':</strong> ' . $this->i18n('config_preset_720p_desc') . '</li>';
+$content .= '<li><strong>' . $this->i18n('config_preset_480p') . ':</strong> ' . $this->i18n('config_preset_480p_desc') . '</li>';
+$content .= '<li><strong>' . $this->i18n('config_preset_360p') . ':</strong> ' . $this->i18n('config_preset_360p_desc') . '</li>';
 $content .= '<li><strong>' . $this->i18n('config_preset_custom') . ':</strong> ' . $this->i18n('config_preset_custom_desc') . '</li>';
 $content .= '</ul>' . PHP_EOL;
 
