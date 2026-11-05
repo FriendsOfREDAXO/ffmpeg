@@ -283,6 +283,21 @@
             return;
         }
 
+        // Poster-Bild: aktuelle Abspielposition erst beim Absenden ins
+        // Hidden-Field schreiben (nicht laufend synchronisieren wie den
+        // Scrubber) -- einfacher und ausreichend, da der Wert nur fuer
+        // diesen einen Submit gebraucht wird.
+        var posterForm = document.querySelector('.trimmer-poster-form');
+        if (posterForm && posterForm.dataset.ffmpegPosterReady !== '1') {
+            posterForm.dataset.ffmpegPosterReady = '1';
+            posterForm.addEventListener('submit', function () {
+                var posterTimeField = document.getElementById('poster_time');
+                if (posterTimeField) {
+                    posterTimeField.value = String(video.currentTime || 0);
+                }
+            });
+        }
+
         if (video.dataset.ffmpegReady === '1') {
             applyVideoMetadata();
             updateVideoHud();

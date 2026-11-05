@@ -160,6 +160,11 @@ ffmpeg_trimmer_back_to_list = Zurück zur Übersicht
 ffmpeg_trimmer_upload_videos = Laden Sie Videos über den <a href="{0}">Medienpool</a> hoch.
 ffmpeg_trimmer_error_import = Fehler beim Importieren
 ffmpeg_trimmer_error_cutting = Fehler beim Schneiden des Videos. FFmpeg-Output
+ffmpeg_trimmer_poster_label = Poster-Bild erstellen
+ffmpeg_trimmer_poster_help = Speichert die aktuelle Abspielposition als Standbild (JPEG) im Medienpool, z.B. für das Poster-Bild eines Video-Elements.
+ffmpeg_trimmer_poster_save = Poster-Bild speichern
+ffmpeg_trimmer_poster_success = Poster-Bild erfolgreich erstellt und gespeichert
+ffmpeg_trimmer_poster_error = Fehler beim Erstellen des Poster-Bilds. FFmpeg-Output
 ffmpeg_trimmer_time_range_label = Zeitbereich festlegen:
 ffmpeg_trimmer_pingpong_test = PingPong testen
 ffmpeg_trimmer_mode_ready = Bereit
