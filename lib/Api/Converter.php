@@ -63,6 +63,7 @@ class Converter extends rex_api_function
                         rex_request('mode', 'string', 'new_file'),
                         (bool) rex_request('confirm_overwrite', 'boolean', false),
                         $user,
+                        (bool) rex_request('create_new', 'boolean', false),
                     );
                     rex_response::cleanOutputBuffers();
                     rex_response::sendJson($result);
@@ -150,7 +151,7 @@ class Converter extends rex_api_function
     /**
      * @return array<string, mixed>
      */
-    protected function handleStart(string $video, string $mode, bool $confirmOverwrite, \rex_user $user): array
+    protected function handleStart(string $video, string $mode, bool $confirmOverwrite, \rex_user $user, bool $createNew = false): array
     {
         if ('' === $video) {
             throw new rex_api_exception('No video file selected');
@@ -172,18 +173,30 @@ class Converter extends rex_api_function
             throw new rex_api_exception('Input file not found: ' . $video);
         }
 
+        $outputFilename = null;
         if ('new_file' === $mode) {
-            $outputFilename = 'web_' . pathinfo($video, PATHINFO_FILENAME) . '.mp4';
-            $mediaSql = rex_sql::factory();
-            $existingMedia = $mediaSql->getArray(
-                'SELECT id FROM ' . rex::getTable('media') . ' WHERE filename = ?',
-                [$outputFilename],
-            );
-            if (!empty($existingMedia) && !$confirmOverwrite) {
-                return [
-                    'status' => 'confirm_overwrite',
-                    'message' => 'Ein Video mit dem Namen "' . $outputFilename . '" existiert bereits. Überschreiben?',
-                ];
+            $baseName = pathinfo($video, PATHINFO_FILENAME);
+            $outputFilename = 'web_' . $baseName . '.mp4';
+
+            // "Neue Variante erstellen" statt Ueberschreiben (siehe Issue #20):
+            // naechsten freien Namen suchen (web_<name>_2.mp4, _3.mp4, ...)
+            // statt den Nutzer zu zwingen, die vorhandene Datei erst
+            // herunterzuladen/umzubenennen/neu hochzuladen.
+            if ($createNew) {
+                $outputFilename = $this->findNextFreeVariantName($baseName);
+            } else {
+                $mediaSql = rex_sql::factory();
+                $existingMedia = $mediaSql->getArray(
+                    'SELECT id FROM ' . rex::getTable('media') . ' WHERE filename = ?',
+                    [$outputFilename],
+                );
+                if (!empty($existingMedia) && !$confirmOverwrite) {
+                    return [
+                        'status' => 'confirm_overwrite',
+                        'message' => 'Ein Video mit dem Namen "' . $outputFilename . '" existiert bereits.',
+                        'existing_filename' => $outputFilename,
+                    ];
+                }
             }
         }
 
@@ -213,7 +226,10 @@ class Converter extends rex_api_function
             $fileExt = $originalExt;
             $outputPath = rex_path::addonData('ffmpeg', 'job_tmp_' . bin2hex(random_bytes(8)) . '.' . $fileExt);
         } else {
-            $outputPath = rex_path::media('web_' . pathinfo($video, PATHINFO_FILENAME)) . '.' . $fileExt;
+            // $outputFilename (oben berechnet) hat bereits die konfigurierte
+            // Ziel-Extension ".mp4" -- hier NICHT nochmal $fileExt anhaengen,
+            // sonst Doppel-Extension bei findNextFreeVariantName()-Namen.
+            $outputPath = rex_path::media((string) $outputFilename);
         }
 
         $job = VideoJob::create($mode, $video, $outputPath, (string) $user->getLogin());
@@ -247,6 +263,28 @@ class Converter extends rex_api_function
         }
 
         return ['status' => 'started', 'job' => $job->id];
+    }
+
+    /**
+     * Naechsten freien Dateinamen fuer eine weitere Webversion desselben
+     * Originals finden (web_<name>.mp4, web_<name>_2.mp4, web_<name>_3.mp4,
+     * ...) -- siehe Issue #20: bisher konnte man nur eine einzige
+     * Webversion pro Original haben, ein zweiter Lauf konnte sie nur
+     * ueberschreiben oder abbrechen. Deckt den Normalfall (ein paar
+     * Varianten) ab, ohne eine neue Namens-/Preset-Verwaltung einzufuehren.
+     */
+    private function findNextFreeVariantName(string $baseName): string
+    {
+        $candidate = 'web_' . $baseName . '.mp4';
+        $suffix = 2;
+
+        $sql = rex_sql::factory();
+        while (!empty($sql->getArray('SELECT id FROM ' . rex::getTable('media') . ' WHERE filename = ?', [$candidate]))) {
+            $candidate = 'web_' . $baseName . '_' . $suffix . '.mp4';
+            ++$suffix;
+        }
+
+        return $candidate;
     }
 
     /**
@@ -341,9 +379,11 @@ class Converter extends rex_api_function
     }
 
     /**
-     * Bisheriges Verhalten unveraendert: neue "web_<name>"-Mediendatei
-     * anlegen, Metadaten vom Original mit "(weboptimiert)"-Suffix kopieren,
-     * optional Quelldatei loeschen (Konfiguration "delete").
+     * Neue "web_<name>"-Mediendatei anlegen, Metadaten vom Original mit
+     * "(weboptimiert)"-Suffix kopieren, optional Quelldatei loeschen
+     * (Konfiguration "delete"). Existiert die Webversion schon (erneuter
+     * Lauf fuers selbe Original, siehe Issue #21), wird sie stattdessen
+     * direkt ersetzt statt per addMedia() neu anzulegen.
      */
     private function finalizeNewFile(VideoJob $job): VideoJob
     {
@@ -358,24 +398,65 @@ class Converter extends rex_api_function
         $categoryId = (int) rex_addon::get('ffmpeg')->getConfig('category_id', 0);
         $outputFileName = pathinfo($job->outputPath, PATHINFO_BASENAME);
 
-        try {
-            $syncResult = rex_media_service::addMedia([
-                'file' => ['name' => $outputFileName, 'path' => $job->outputPath],
-                'category_id' => $categoryId,
-                'title' => '',
-            ], false);
-            if (empty($syncResult['ok'])) {
-                throw new \rex_api_exception((string) ($syncResult['message'] ?? 'addMedia failed'));
+        // Webversion existiert bereits (z.B. erneuter Lauf fuer dasselbe
+        // Original) -- addMedia() waere ein INSERT und scheitert am
+        // bestehenden filename (siehe Issue #21). Direkt ersetzen, analog zu
+        // finalizeOverwrite(): Datei austauschen, nur filetype/filesize/
+        // updatedate aktualisieren, bestehende Metadaten (ggf. seither
+        // manuell bearbeitet) bleiben unangetastet statt erneut vom
+        // Original kopiert zu werden.
+        $existingMedia = \rex_media::get($outputFileName);
+        if ($existingMedia) {
+            $dstFile = rex_path::media($outputFileName);
+            $filetype = rex_file::mimeType($job->outputPath, $outputFileName) ?: $existingMedia->getType();
+
+            if (!rex_file::move($job->outputPath, $dstFile)) {
+                $job->status = VideoJob::STATUS_ERROR;
+                $job->message = 'Konnte Webversion nicht an den Zielort verschieben.';
+                @unlink($job->outputPath);
+                $job->save();
+
+                return $job;
             }
-        } catch (\rex_api_exception $e) {
-            $job->status = VideoJob::STATUS_ERROR;
-            $job->message = 'Import fehlgeschlagen: ' . $e->getMessage();
-            $job->save();
+            @chmod($dstFile, rex::getFilePerm());
 
-            return $job;
+            $sql = rex_sql::factory();
+            $sql->setTable(rex::getTable('media'));
+            $sql->setWhere(['filename' => $outputFileName]);
+            $sql->setValue('filetype', $filetype);
+            $sql->setValue('filesize', filesize($dstFile));
+            $sql->addGlobalUpdateFields($job->userLogin);
+            $sql->update();
+
+            \rex_media_cache::delete($outputFileName);
+            \rex_extension::registerPoint(new \rex_extension_point('MEDIA_UPDATED', '', [
+                'id' => $existingMedia->getId(),
+                'filename' => $outputFileName,
+                'title' => $existingMedia->getTitle(),
+                'category_id' => $existingMedia->getCategoryId(),
+                'type' => $filetype,
+                'filetype' => $filetype,
+            ]));
+        } else {
+            try {
+                $syncResult = rex_media_service::addMedia([
+                    'file' => ['name' => $outputFileName, 'path' => $job->outputPath],
+                    'category_id' => $categoryId,
+                    'title' => '',
+                ], false);
+                if (empty($syncResult['ok'])) {
+                    throw new \rex_api_exception((string) ($syncResult['message'] ?? 'addMedia failed'));
+                }
+            } catch (\rex_api_exception $e) {
+                $job->status = VideoJob::STATUS_ERROR;
+                $job->message = 'Import fehlgeschlagen: ' . $e->getMessage();
+                $job->save();
+
+                return $job;
+            }
+
+            $this->copyMetadataForNewFile($job->inputFile, $outputFileName);
         }
-
-        $this->copyMetadataForNewFile($job->inputFile, $outputFileName);
 
         if (1 === (int) rex_addon::get('ffmpeg')->getConfig('delete')) {
             try {
