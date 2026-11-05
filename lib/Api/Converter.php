@@ -341,9 +341,11 @@ class Converter extends rex_api_function
     }
 
     /**
-     * Bisheriges Verhalten unveraendert: neue "web_<name>"-Mediendatei
-     * anlegen, Metadaten vom Original mit "(weboptimiert)"-Suffix kopieren,
-     * optional Quelldatei loeschen (Konfiguration "delete").
+     * Neue "web_<name>"-Mediendatei anlegen, Metadaten vom Original mit
+     * "(weboptimiert)"-Suffix kopieren, optional Quelldatei loeschen
+     * (Konfiguration "delete"). Existiert die Webversion schon (erneuter
+     * Lauf fuers selbe Original, siehe Issue #21), wird sie stattdessen
+     * direkt ersetzt statt per addMedia() neu anzulegen.
      */
     private function finalizeNewFile(VideoJob $job): VideoJob
     {
@@ -358,24 +360,65 @@ class Converter extends rex_api_function
         $categoryId = (int) rex_addon::get('ffmpeg')->getConfig('category_id', 0);
         $outputFileName = pathinfo($job->outputPath, PATHINFO_BASENAME);
 
-        try {
-            $syncResult = rex_media_service::addMedia([
-                'file' => ['name' => $outputFileName, 'path' => $job->outputPath],
-                'category_id' => $categoryId,
-                'title' => '',
-            ], false);
-            if (empty($syncResult['ok'])) {
-                throw new \rex_api_exception((string) ($syncResult['message'] ?? 'addMedia failed'));
+        // Webversion existiert bereits (z.B. erneuter Lauf fuer dasselbe
+        // Original) -- addMedia() waere ein INSERT und scheitert am
+        // bestehenden filename (siehe Issue #21). Direkt ersetzen, analog zu
+        // finalizeOverwrite(): Datei austauschen, nur filetype/filesize/
+        // updatedate aktualisieren, bestehende Metadaten (ggf. seither
+        // manuell bearbeitet) bleiben unangetastet statt erneut vom
+        // Original kopiert zu werden.
+        $existingMedia = \rex_media::get($outputFileName);
+        if ($existingMedia) {
+            $dstFile = rex_path::media($outputFileName);
+            $filetype = rex_file::mimeType($job->outputPath, $outputFileName) ?: $existingMedia->getType();
+
+            if (!rex_file::move($job->outputPath, $dstFile)) {
+                $job->status = VideoJob::STATUS_ERROR;
+                $job->message = 'Konnte Webversion nicht an den Zielort verschieben.';
+                @unlink($job->outputPath);
+                $job->save();
+
+                return $job;
             }
-        } catch (\rex_api_exception $e) {
-            $job->status = VideoJob::STATUS_ERROR;
-            $job->message = 'Import fehlgeschlagen: ' . $e->getMessage();
-            $job->save();
+            @chmod($dstFile, rex::getFilePerm());
 
-            return $job;
+            $sql = rex_sql::factory();
+            $sql->setTable(rex::getTable('media'));
+            $sql->setWhere(['filename' => $outputFileName]);
+            $sql->setValue('filetype', $filetype);
+            $sql->setValue('filesize', filesize($dstFile));
+            $sql->addGlobalUpdateFields($job->userLogin);
+            $sql->update();
+
+            \rex_media_cache::delete($outputFileName);
+            \rex_extension::registerPoint(new \rex_extension_point('MEDIA_UPDATED', '', [
+                'id' => $existingMedia->getId(),
+                'filename' => $outputFileName,
+                'title' => $existingMedia->getTitle(),
+                'category_id' => $existingMedia->getCategoryId(),
+                'type' => $filetype,
+                'filetype' => $filetype,
+            ]));
+        } else {
+            try {
+                $syncResult = rex_media_service::addMedia([
+                    'file' => ['name' => $outputFileName, 'path' => $job->outputPath],
+                    'category_id' => $categoryId,
+                    'title' => '',
+                ], false);
+                if (empty($syncResult['ok'])) {
+                    throw new \rex_api_exception((string) ($syncResult['message'] ?? 'addMedia failed'));
+                }
+            } catch (\rex_api_exception $e) {
+                $job->status = VideoJob::STATUS_ERROR;
+                $job->message = 'Import fehlgeschlagen: ' . $e->getMessage();
+                $job->save();
+
+                return $job;
+            }
+
+            $this->copyMetadataForNewFile($job->inputFile, $outputFileName);
         }
-
-        $this->copyMetadataForNewFile($job->inputFile, $outputFileName);
 
         if (1 === (int) rex_addon::get('ffmpeg')->getConfig('delete')) {
             try {
