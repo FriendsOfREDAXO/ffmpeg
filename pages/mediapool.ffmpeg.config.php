@@ -1,6 +1,5 @@
 <?php
 
-$content = '';
 $buttons = '';
 
 $csrfToken = rex_csrf_token::factory('ffmpeg');
@@ -105,8 +104,16 @@ $renderModeBlock = static function (rex_addon $addon, array $presets, string $id
     return $block;
 };
 
-$content .= '<fieldset><legend>' . $this->i18n('config_legend_general') . '</legend>';
+// Jeder inhaltliche Abschnitt ist ein eigenes Panel (core/page/section.php),
+// nicht ein gemeinsamer Fieldset-String in einem einzigen Panel -- rohe
+// <fieldset>-Grenzen bekommen in diesem Backend-Theme kein eigenes
+// Panel-Styling (siehe juwel_garagen/pages/performance.php als Vorbild fuer
+// mehrere Panels auf einer Seite). Alle Felder bleiben in EINEM
+// umschliessenden <form>, damit ein Klick auf "Speichern" alles sichert.
+$sections = '';
 
+// Allgemein (Medien-Kategorie)
+$general = '';
 $formElements = [];
 $n = [];
 $n['label'] = '<label for="ffmpeg-config-category">' . $this->i18n('config_media_category') . '</label>';
@@ -120,22 +127,25 @@ $n['field'] = $select->get();
 $formElements[] = $n;
 $fragment = new rex_fragment();
 $fragment->setVar('elements', $formElements, false);
-$content .= $fragment->parse('core/form/container.php');
-$content .= '<p class="help-block">' . $this->i18n('config_media_category_help') . '</p>';
+$general .= $fragment->parse('core/form/container.php');
+$general .= '<p class="help-block">' . $this->i18n('config_media_category_help') . '</p>';
 
-$content .= '</fieldset>';
+$fragment = new rex_fragment();
+$fragment->setVar('title', $this->i18n('config_legend_general'), false);
+$fragment->setVar('body', $general, false);
+$sections .= $fragment->parse('core/page/section.php');
 
-$content .= '<fieldset><legend>' . $this->i18n('config_legend_overwrite') . '</legend>';
-$content .= $renderModeBlock($this, $presets, 'overwrite', 'overwrite', 'config_intro_overwrite', $commandOverwrite, $presetOverwrite);
-$content .= '</fieldset>';
+// Original ueberschreiben ("Optimieren")
+$fragment = new rex_fragment();
+$fragment->setVar('title', $this->i18n('config_legend_overwrite'), false);
+$fragment->setVar('body', $renderModeBlock($this, $presets, 'overwrite', 'overwrite', 'config_intro_overwrite', $commandOverwrite, $presetOverwrite), false);
+$sections .= $fragment->parse('core/page/section.php');
 
-$content .= '<fieldset><legend>' . $this->i18n('config_legend_new_file') . '</legend>';
-$content .= $renderModeBlock($this, $presets, 'new-file', 'new_file', 'config_intro_new_file', $commandNewFile, $presetNewFile);
-
-// Quell-Datei loeschen gilt NUR beim Erstellen einer Webversion (siehe
-// Converter::finalizeNewFile()) -- beim Ueberschreiben gibt es keine
-// separate Quelldatei zu loeschen, das Original IST die Ausgabedatei.
-// Deshalb hier im new_file-Block platziert statt lose am Seitenende.
+// Webversion erstellen (neue Datei) + "Quell-Datei loeschen"-Checkbox --
+// die Checkbox gilt NUR hier (siehe Converter::finalizeNewFile()): beim
+// Ueberschreiben gibt es keine separate Quelldatei zu loeschen, das
+// Original IST die Ausgabedatei.
+$newFile = $renderModeBlock($this, $presets, 'new-file', 'new_file', 'config_intro_new_file', $commandNewFile, $presetNewFile);
 $formElements = [];
 $n = [];
 $n['label'] = '<label for="ffmpeg-config-delete">' . $this->i18n('config_delete') . '</label>';
@@ -143,66 +153,69 @@ $n['field'] = '<input type="checkbox" id="ffmpeg-config-delete" name="config[del
 $formElements[] = $n;
 $fragment = new rex_fragment();
 $fragment->setVar('elements', $formElements, false);
-$content .= $fragment->parse('core/form/checkbox.php');
-$content .= '<p class="help-block">' . $this->i18n('config_delete_help') . '</p>';
+$newFile .= $fragment->parse('core/form/checkbox.php');
+$newFile .= '<p class="help-block">' . $this->i18n('config_delete_help') . '</p>';
 
-$content .= '</fieldset>';
+$fragment = new rex_fragment();
+$fragment->setVar('title', $this->i18n('config_legend_new_file'), false);
+$fragment->setVar('body', $newFile, false);
+$sections .= $fragment->parse('core/page/section.php');
 
 // Preset-Uebersicht als aufklappbares Akkordeon statt dauerhaft sichtbarer
 // Liste -- reine Referenz/Nachschlagehilfe, muss nicht permanent Platz auf
-// der Seite beanspruchen (Bootstrap panel-collapse, bereits an anderer
-// Stelle im Backend verwendet, z.B. snippets-Addon). Pfeil-Icon dreht sich
-// per reinem CSS (kein zusaetzliches JS) je nach aria-expanded-Zustand, den
-// Bootstraps collapse-Plugin selbst auf dem Toggle-Link pflegt.
-$content .= '<style>
-    .ffmpeg-preset-reference-toggle .rex-icon { transition: transform 0.15s ease; }
-    .ffmpeg-preset-reference-toggle[aria-expanded="true"] .rex-icon { transform: rotate(90deg); }
-</style>';
-$content .= '<fieldset><div class="panel panel-default" style="margin-bottom:0; border:0; box-shadow:none;">
-    <a data-toggle="collapse" href="#ffmpeg-preset-reference" class="collapsed panel-title ffmpeg-preset-reference-toggle" style="display:block;" aria-expanded="false">
-        <i class="rex-icon fa-solid fa-angle-right"></i> ' . $this->i18n('config_legend_preset_reference') . '
-    </a>
+// der Seite beanspruchen. Bootstrap-Panel-Muster 1:1 vom snippets-Addon
+// uebernommen (panel > header.panel-heading > a.panel-title + panel-body).
+$presetReference = '<div class="panel panel-default">
+    <header class="panel-heading">
+        <a data-toggle="collapse" href="#ffmpeg-preset-reference" class="collapsed panel-title">
+            <i class="rex-icon fa-solid fa-chevron-right"></i> ' . $this->i18n('config_legend_preset_reference') . '
+        </a>
+    </header>
     <div id="ffmpeg-preset-reference" class="panel-collapse collapse">
-        <ul class="list-unstyled small" style="margin-top:10px;">';
-$content .= '<li><strong>' . $this->i18n('config_preset_web') . ':</strong> ' . $this->i18n('config_preset_web_desc') . '</li>';
-$content .= '<li><strong>' . $this->i18n('config_preset_mobile') . ':</strong> ' . $this->i18n('config_preset_mobile_desc') . '</li>';
-$content .= '<li><strong>' . $this->i18n('config_preset_archive') . ':</strong> ' . $this->i18n('config_preset_archive_desc') . '</li>';
-$content .= '<li><strong>' . $this->i18n('config_preset_standard') . ':</strong> ' . $this->i18n('config_preset_standard_desc') . '</li>';
-$content .= '<li><strong>' . $this->i18n('config_preset_1080p') . ':</strong> ' . $this->i18n('config_preset_1080p_desc') . '</li>';
-$content .= '<li><strong>' . $this->i18n('config_preset_720p') . ':</strong> ' . $this->i18n('config_preset_720p_desc') . '</li>';
-$content .= '<li><strong>' . $this->i18n('config_preset_480p') . ':</strong> ' . $this->i18n('config_preset_480p_desc') . '</li>';
-$content .= '<li><strong>' . $this->i18n('config_preset_360p') . ':</strong> ' . $this->i18n('config_preset_360p_desc') . '</li>';
-$content .= '<li><strong>' . $this->i18n('config_preset_custom') . ':</strong> ' . $this->i18n('config_preset_custom_desc') . '</li>';
-$content .= '</ul>
+        <div class="panel-body">
+            <ul class="list-unstyled small">';
+$presetReference .= '<li><strong>' . $this->i18n('config_preset_web') . ':</strong> ' . $this->i18n('config_preset_web_desc') . '</li>';
+$presetReference .= '<li><strong>' . $this->i18n('config_preset_mobile') . ':</strong> ' . $this->i18n('config_preset_mobile_desc') . '</li>';
+$presetReference .= '<li><strong>' . $this->i18n('config_preset_archive') . ':</strong> ' . $this->i18n('config_preset_archive_desc') . '</li>';
+$presetReference .= '<li><strong>' . $this->i18n('config_preset_standard') . ':</strong> ' . $this->i18n('config_preset_standard_desc') . '</li>';
+$presetReference .= '<li><strong>' . $this->i18n('config_preset_1080p') . ':</strong> ' . $this->i18n('config_preset_1080p_desc') . '</li>';
+$presetReference .= '<li><strong>' . $this->i18n('config_preset_720p') . ':</strong> ' . $this->i18n('config_preset_720p_desc') . '</li>';
+$presetReference .= '<li><strong>' . $this->i18n('config_preset_480p') . ':</strong> ' . $this->i18n('config_preset_480p_desc') . '</li>';
+$presetReference .= '<li><strong>' . $this->i18n('config_preset_360p') . ':</strong> ' . $this->i18n('config_preset_360p_desc') . '</li>';
+$presetReference .= '<li><strong>' . $this->i18n('config_preset_custom') . ':</strong> ' . $this->i18n('config_preset_custom_desc') . '</li>';
+$presetReference .= '</ul>
+        </div>
     </div>
-</div></fieldset>';
+</div>';
+$sections .= $presetReference;
 
 // Preset-Auswahl -> Kommandofeld + Vorschau live aktualisieren, getrennt
 // pro Block (Suffixe 'overwrite'/'new-file'). Vorschau nur sichtbar bzw.
 // aktualisiert, wenn tatsaechlich ein Preset gewaehlt ist -- bei 'custom'
 // zeigt sie einfach den manuell eingegebenen Befehl.
-$content .= '<script>' . PHP_EOL;
-$content .= 'const ffmpegPresets = ' . json_encode($presets) . ';' . PHP_EOL;
-$content .= "jQuery(document).on('rex:ready', function () {" . PHP_EOL;
-$content .= "  ['overwrite', 'new-file'].forEach(function (idPrefix) {" . PHP_EOL;
-$content .= "    var sel = document.getElementById('ffmpeg-config-preset-' + idPrefix);" . PHP_EOL;
-$content .= "    var cmd = document.getElementById('ffmpeg-config-command-' + idPrefix);" . PHP_EOL;
-$content .= "    var preview = document.getElementById('ffmpeg-config-preview-' + idPrefix);" . PHP_EOL;
-$content .= "    if (!sel || !cmd) { return; }" . PHP_EOL;
-$content .= "    function updatePreview() {" . PHP_EOL;
-$content .= "      if (preview) { preview.textContent = cmd.value; }" . PHP_EOL;
-$content .= "    }" . PHP_EOL;
-$content .= "    function onChange() {" . PHP_EOL;
-$content .= "      var val = sel.value;" . PHP_EOL;
-$content .= "      if (val !== 'custom' && val in ffmpegPresets) { cmd.value = ffmpegPresets[val]; }" . PHP_EOL;
-$content .= "      updatePreview();" . PHP_EOL;
-$content .= "    }" . PHP_EOL;
-$content .= "    jQuery(sel).off('change.ffmpeg').on('change.ffmpeg', onChange);" . PHP_EOL;
-$content .= "    jQuery(cmd).off('input.ffmpeg').on('input.ffmpeg', updatePreview);" . PHP_EOL;
-$content .= "    updatePreview();" . PHP_EOL;
-$content .= "  });" . PHP_EOL;
-$content .= "});" . PHP_EOL;
-$content .= '</script>' . PHP_EOL;
+$script = '<script>' . PHP_EOL;
+$script .= 'const ffmpegPresets = ' . json_encode($presets) . ';' . PHP_EOL;
+$script .= "jQuery(document).on('rex:ready', function () {" . PHP_EOL;
+$script .= "  ['overwrite', 'new-file'].forEach(function (idPrefix) {" . PHP_EOL;
+$script .= "    var sel = document.getElementById('ffmpeg-config-preset-' + idPrefix);" . PHP_EOL;
+$script .= "    var cmd = document.getElementById('ffmpeg-config-command-' + idPrefix);" . PHP_EOL;
+$script .= "    var preview = document.getElementById('ffmpeg-config-preview-' + idPrefix);" . PHP_EOL;
+$script .= "    if (!sel || !cmd) { return; }" . PHP_EOL;
+$script .= "    function updatePreview() {" . PHP_EOL;
+$script .= "      if (preview) { preview.textContent = cmd.value; }" . PHP_EOL;
+$script .= "    }" . PHP_EOL;
+$script .= "    function onChange() {" . PHP_EOL;
+$script .= "      var val = sel.value;" . PHP_EOL;
+$script .= "      if (val !== 'custom' && val in ffmpegPresets) { cmd.value = ffmpegPresets[val]; }" . PHP_EOL;
+$script .= "      updatePreview();" . PHP_EOL;
+$script .= "    }" . PHP_EOL;
+$script .= "    jQuery(sel).off('change.ffmpeg').on('change.ffmpeg', onChange);" . PHP_EOL;
+$script .= "    jQuery(cmd).off('input.ffmpeg').on('input.ffmpeg', updatePreview);" . PHP_EOL;
+$script .= "    updatePreview();" . PHP_EOL;
+$script .= "  });" . PHP_EOL;
+$script .= "});" . PHP_EOL;
+$script .= '</script>' . PHP_EOL;
+$sections .= $script;
 
 // Save-Button
 $formElements = [];
@@ -215,19 +228,9 @@ $fragment->setVar('elements', $formElements, false);
 $buttons = $fragment->parse('core/form/submit.php');
 $buttons = '<fieldset class="rex-form-action">' . $buttons . '</fieldset>';
 
-// Ausgabe Formular
-$fragment = new rex_fragment();
-$fragment->setVar('class', 'edit');
-$fragment->setVar('title', $this->i18n('ffmpeg_video_config'));
-$fragment->setVar('body', $content, false);
-$fragment->setVar('buttons', $buttons, false);
-$output = $fragment->parse('core/page/section.php');
-
-$output = '
+echo '
 <form action="' . rex_url::currentBackendPage() . '" method="post">
     <input type="hidden" name="formsubmit" value="1" />
     ' . $csrfToken->getHiddenField() . '
-    ' . $output . '
+    ' . $sections . $buttons . '
 </form>';
-
-echo $output;
