@@ -7,6 +7,11 @@
     // (running/finalizing/done/error), der Abschluss wird dort per
     // Exit-Code-Datei erkannt, nicht per Text-Heuristik -- siehe
     // FriendsOfRedaxo\FFmpeg\Api\Converter::handleJobStatus().
+    // Aufruf der Converter-API mit CSRF-Token (rex.ffmpeg_api kommt aus boot.php)
+    function ffmpegApiUrl(params) {
+        return 'index.php?' + new URLSearchParams(Object.assign({}, (window.rex && rex.ffmpeg_api) || { 'rex-api-call': 'ffmpeg_convert' }, params)).toString();
+    }
+
     var doPoll = null;
     var currentJobId = '';
     var currentVideoName = '';
@@ -156,7 +161,7 @@
     function pollOnce(jobId) {
         $.ajax({
             type: 'get',
-            url: 'index.php?rex-api-call=ffmpeg_convert&func=job_status&job=' + encodeURIComponent(jobId),
+            url: ffmpegApiUrl({ func: 'job_status', job: jobId }),
             dataType: 'json',
         })
             .fail(function (jqXHR, textStatus) {
@@ -206,7 +211,7 @@
     }
 
     function startConversion(video, mode, confirmOverwrite, createNew, preset) {
-        var url = 'index.php?rex-api-call=ffmpeg_convert&func=start&video=' + encodeURIComponent(video) + '&mode=' + encodeURIComponent(mode || 'new_file');
+        var url = ffmpegApiUrl({ func: 'start', video: video, mode: mode || 'new_file' });
         if (confirmOverwrite) {
             url += '&confirm_overwrite=1';
         }

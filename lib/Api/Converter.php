@@ -45,17 +45,32 @@ use rex_sql;
  */
 class Converter extends rex_api_function
 {
-    protected $published = true;
+    /**
+     * Nur im Backend (bis 4.9 auch über das Frontend aufrufbar) und nur mit CSRF-Token: ohne Token hätte eine fremde
+     * Webseite im Namen eines angemeldeten Redakteurs Konvertierungen starten und Originale überschreiben können.
+     * Aufrufe aus dem Backend bekommen das Token über rex.ffmpeg_api (boot.php).
+     */
+    protected $published = false;
+
+    protected function requiresCsrfProtection(): bool
+    {
+        return true;
+    }
 
     public function execute()
     {
         try {
-            $user = rex_backend_login::createUser();
-            if (!$user) {
-                throw new rex_api_exception('Unauthorized access - no backend login');
+            $user = rex::getUser();
+            if (!$user || !$user->hasPerm('ffmpeg[]')) {
+                throw new rex_api_exception('Unauthorized access');
             }
 
             $func = rex_request('func', 'string', '');
+            // Medienpool-Recht für die Kategorie des Videos (wie im Medienpool selbst)
+            $media = 'start' === $func ? \rex_media::get(rex_request('video', 'string', '')) : null;
+            if ('start' === $func && (!$media || !$user->getComplexPerm('media')->hasCategoryPerm($media->getCategoryId()))) {
+                throw new rex_api_exception('Unauthorized access');
+            }
 
             switch ($func) {
                 case 'start':
@@ -177,11 +192,11 @@ class Converter extends rex_api_function
      * @param array<string, mixed> $extra
      * @return array<string, mixed>
      */
-    public static function startJobWithCommand(string $video, string $command, string $login, array $extra = []): array
+    public static function startJobWithCommand(string $video, string $command, string $login, array $extra = [], string $mode = 'overwrite'): array
     {
         $instance = (new \ReflectionClass(self::class))->newInstanceWithoutConstructor();
 
-        return $instance->handleStart($video, 'overwrite', false, $login, false, '', $command, $extra);
+        return $instance->handleStart($video, $mode, false, $login, false, '', $command, $extra);
     }
 
     /**
@@ -215,7 +230,10 @@ class Converter extends rex_api_function
         }
 
         $outputFilename = null;
-        if ('new_file' === $mode) {
+        if ('new_file' === $mode && !empty($extra['output'])) {
+            // Name vom Aufrufer vorgegeben und bereits eindeutig (z. B. Cut::outputName())
+            $outputFilename = (string) $extra['output'];
+        } elseif ('new_file' === $mode) {
             $baseName = pathinfo($video, PATHINFO_FILENAME);
             $outputFilename = 'web_' . $baseName . '.mp4';
 
@@ -246,7 +264,13 @@ class Converter extends rex_api_function
         // eine andere Groesse NUR fuer diesen einen Lauf gewaehlt werden. $commandOverride kommt nie
         // aus einer Anfrage, nur aus dem Code (AutoOptimizer).
         $presetCommand = $createNew && '' !== $preset ? Presets::command($preset, 'new_file') : null;
-        $command = trim((string) ($commandOverride ?? $presetCommand ?? Presets::forMode($mode))) . ' ';
+        $command = trim((string) ($commandOverride ?? $presetCommand ?? Presets::forMode($mode)));
+        // Erweiterungspunkt: Kommando eines Auftrags anpassen (Platzhalter INPUT / OUTPUT.<endung> bleiben)
+        $command = trim((string) \rex_extension::registerPoint(new \rex_extension_point('FFMPEG_JOB_COMMAND', $command, [
+            'video' => $video,
+            'mode' => $mode,
+            'extra' => $extra,
+        ]))) . ' ';
         preg_match('/OUTPUT\.([^\s]+)/', $command, $extMatch);
         $fileExt = '' !== ($extMatch[1] ?? '') ? trim($extMatch[1]) : 'mp4';
 
@@ -352,7 +376,7 @@ class Converter extends rex_api_function
         }
 
         $logContent = is_file($job->logPath) ? rex_file::get($job->logPath) : '';
-        $job->progress = $this->parseProgress($logContent);
+        $job->progress = $this->parseProgress($logContent, (float) ($job->extra['duration'] ?? 0));
 
         if (is_file($job->exitCodePath)) {
             $exitCode = (int) trim((string) rex_file::get($job->exitCodePath));
@@ -368,6 +392,18 @@ class Converter extends rex_api_function
             // egal wer den Job abschliesst (Browser, Backend, Cronjob, Konsole): Ergebnis der
             // automatischen Optimierung festhalten, damit ein Video nicht endlos wiederholt wird
             \FriendsOfRedaxo\FFmpeg\AutoOptimizer::afterJob($job);
+            \FriendsOfRedaxo\FFmpeg\Cut::afterJob($job);
+            // Erweiterungspunkt für eigene Workflows: jeder abgeschlossene Auftrag (fertig oder Fehler)
+            \rex_extension::registerPoint(new \rex_extension_point('FFMPEG_JOB_DONE', null, [
+                'job' => $job,
+                'video' => $job->inputFile,
+                'result' => $job->extra['result']['filename'] ?? null,
+                'status' => $job->status,
+                'mode' => $job->mode,
+                'extra' => $job->extra,
+            ], true));
+            // vorgemerkte Aufträge (Queue) weiterlaufen lassen
+            \FriendsOfRedaxo\FFmpeg\Queue::run();
 
             return $this->jobResponse($job);
         }
@@ -377,12 +413,15 @@ class Converter extends rex_api_function
         return $this->jobResponse($job);
     }
 
-    private function parseProgress(string $logContent): int
+    /** @param float $expected erwartete Länge des Ergebnisses (z. B. beim Schneiden), sonst die Länge der Quelle */
+    private function parseProgress(string $logContent, float $expected = 0.0): int
     {
-        preg_match('/Duration: (.*?), start:/ms', $logContent, $matches);
-        $duration = 0.0;
-        if (!empty($matches[1])) {
-            $duration = $this->timecodeToSeconds($matches[1]);
+        $duration = $expected;
+        if ($duration <= 0.0) {
+            preg_match('/Duration: (.*?), start:/ms', $logContent, $matches);
+            if (!empty($matches[1])) {
+                $duration = $this->timecodeToSeconds($matches[1]);
+            }
         }
         if ($duration <= 0.0) {
             return 0;
@@ -502,10 +541,11 @@ class Converter extends rex_api_function
                 return $job;
             }
 
-            $this->copyMetadataForNewFile($job->inputFile, $outputFileName);
+            $this->copyMetadataForNewFile($job->inputFile, $outputFileName, !empty($job->extra['cut']) ? ' (' . \rex_i18n::rawMsg('ffmpeg_cut_title_suffix') . ')' : ' (weboptimiert)');
         }
 
-        if (1 === (int) rex_addon::get('ffmpeg')->getConfig('delete')) {
+        // „Quell-Datei löschen“ gilt nur für Webversionen, nie beim Schneiden (das Original bleibt Ausgangsmaterial)
+        if (empty($job->extra['cut']) && empty($job->extra['keep_source']) && 1 === (int) rex_addon::get('ffmpeg')->getConfig('delete')) {
             try {
                 rex_media_service::deleteMedia($job->inputFile);
             } catch (\rex_api_exception $e) {
@@ -521,7 +561,7 @@ class Converter extends rex_api_function
         return $job;
     }
 
-    private function copyMetadataForNewFile(string $originalFilename, string $outputFileName): void
+    private function copyMetadataForNewFile(string $originalFilename, string $outputFileName, string $titleSuffix = ' (weboptimiert)'): void
     {
         $sql = rex_sql::factory();
         $tableFields = array_column($sql->getArray('DESCRIBE ' . rex::getTable('media')), 'Field');
@@ -558,7 +598,7 @@ class Converter extends rex_api_function
                 if (in_array($field, $tableFields, true) && !empty($originalData[0][$field])) {
                     $value = $originalData[0][$field];
                     if ('title' === $fieldType) {
-                        $value .= ' (weboptimiert)';
+                        $value .= $titleSuffix;
                     }
                     $updateSql->setValue($field, $value);
                     $updatedFields[] = $field;

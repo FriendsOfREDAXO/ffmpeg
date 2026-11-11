@@ -63,14 +63,23 @@ final class AutoOptimizer
      */
     public static function run(): array
     {
-        if (!self::isEnabled()) {
-            return ['status' => 'disabled', 'message' => 'Automatische Optimierung ist ausgeschaltet.'];
-        }
         if (!VideoInfo::isAvailable() || !Shell::canRunInBackground()) {
             return ['status' => 'unavailable', 'message' => 'FFmpeg ist auf diesem Server nicht nutzbar.'];
         }
 
         $finished = Converter::finalizePending();
+        // vorgemerkte Aufträge (Queue, eigene Workflows) haben Vorrang
+        $queued = Queue::run();
+        if (null !== $queued) {
+            return $queued;
+        }
+        if (!self::isEnabled()) {
+            if (VideoJob::findActive() || [] !== Queue::pending()) {
+                return ['status' => 'busy', 'message' => 'Es laufen vorgemerkte Aufträge.'];
+            }
+
+            return ['status' => 'disabled', 'message' => 'Automatische Optimierung ist ausgeschaltet.'];
+        }
 
         $active = VideoJob::findActive();
         if ($active) {
@@ -83,7 +92,13 @@ final class AutoOptimizer
                 break;
             }
             $check = self::check($media);
-            if (null === $check) {
+            // Erweiterungspunkt: Entscheidung ändern (eigenes Array [Grund, kompatibel, umsortieren]) oder mit
+            // null überspringen – z. B. wenn ein eigener Workflow das Video bereits bearbeitet
+            $check = \rex_extension::registerPoint(new \rex_extension_point('FFMPEG_AUTO_OPTIMIZE', $check, [
+                'media' => $media,
+                'preset' => self::preset(),
+            ]));
+            if (!is_array($check) || !isset($check[0], $check[1], $check[2])) {
                 self::markChecked($media, 'ok');
                 continue;
             }

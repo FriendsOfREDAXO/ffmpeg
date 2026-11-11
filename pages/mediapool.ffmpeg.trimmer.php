@@ -31,214 +31,6 @@ if ($videoFile) {
     }
 }
 
-// Video-Trimming verarbeiten
-if ($action === 'trim' && $csrf->isValid() && $videoFile && $videoInfo) {
-    $startTime = rex_request('start_time', 'string');
-    $endTime = rex_request('end_time', 'string');
-    $createLoop = 1 === rex_request('create_loop', 'int', 0);
-    $removeAudio = 1 === rex_request('remove_audio', 'int', 0);
-    if ($createLoop) {
-        $removeAudio = true;
-    }
-    $startSeconds = (float) $startTime;
-    $endSeconds = (float) $endTime;
-    
-    // Zeiten validieren
-    if (!empty($startTime) && !empty($endTime) && $startSeconds >= 0 && $endSeconds > $startSeconds) {
-        $videoPath = rex_path::media($videoFile);
-        
-        // Neue Dateinamen erstellen
-        $pathInfo = pathinfo($videoFile);
-        $baseName = $pathInfo['filename'];
-        $extension = $pathInfo['extension'];
-        
-        // Intelligente Präfix-Behandlung
-        if (strpos($baseName, 'web_') === 0) {
-            // Video hat bereits ein web_ Präfix, nur "trimmed" hinzufügen
-            if (strpos($baseName, 'trimmed') === false) {
-                $baseFilename = str_replace('web_', 'web_trimmed_', $baseName);
-            } else {
-                // Bereits getrimmt, neue Version erstellen
-                $baseFilename = $baseName . '_new';
-            }
-        } else {
-            // Original-Video, normales Präfix hinzufügen
-            $baseFilename = 'web_trimmed_' . $baseName;
-        }
-        
-        if ($createLoop && strpos($baseFilename, '_loop') === false) {
-            $baseFilename .= '_loop';
-        }
-
-        // Prüfen ob Datei bereits existiert und eindeutigen Namen generieren
-        $newFilename = $baseFilename . '.' . $extension;
-        $counter = 1;
-        
-        while (rex_media::get($newFilename) !== null) {
-            $newFilename = $baseFilename . '_' . $counter . '.' . $extension;
-            $counter++;
-        }
-        
-        $outputPath = rex_path::media($newFilename);
-        
-        // Dauer berechnen
-        $duration = $endSeconds - $startSeconds;
-        
-        // Fast Start immer (Index an den Dateianfang -> Video startet im Browser sofort)
-        $faststart = in_array(strtolower(pathinfo($newFilename, PATHINFO_EXTENSION)), ['mp4', 'm4v', 'mov'], true) ? ' -movflags +faststart' : '';
-
-        // FFmpeg-Befehl für Trimming
-        if ($createLoop) {
-            // Ping-Pong-Loop: Ausschnitt vorwaerts + rueckwaerts aneinanderhaengen.
-            // Fuer die Reverse-Operation ist Re-Encoding erforderlich.
-            $ffmpegCmd = sprintf(
-                'ffmpeg -y -ss %.3F -t %.3F -i %s -filter_complex "[0:v]split[vf][vr];[vr]reverse[rev];[vf][rev]concat=n=2:v=1:a=0[v]" -map "[v]" -c:v libx264 -preset medium -crf 23 -pix_fmt yuv420p -an%s %s',
-                $startSeconds,
-                $duration,
-                escapeshellarg($videoPath),
-                $faststart,
-                escapeshellarg($outputPath)
-            );
-        } else {
-            $audioArguments = $removeAudio ? ' -an' : ' -c copy';
-            $ffmpegCmd = sprintf(
-                'ffmpeg -y -ss %.3F -t %.3F -i %s%s%s %s',
-                $startSeconds,
-                $duration,
-                escapeshellarg($videoPath),
-                $audioArguments,
-                $faststart,
-                escapeshellarg($outputPath)
-            );
-        }
-        
-        // Trimming ausführen
-        $returnCode = \FriendsOfRedaxo\FFmpeg\Shell::run($ffmpegCmd . ' 2>&1', $output);
-        
-        if ($returnCode === 0 && file_exists($outputPath)) {
-            // Video in Medienpool importieren
-            try {
-                // Prüfen ob Datei bereits in der Datenbank existiert
-                $checkSql = rex_sql::factory();
-                $existingMedia = $checkSql->getArray('SELECT id FROM ' . rex::getTable('media') . ' WHERE filename = ?', [$newFilename]);
-                
-                $sql = rex_sql::factory();
-                $sql->setTable(rex::getTable('media'));
-                $sql->setValue('filename', $newFilename);
-                $sql->setValue('originalname', $newFilename);
-                $sql->setValue('filetype', 'video/mp4');
-                $sql->setValue('filesize', filesize($outputPath));
-                $sql->setValue('width', 0);
-                $sql->setValue('height', 0);
-                $sql->setValue('title', $videoInfo['title'] . ' (geschnitten)');
-                $sql->setValue('updatedate', date('Y-m-d H:i:s'));
-                $sql->setValue('updateuser', rex::getUser()->getLogin());
-                
-                if (count($existingMedia) > 0) {
-                    // UPDATE: Datei existiert bereits
-                    $sql->setWhere('filename = :filename', ['filename' => $newFilename]);
-                    $sql->update();
-                } else {
-                    // INSERT: Neue Datei
-                    $sql->setValue('createdate', date('Y-m-d H:i:s'));
-                    $sql->setValue('createuser', rex::getUser()->getLogin());
-                    $sql->insert();
-                }
-                
-                echo rex_view::success($this->i18n('ffmpeg_trimmer_success') . ': ' . $newFilename);
-                
-            } catch (Exception $e) {
-                echo rex_view::error($this->i18n('ffmpeg_trimmer_error_import') . ': ' . $e->getMessage());
-            }
-        } else {
-            echo rex_view::error($this->i18n('ffmpeg_trimmer_error_cutting') . ': ' . implode('<br>', $output));
-        }
-    } else {
-        echo rex_view::error($this->i18n('ffmpeg_trimmer_error_times'));
-    }
-}
-
-// Poster-Bild erzeugen: Standbild an einer Zeitposition exportieren, z.B.
-// fuer <video poster="..."> (siehe Usability-Review -- bisher gab es dafuer
-// keine Funktion im Addon, der Trimmer hat aber bereits eine Scrub-Vorschau
-// mit bekannter aktueller Position, daher hier statt eines eigenen
-// Werkzeugs). Synchron wie das Trimmen selbst (kein Hintergrund-Job).
-if ('poster' === $action && $csrf->isValid() && $videoFile && $videoInfo) {
-    $posterTime = (float) rex_request('poster_time', 'string', '0');
-
-    if ($posterTime < 0) {
-        echo rex_view::error($this->i18n('ffmpeg_trimmer_error_times'));
-    } else {
-        $videoPath = rex_path::media($videoFile);
-        $pathInfo = pathinfo($videoFile);
-        $baseName = $pathInfo['filename'];
-
-        $posterBaseFilename = $baseName . '_poster';
-        $posterFilename = $posterBaseFilename . '.jpg';
-        $counter = 1;
-        while (rex_media::get($posterFilename) !== null) {
-            $posterFilename = $posterBaseFilename . '_' . $counter . '.jpg';
-            ++$counter;
-        }
-
-        $posterPath = rex_path::media($posterFilename);
-
-        // -vframes 1 statt -frames:v 1 (gleichbedeutend, hier konsistent
-        // zum Rest des Addons bei "ein Einzelbild extrahieren"); -ss VOR
-        // -i fuer schnelles Seeking (Keyframe-naeherung reicht fuer ein
-        // Vorschaubild, kein frame-exaktes Seeking noetig).
-        $ffmpegCmd = sprintf(
-            'ffmpeg -y -ss %.3F -i %s -vframes 1 -q:v 2 %s',
-            $posterTime,
-            escapeshellarg($videoPath),
-            escapeshellarg($posterPath),
-        );
-
-        $returnCode = \FriendsOfRedaxo\FFmpeg\Shell::run($ffmpegCmd . ' 2>&1', $output);
-
-        if (0 === $returnCode && file_exists($posterPath)) {
-            try {
-                $checkSql = rex_sql::factory();
-                $existingMedia = $checkSql->getArray('SELECT id FROM ' . rex::getTable('media') . ' WHERE filename = ?', [$posterFilename]);
-
-                $sql = rex_sql::factory();
-                $sql->setTable(rex::getTable('media'));
-                $sql->setValue('filename', $posterFilename);
-                $sql->setValue('originalname', $posterFilename);
-                $sql->setValue('filetype', 'image/jpeg');
-                $sql->setValue('filesize', filesize($posterPath));
-                [$posterWidth, $posterHeight] = getimagesize($posterPath) ?: [0, 0];
-                $sql->setValue('width', $posterWidth);
-                $sql->setValue('height', $posterHeight);
-                $sql->setValue('title', ($videoInfo['title'] ?: $videoFile) . ' (Poster)');
-                $sql->setValue('updatedate', date('Y-m-d H:i:s'));
-                $sql->setValue('updateuser', rex::getUser()->getLogin());
-
-                if (count($existingMedia) > 0) {
-                    $sql->setWhere('filename = :filename', ['filename' => $posterFilename]);
-                    $sql->update();
-                } else {
-                    $sql->setValue('createdate', date('Y-m-d H:i:s'));
-                    $sql->setValue('createuser', rex::getUser()->getLogin());
-                    $sql->insert();
-                }
-
-                echo rex_view::success($this->i18n('ffmpeg_trimmer_poster_success') . ': ' . $posterFilename);
-            } catch (Exception $e) {
-                echo rex_view::error($this->i18n('ffmpeg_trimmer_error_import') . ': ' . $e->getMessage());
-            }
-        } else {
-            // Zeilen einzeln escapen (nicht den fertigen <br>-String), sonst
-            // wuerden die <br>-Tags selbst mit-escaped und der Zeilenumbruch
-            // ginge verloren. Anders als die Trim-Fehlermeldung weiter oben
-            // (bestehender Code, Zeile ~149) wird hier bewusst escaped --
-            // FFmpeg-Stderr kann im Fehlerfall Pfad-/Dateinamen-Fragmente
-            // enthalten, die theoretisch HTML-Sonderzeichen tragen koennten.
-            echo rex_view::error($this->i18n('ffmpeg_trimmer_poster_error') . ': ' . implode('<br>', array_map('rex_escape', $output)));
-        }
-    }
-}
-
 // Video-Liste laden - alle Videos anzeigen (auch web-optimierte)
 $sql = rex_sql::factory();
 $videos = $sql->getArray('SELECT filename, title, filesize, updatedate, filetype FROM ' . rex::getTable('media') . ' WHERE (filetype LIKE \'video/%\' OR filetype IN (\'video/mp4\', \'video/avi\', \'video/mov\', \'video/wmv\', \'video/webm\', \'video/mkv\')) ORDER BY updatedate DESC');
@@ -253,7 +45,12 @@ if (rex_request('debug', 'bool')) {
 
 // Hauptinhalt
 if ($videoFile && $videoInfo) {
-    // Video-Editor anzeigen
+    // Schnitt-Editor (assets/js/editor.js): Zeitleiste mit Vorschaubildern, mehrere Abschnitte, schnell/genau,
+    // Ton entfernen, Ping-Pong-Schleife, Poster-Bild – läuft als Hintergrund-Auftrag über die API ffmpeg_editor
+    $cutI18n = [];
+    foreach (['timeline', 'frame', 'play_pause', 'key_space', 'key_ctrl', 'remove', 'undo', 'reset', 'split', 'set_in', 'set_out', 'play_result', 'stop', 'pingpong_test', 'loop_preview', 'start_time', 'end_time', 'segment', 'length', 'snap_note', 'snap_none', 'method', 'fast', 'fast_text', 'exact', 'exact_text', 'options', 'remove_audio', 'remove_audio_help', 'no_audio', 'create_loop', 'create_loop_help', 'mode', 'mode_version', 'mode_version_text', 'mode_replace', 'mode_replace_text', 'start', 'poster_save', 'poster_help', 'poster_done', 'back', 'help', 'keys', 'running', 'starting', 'done', 'open', 'error'] as $key) {
+        $cutI18n[$key] = rex_i18n::rawMsg('ffmpeg_cut_' . $key);
+    }
     $content .= '
     <div class="panel panel-default ffmpeg-trimmer-panel ffmpeg-trimmer-editor-panel">
         <div class="panel-heading">
@@ -262,109 +59,12 @@ if ($videoFile && $videoInfo) {
             </h3>
         </div>
         <div class="panel-body">
-            <div class="video-trimmer-container">
-                <div class="trimmer-video-stage">
-                    <video id="trimmer-video" class="trimmer-video" controls>
-                        <source src="' . rex_url::media($videoFile) . '" type="video/mp4">
-                        ' . $this->i18n('ffmpeg_browser_no_support') . '
-                    </video>
-                    <div class="trimmer-video-hud" aria-label="Video-Steuerung">
-                        <div class="trimmer-video-hud-top">
-                            <span class="trimmer-time-chip">Start <strong id="trimmer-chip-start">0.0s</strong></span>
-                            <span class="trimmer-time-chip">Jetzt <strong id="trimmer-chip-current">0.0s</strong></span>
-                            <span class="trimmer-time-chip">Ende <strong id="trimmer-chip-end">0.0s</strong></span>
-                            <span class="trimmer-mode-indicator-chip">Modus: <strong id="trimmer-mode-indicator">' . $this->i18n('ffmpeg_trimmer_mode_ready') . '</strong></span>
-                        </div>
-                        <input id="trimmer-scrubber" class="trimmer-scrubber" type="range" min="0" max="0" step="0.1" value="0" aria-label="Video Position">
-                        <div class="trimmer-video-hud-controls btn-group" role="group" aria-label="Trimmer Schnellsteuerung">
-                            <button type="button" class="btn btn-default btn-sm trimmer-video-control" data-action="seek" data-seconds="-5" title="5 Sekunden zurück">-5s</button>
-                            <button type="button" class="btn btn-default btn-sm trimmer-video-control" data-action="seek" data-seconds="-1" title="1 Sekunde zurück">-1s</button>
-                            <button type="button" class="btn btn-primary btn-sm trimmer-video-control" data-action="toggle-play" title="Abspielen/Pausieren">Play/Pause</button>
-                            <button type="button" class="btn btn-default btn-sm trimmer-video-control" data-action="seek" data-seconds="1" title="1 Sekunde vor">+1s</button>
-                            <button type="button" class="btn btn-default btn-sm trimmer-video-control" data-action="seek" data-seconds="5" title="5 Sekunden vor">+5s</button>
-                            <button type="button" class="btn btn-info btn-sm trimmer-video-control" data-action="mark-start" title="Startzeit setzen">Start setzen</button>
-                            <button type="button" class="btn btn-info btn-sm trimmer-video-control" data-action="mark-end" title="Endzeit setzen">Ende setzen</button>
-                            <button type="button" class="btn btn-success btn-sm trimmer-video-control" data-action="play-selection" title="Ausgewählten Bereich abspielen">Bereich testen</button>
-                            <button type="button" class="btn btn-warning btn-sm trimmer-video-control" data-action="play-selection-pingpong" title="Ausgewählten Bereich als Ping-Pong-Vorschau abspielen">' . $this->i18n('ffmpeg_trimmer_pingpong_test') . '</button>
-                            <label class="btn btn-default btn-sm trimmer-loop-toggle-label" style="margin-left: 6px;">
-                                <input type="checkbox" class="trimmer-loop-toggle" data-target="trimmer-video"> ' . $this->i18n('ffmpeg_preview_loop') . '
-                            </label>
-                        </div>
-                    </div>
-                </div>
-
-                <form method="post" class="trimmer-form">
-                    ' . $csrf->getHiddenField() . '
-                    <input type="hidden" name="video" value="' . rex_escape($videoFile) . '">
-                    <input type="hidden" name="action" value="trim">
-
-                    <div class="video-controls-wrapper">
-                        <label class="control-label trimmer-range-label">' . $this->i18n('ffmpeg_trimmer_time_range_label') . '</label>
-                        <p class="trimmer-duration-hint" id="trimmer-duration-hint">' . str_replace('{0}', '0', $this->i18n('ffmpeg_trimmer_preview')) . '</p>
-                        <div class="checkbox" style="margin: 0 0 12px;">
-                            <label class="trimmer-audio-toggle-label">
-                                <input type="checkbox" name="remove_audio" value="1"> ' . $this->i18n('ffmpeg_trimmer_remove_audio') . '
-                            </label>
-                            <p class="help-block" style="margin: 4px 0 10px;">' . $this->i18n('ffmpeg_trimmer_remove_audio_help') . '</p>
-                            <label>
-                                <input type="checkbox" name="create_loop" value="1"> ' . $this->i18n('ffmpeg_trimmer_create_loop') . '
-                            </label>
-                            <p class="help-block" style="margin: 4px 0 0;">' . $this->i18n('ffmpeg_trimmer_create_loop_help') . '</p>
-                        </div>
-                        <div class="row">
-                            <div class="col-sm-6">
-                                <label class="control-label">' . $this->i18n('ffmpeg_trimmer_start_time') . ':</label>
-                                <div class="input-group">
-                                    <input type="number" name="start_time" id="start_time" step="0.1" min="0" class="form-control" required>
-                                    <span class="input-group-btn">
-                                        <button type="button" class="btn btn-info trimmer-set-current" data-target="start" title="' . $this->i18n('ffmpeg_trimmer_set_current') . '">
-                                            <i class="rex-icon fa-clock-o"></i>
-                                        </button>
-                                    </span>
-                                </div>
-                            </div>
-                            <div class="col-sm-6">
-                                <label class="control-label">' . $this->i18n('ffmpeg_trimmer_end_time') . ':</label>
-                                <div class="input-group">
-                                    <input type="number" name="end_time" id="end_time" step="0.1" min="0" class="form-control" required>
-                                    <span class="input-group-btn">
-                                        <button type="button" class="btn btn-info trimmer-set-current" data-target="end" title="' . $this->i18n('ffmpeg_trimmer_set_current') . '">
-                                            <i class="rex-icon fa-clock-o"></i>
-                                        </button>
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="text-center trimmer-actions">
-                        <button type="submit" class="btn btn-primary">
-                            <i class="rex-icon fa-cut"></i> ' . $this->i18n('ffmpeg_trimmer_cut_video') . '
-                        </button>
-                        <a href="' . rex_url::currentBackendPage() . '" class="btn btn-default">
-                            <i class="rex-icon fa-arrow-left"></i> ' . $this->i18n('ffmpeg_trimmer_back_to_list') . '
-                        </a>
-                    </div>
-                </form>
-
-                <hr>
-
-                <form method="post" class="trimmer-poster-form">
-                    ' . $csrf->getHiddenField() . '
-                    <input type="hidden" name="video" value="' . rex_escape($videoFile) . '">
-                    <input type="hidden" name="action" value="poster">
-                    <input type="hidden" name="poster_time" id="poster_time" value="0">
-
-                    <label class="control-label">' . $this->i18n('ffmpeg_trimmer_poster_label') . '</label>
-                    <p class="help-block" style="margin: 4px 0 10px;">' . $this->i18n('ffmpeg_trimmer_poster_help') . '</p>
-
-                    <div class="text-center trimmer-actions">
-                        <button type="submit" class="btn btn-default">
-                            <i class="rex-icon fa-camera"></i> ' . $this->i18n('ffmpeg_trimmer_poster_save') . '
-                        </button>
-                    </div>
-                </form>
-            </div>
+            <div class="ffmpeg-cut" data-ffmpeg-cut="' . rex_escape(json_encode([
+                'file' => $videoFile,
+                'i18n' => $cutI18n,
+                'backUrl' => rex_url::currentBackendPage([], false),
+                'mediaUrl' => rex_url::backendPage('mediapool/media', [], false) . '&file_name=',
+            ])) . '"></div>
         </div>
     </div>';
 } else {
@@ -411,8 +111,11 @@ if ($videoFile && $videoInfo) {
                                 <button type="button" class="btn btn-default btn-sm video-preview-btn" data-filename="' . $escapedFilename . '" title="' . $this->i18n('ffmpeg_trimmer_preview_show') . '">
                                     <i class="rex-icon fa-eye"></i>
                                 </button>
-                                <a href="' . rex_url::currentBackendPage(['video' => $video['filename']]) . '" class="btn btn-primary btn-sm" title="' . $this->i18n('ffmpeg_trimmer_cut_video') . '">
-                                    <i class="rex-icon fa-cut"></i>
+                                <a href="' . rex_url::currentBackendPage(['video' => $video['filename']]) . '" class="btn btn-primary btn-sm" title="' . $this->i18n('ffmpeg_trimmer_cut_video') . '" aria-label="' . $this->i18n('ffmpeg_trimmer_cut_video') . '">
+                                    <i class="rex-icon fa-cut" aria-hidden="true"></i>
+                                </a>
+                                <a href="' . rex_url::backendPage('mediapool/ffmpeg/subtitles', ['video' => $video['filename']]) . '" class="btn btn-default btn-sm" title="' . $this->i18n('ffmpeg_subtitles') . '" aria-label="' . $this->i18n('ffmpeg_subtitles') . '">
+                                    <i class="rex-icon fa-cc" aria-hidden="true"></i>
                                 </a>
                             </td>
                         </tr>';

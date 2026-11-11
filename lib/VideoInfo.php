@@ -33,6 +33,34 @@ class VideoInfo
     }
 
     /**
+     * Untertitel und Kapitel eines Videos für die Website (im Video-Tools-Editor gepflegt)
+     *
+     * @return list<array{file: string, url: string, lang: string, kind: string, label: string}>
+     */
+    public static function tracks(string $filename): array
+    {
+        return array_map(static fn (array $t) => ['file' => $t['file'], 'url' => $t['url'], 'lang' => $t['lang'], 'kind' => $t['role'], 'label' => $t['name']],
+            Tracks::of($filename));
+    }
+
+    /**
+     * Fertige <track>-Elemente für ein <video>, z. B. echo VideoInfo::trackTags('film.mp4', 'de');
+     * $default: Sprache, deren Untertitel voreingeschaltet sind (null = keine)
+     */
+    public static function trackTags(string $filename, ?string $default = null): string
+    {
+        $html = '';
+        $done = false;
+        foreach (self::tracks($filename) as $track) {
+            $on = !$done && null !== $default && 'chapters' !== $track['kind'] && str_starts_with($track['lang'], $default);
+            $done = $done || $on;
+            $html .= '<track kind="' . rex_escape($track['kind']) . '" src="' . rex_escape($track['url']) . '" srclang="' . rex_escape($track['lang']) . '" label="' . rex_escape($track['label']) . '"' . ($on ? ' default' : '') . '>';
+        }
+
+        return $html;
+    }
+
+    /**
      * Startet das Video im Browser sofort ("Fast Start")? Liegt der Index (moov) vor den Videodaten
      * (mdat), muss der Browser nicht erst große Teile der Datei laden. Prüft nur die obersten
      * MP4/MOV-Boxen (liest wenige Bytes, kein ffprobe). null = kein MP4/MOV oder nicht lesbar.

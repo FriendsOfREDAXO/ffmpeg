@@ -1,144 +1,156 @@
-# REDAXO-AddOn: FFmpeg Video Tools
+<p align="right">🌎 <a href="https://github.com/FriendsOfREDAXO/ffmpeg/blob/main/README.de.md">Deutsch</a></p>
 
-Vollständige Video-Management-Lösung für REDAXO CMS – Konvertierung, Trimming und detaillierte Video-Analyse, alles in einem Addon!
+![FOR FFmpeg – video tools for REDAXO](https://raw.githubusercontent.com/FriendsOfREDAXO/ffmpeg/assets/ffmpeg-title.png)
 
-## 🔧 Voraussetzungen
+# REDAXO add-on: FFmpeg Video Tools
 
-- PHP-Funktion `exec`, `shell_exec` oder `proc_open` aktiviert
-- FFmpeg und FFprobe ab Version 4.3 installiert und im PATH verfügbar
-- Für die automatische Optimierung empfohlen: das AddOn **Cronjob**
-- REDAXO 5.18.1 oder höher
-- PHP 8.1 oder höher
-- **Wichtig:** Das VideoPreview-Addon muss deinstalliert werden (Funktionalität ist integriert)
+Complete video toolkit for REDAXO CMS – automatic optimization, cut editor, subtitles and detailed video analysis,
+all in one add-on.
 
-## 🚀 Features im Überblick
+## 🔧 Requirements
 
-### Video-Konverter
-- **Automatische Optimierung** (neu in 4.10) – neue Videos werden nach dem Hochladen und per Cronjob auf eine Standardgröße heruntergerechnet, siehe unten
-- **Hintergrundverarbeitung** – Browser schließen während der Konvertierung möglich; das Ergebnis wird beim nächsten Backend-Aufruf oder Cronjob übernommen
-- **Intelligente Medienpool-Integration** mit `web_`-Prefix
-- **Metadaten-Erhaltung** (Titel, Beschreibung, Copyright)
-- **Kompressionsanzeige** zeigt eingesparten Speicherplatz, getrennt ausgewiesen für Webversion und Optimieren
-- **Auto-Cleanup** für Originaldateien nach erfolgreicher Konvertierung (nur Webversion-Modus)
-- **Einfache Einstellungen statt FFmpeg-Kommandos**: Größe (Original, Full HD, HD, 480p, 360p), Qualität (hoch, ausgewogen, kleine Datei) und Ton (behalten, Lautstärke angleichen, entfernen) – getrennt für „Optimieren“ (Original ersetzen) und „Webversion erstellen“ (neue Datei)
-- **Immer enthalten**: H.264/AAC, browsertaugliches Farbformat (yuv420p), Fast Start (Video startet sofort), nur die erste Bild- und Tonspur. **Videos werden nie vergrößert**, Hochformat bleibt Hochformat (Full HD: höchstens 1920 × 1080 bzw. 1080 × 1920)
-- **Mehrere Varianten pro Video**: existiert bereits eine Webversion, bietet ein Dialog neben „Überschreiben“ auch „Zusätzliche Variante anlegen“ mit eigener Größe (`web_<name>_2.mp4`, `_3.mp4`, …)
-- **Einstellungs-Hinweis** direkt an den Buttons, z. B. „Full HD · Ausgewogen · mit Ton“
+- PHP function `exec`, `shell_exec` or `proc_open` enabled
+- FFmpeg and FFprobe 4.3 or newer, available in the PATH
+- Recommended for automatic optimization: the **Cronjob** add-on
+- REDAXO 5.18.1 or newer
+- PHP 8.1 or newer
+- **Important:** the VideoPreview add-on must be uninstalled (its features are included)
 
-### Video-Trimmer
-- **Präzises Schneiden** direkt im Browser
-- **Verlustfreies Trimming** mit FFmpeg Stream-Copy
-- **Intuitive Bedienung** mit Video-Player-Integration, Scrubber und HUD-Steuerung
-- **Bereichstest** für definierte Start-/Endzeit direkt im Player
-- **Loop-Schalter** für einfache Vorschau-Tests
-- **Keyboard-Shortcuts** für professionellen Workflow
-- **Alle Video-Typen** unterstützt (Original + web-optimiert)
-- **Poster-Bild erstellen**: aktuelle Abspielposition als Standbild (JPEG) im Medienpool speichern, z. B. für das Poster-Attribut eines Video-Elements
+## 🚀 Features
 
-### 🆕 Video-Informationen 
-- **Detaillierte technische Analyse** aller Video-Parameter
-- **Responsive Darstellung** mit Layout-Schutz
-- **Optimierungsempfehlungen** für Web-Performance
-- **Audio/Video-Stream-Details** komplett verfügbar
+### Video converter
+- **Automatic optimization** (new in 5.0) – new videos are scaled down to a standard size after the upload and via cronjob, see below
+- **Background processing** – you may close the browser; the result is taken over on the next backend request or cronjob
+- **Media pool integration** with `web_` prefix
+- **Keeps metadata** (title, description, copyright)
+- **Savings display** for web versions and optimized originals
+- **Auto cleanup** of originals after a successful conversion (web version mode only)
+- **Simple settings instead of FFmpeg commands**: size (original, Full HD, HD, 480p, 360p), quality (high, balanced, small file) and audio (keep, normalize loudness, remove) – separately for "Optimize" (replace original) and "Create web version" (new file)
+- **Always included**: H.264/AAC, browser-compatible pixel format (yuv420p), fast start (plays instantly), only the first video and audio stream. **Videos are never scaled up**, portrait stays portrait (Full HD: at most 1920 × 1080 or 1080 × 1920)
+- **Several variants per video**: if a web version exists, a dialog offers "Add another variant" with its own size (`web_<name>_2.mp4`, `_3.mp4`, …)
+- **Setting hint** right at the buttons, e.g. "Full HD · Balanced · with audio"
 
-### 🆕 Video-Thumbnails (Media Manager)
-- **Automatische Thumbnail-Generierung** aus Videos
-- **Media Manager Integration** für responsive Bildgrößen
-- **Konfigurierbarer Zeitpunkt** für Thumbnail-Extraktion
-- **Fallback-Placeholder** bei FFmpeg-Problemen
+### Video trimmer (cut editor, new in 5.0)
+- **Timeline with thumbnails**: split, remove segments, drag edges, undo – cut out several parts at once
+- **Fast** (no re-encoding, lossless, from the keyframe – the timeline shows what comes along) or **exact** (frame-accurate)
+- **Play result** (range test) skips removed parts, **loop** and **test ping-pong** for the preview
+- **Remove audio** and **create ping-pong loop** (forwards + backwards, seamless) as before
+- Result as a **new file** (`web_trimmed_…`) or **instead of the original** – subtitles are cut along
+- Runs as a **background job** with progress; you may leave the page
+- **Create poster image**: current position as JPEG still in the media pool
+- **Keyboard**: Space, ← → (frame/second), S split, I/O or Ctrl+S/Ctrl+E start/end, Del, Ctrl+Z
 
-### 🆕 PHP-API für Entwickler
-- **Module-Integration** mit `VideoInfo` Klasse (`FriendsOfRedaxo\FFmpeg\VideoInfo`)
-- **Performance-optimierte Methoden** für häufige Abfragen
-- **Template-Integration** für Video-Galerien und responsive Player
-- **Optimierungs-Checks** für automatische Qualitätsbewertung
+![Cut editor: timeline with thumbnails, removed segment, fast cut from the keyframe](https://raw.githubusercontent.com/FriendsOfREDAXO/ffmpeg/assets/ffmpeg-cut-editor.png)
+
+### Subtitles and chapters (new in 5.0)
+- **Editor with live preview** in the video: new entry at the playhead (key N), times via button or input (`1:05.250`)
+- Any number of tracks per video: **subtitles**, **captions** (for the deaf and hard of hearing) and **chapters**, per language
+- **Import** WebVTT and SRT (also UTF-16/Windows-1252), **shift all entries**
+- Stored as sanitized **WebVTT in the media pool**, linked to the video; cut along automatically
+- Delivered to the website with the right content type (`text/vtt`) – see `VideoInfo::trackTags()`
+
+![Subtitle editor: video with live preview, entries with times and text](https://raw.githubusercontent.com/FriendsOfREDAXO/ffmpeg/assets/ffmpeg-subtitles-editor.png)
+
+### Video information
+- **Detailed technical analysis** of all video parameters
+- **Optimization recommendations** for web performance
+- **Audio/video stream details**
+
+### Video thumbnails (media manager)
+- **Automatic thumbnails** from videos (animated WebP, muted MP4 preview)
+- **Configurable position** for the extraction
+- **Fallback placeholder** if FFmpeg fails
+
+### PHP API for developers
+- `VideoInfo` class (`FriendsOfRedaxo\FFmpeg\VideoInfo`) for modules and templates
+- Subtitles for the website, queue and extension points for your own workflows
 
 ## 📋 Workflow
 
-### Video-Konverter
-1. **Medienpool → Video-Tools → Video-Konverter** öffnen
-2. Gewünschtes Video in der tabellarischen Übersicht finden
-3. Direkt am Eintrag auf **"Dieses Video konvertieren"** klicken
-4. **Browser schließen möglich** – Konvertierung läuft weiter
-5. Fortschritt direkt am Eintrag verfolgen (Donut + optionales Protokoll)
-6. Fertig: Das Ergebnis wird übernommen, sobald die Seite wieder geöffnet wird, beim nächsten Backend-Aufruf oder beim nächsten Cronjob
+### Video converter
+1. Open **Media pool → Video tools → Video converter**
+2. Find the video in the list
+3. Click **"Convert this video"** at the entry
+4. **You may close the browser** – the conversion continues
+5. Follow the progress at the entry
+6. Done: the result is taken over when the page is opened again, on the next backend request or cronjob
 
-### Automatische Optimierung
-1. **Video-Tools → Einstellungen → Automatische Optimierung** einschalten
-2. **Standardgröße** wählen: Full HD (empfohlen), HD oder Klein (z. B. für Hintergrundvideos)
-3. Festlegen, ob nur neue oder auch alle vorhandenen Videos bearbeitet werden
+### Automatic optimization
+1. Enable **Video tools → Settings → Automatic optimization**
+2. Choose the **standard size**: Full HD (recommended), HD or Small (e.g. for background videos)
+3. Choose whether only new or also all existing videos are processed
 
-Danach wird jedes neu hochgeladene Video sofort im Hintergrund geprüft; der Cronjob „FFmpeg: Videos automatisch
-optimieren“ (wird beim Einschalten automatisch angelegt, alle 10 Minuten) arbeitet weitere Videos nacheinander ab und
-übernimmt fertige Ergebnisse.
+Every uploaded video is then checked right away in the background; the cronjob "FFmpeg: Videos automatisch optimieren"
+(created automatically when enabled, every 10 minutes) processes further videos one after another and takes over
+finished results.
 
-Bearbeitet wird nur, was es nötig hat:
+Only what needs it is processed:
 
-| Befund | Was passiert |
+| Finding | What happens |
 | --- | --- |
-| größer als die Standardgröße | heruntergerechnet (nie vergrößert) |
-| Datenrate zu hoch | neu berechnet – ersetzt nur, wenn die Datei kleiner wird |
-| Codec nicht H.264 (z. B. HEVC vom iPhone) oder Farbformat nicht yuv420p | neu berechnet – ersetzt auch, wenn die Datei größer wird, denn sonst spielt das Video in vielen Browsern nicht |
-| nur Fast Start fehlt | verlustfrei umsortiert (Sekunden, keine Neuberechnung) |
-| alles in Ordnung | bleibt unverändert |
+| larger than the standard size | scaled down (never up) |
+| bitrate too high | re-encoded – replaced only if the file gets smaller |
+| codec not H.264 (e.g. HEVC from an iPhone) or pixel format not yuv420p | re-encoded – replaced even if larger, otherwise the video does not play in many browsers |
+| only fast start missing | rearranged losslessly (seconds, no re-encoding) |
+| all fine | stays unchanged |
 
-Dateiname, Titel, Kategorie und alle Verwendungen bleiben erhalten. Bearbeitet werden MP4, M4V und MOV (bei anderen
-Formaten müsste sich der Dateiname ändern). Jedes Video wird nur einmal geprüft; wird es ersetzt (neuer Upload),
-erneut.
+File name, title, category and all usages are kept. MP4, M4V and MOV are processed (other formats would need a new file
+name). Every video is checked once; again if it is replaced (new upload) or the standard size changes.
 
-Für einen System-Cronjob oder um den Bestand auf einmal abzuarbeiten:
+For a system cronjob or to process the existing videos at once:
 
 ```bash
-php redaxo/bin/console ffmpeg:optimize          # ein Durchgang wie der Cronjob
-php redaxo/bin/console ffmpeg:optimize --wait   # alle wartenden Videos nacheinander, wartet auf jedes
+php redaxo/bin/console ffmpeg:optimize          # one run like the cronjob
+php redaxo/bin/console ffmpeg:optimize --wait   # all waiting videos one after another, waits for each
 ```
 
-### Video-Trimmer
-1. **Medienpool → Video-Tools → Video-Trimmer** aufrufen
-2. Video aus der Liste auswählen (alle Typen verfügbar)
-3. **Video-Player nutzen** um Position zu finden
-4. **Start-/Endzeit setzen**:
-   - Position im Player pausieren
-   - "Aktuelle Zeit setzen" klicken (oder Strg+S/E)
-5. **Bereich testen** nutzen, um den markierten Abschnitt wiederholt abzuspielen
-6. Optional **Loop-Schalter** aktivieren, damit die Vorschau direkt in Schleife läuft
-7. "Video schneiden" → Geschnittenes Video als `web_trimmed_*` gespeichert
-8. **Poster-Bild erstellen** (optional): gewünschte Position im Player anfahren, dann „Poster-Bild speichern“ klicken → Standbild als `<name>_poster.jpg` im Medienpool
+### Video trimmer (cut editor)
+1. Open **Media pool → Video tools → Video trimmer** (or "Cut video" in the detail view of a video)
+2. Choose a video from the list (all types)
+3. Set the playhead (click the timeline, arrow keys, ±1 frame/second) and **split**
+4. Click a segment and **remove** it – or drag its edges or type exact start/end times
+5. **Play result** checks the result, **loop** repeats it, **test ping-pong** plays it forwards and backwards
+6. Choose **fast** or **exact**, optionally **remove audio** / **create ping-pong loop**
+7. **New file** (`web_trimmed_*`) or **replace original** – "Cut video" starts the job
+8. **Save poster image**: still at the current position as `<name>_poster.jpg` in the media pool
 
-### Video-Informationen
-1. **Medienpool → Video-Tools → Video-Informationen** öffnen
-2. Video aus der Liste auswählen
-3. **Komplette technische Analyse** ansehen:
-   - Auflösung, Bitrate, Codec, Framerate
-   - Audio-Details, Seitenverhältnis
-   - Optimierungsempfehlungen mit Score
-4. **Direkter Zugang** zu Trimmer und Konverter
+### Subtitles
+1. **Media pool → Video tools → Subtitles** (or "Subtitles" in the detail view of a video)
+2. Choose a video → **add subtitles** or **edit** an existing track
+3. Set language, kind and optionally the label in the player
+4. Write entries (N = new entry at the playhead) or **load a VTT/SRT file**
+5. **Save** – the track is stored as `<video>-<language>.vtt` in the media pool
 
-## 🔌 PHP-API für Module & Templates
+### Video information
+1. Open **Media pool → Video tools → Video information**
+2. Choose a video
+3. See resolution, bitrate, codec, frame rate, audio details, aspect ratio and recommendations with a score
 
-### Basis-Verwendung
+## 🔌 PHP API for modules & templates
+
+### Basic usage
 
 ```php
 <?php
 use FriendsOfRedaxo\FFmpeg;
 
-// Video-Informationen in Modulen abrufen
+// Get video information in modules
 $videoFile = 'REX_MEDIA[1]';
 $info = VideoInfo::getBasicInfo($videoFile);
 
 if ($info) {
     echo '<div class="video-info">';
     echo '<h3>' . $info['filename'] . '</h3>';
-    echo '<p>Dauer: ' . $info['duration_formatted'] . '</p>';
-    echo '<p>Auflösung: ' . $info['width'] . ' × ' . $info['height'] . ' px</p>';
-    echo '<p>Seitenverhältnis: ' . $info['aspect_ratio'] . '</p>';
-    echo '<p>Dateigröße: ' . $info['filesize_formatted'] . '</p>';
+    echo '<p>Duration: ' . $info['duration_formatted'] . '</p>';
+    echo '<p>Resolution: ' . $info['width'] . ' × ' . $info['height'] . ' px</p>';
+    echo '<p>Aspect ratio: ' . $info['aspect_ratio'] . '</p>';
+    echo '<p>File size: ' . $info['filesize_formatted'] . '</p>';
     echo '</div>';
 }
 ?>
 ```
 
-### Schnelle Einzelwerte
+### Quick single values
 
 ```php
 <?php
@@ -146,17 +158,17 @@ use FriendsOfRedaxo\FFmpeg;
 
 $videoFile = 'REX_MEDIA[1]';
 
-// Nur Dauer ermitteln (performance-optimiert)
+// Duration only (fast)
 $duration = VideoInfo::getDuration($videoFile);
-echo 'Dauer: ' . $duration . ' Sekunden';
+echo 'Duration: ' . $duration . ' seconds';
 
-// Nur Seitenverhältnis
+// Aspect ratio only
 $ratio = VideoInfo::getAspectRatio($videoFile);
 echo 'Format: ' . $ratio;
 ?>
 ```
 
-### Web-Optimierung prüfen
+### Check web optimization
 
 ```php
 <?php
@@ -166,9 +178,9 @@ $videoFile = 'REX_MEDIA[1]';
 $status = VideoInfo::getOptimizationStatus($videoFile);
 
 if ($status['optimized']) {
-    echo '<span class="badge badge-success">Web-optimiert</span>';
+    echo '<span class="badge badge-success">Web-optimized</span>';
 } else {
-    echo '<span class="badge badge-warning">Nicht optimiert</span>';
+    echo '<span class="badge badge-warning">Not optimized</span>';
     foreach ($status['recommendations'] as $rec) {
         echo '<li>' . $rec . '</li>';
     }
@@ -178,7 +190,7 @@ echo '<p>Score: ' . $status['score'] . '/100</p>';
 ?>
 ```
 
-### Responsive Video-Templates
+### Responsive video templates
 
 ```php
 <?php
@@ -188,7 +200,7 @@ $videoFile = 'REX_MEDIA[1]';
 $info = VideoInfo::getBasicInfo($videoFile);
 
 if ($info) {
-    // CSS-Klasse basierend auf Seitenverhältnis
+    // CSS class based on aspect ratio
     $aspectClass = match($info['aspect_ratio']) {
         '16:9' => 'video-widescreen',
         '9:16' => 'video-portrait', 
@@ -205,21 +217,21 @@ if ($info) {
 ?>
 ```
 
-### Video-Thumbnails generieren
+### Generate video thumbnails
 
 ```php
 <?php
 $videoFile = 'REX_MEDIA[1]';
 
-// WebP-Vorschau (animiert) - benötigt Media Manager Typ mit 'rex_effect_video_to_webp'
+// Animated WebP preview – needs a media manager type with 'rex_effect_video_to_webp'
 $webpPreview = rex_media_manager::getUrl('video_webp', $videoFile);
 echo '<img src="' . $webpPreview . '" alt="Video WebP Preview">';
 
-// MP4-Vorschau (ohne Ton) - benötigt Media Manager Typ mit 'rex_effect_video_to_preview'
+// MP4 preview (muted) – needs a media manager type with 'rex_effect_video_to_preview'
 $mp4Preview = rex_media_manager::getUrl('video_preview', $videoFile);
 echo '<video autoplay muted loop><source src="' . $mp4Preview . '" type="video/mp4"></video>';
 
-// Kombination: WebP als Fallback für MP4
+// Combined: WebP as fallback for MP4
 echo '<video autoplay muted loop poster="' . $webpPreview . '">';
 echo '<source src="' . $mp4Preview . '" type="video/mp4">';
 echo '<img src="' . $webpPreview . '" alt="Video Preview">';
@@ -227,13 +239,13 @@ echo '</video>';
 ?>
 ```
 
-### Video-Galerie mit Thumbnails
+### Video gallery with thumbnails
 
 ```php
 <?php
 use FriendsOfRedaxo\FFmpeg;
 
-// Video-Liste aus dem Medienpool
+// Video list from the media pool
 $sql = rex_sql::factory();
 $videos = $sql->getArray('SELECT filename FROM rex_media WHERE filetype LIKE "video/%"');
 
@@ -242,7 +254,7 @@ foreach ($videos as $video) {
     $filename = $video['filename'];
     $info = VideoInfo::getBasicInfo($filename);
     
-    // WebP-Thumbnail für bessere Performance
+    // WebP thumbnail for better performance
     $thumbnail = rex_media_manager::getUrl('video_webp_thumb', $filename);
     
     if ($info && $thumbnail) {
@@ -261,24 +273,110 @@ echo '</div>';
 ?>
 ```
 
-### Verfügbare API-Methoden
+### Available API methods
 
-- `getInfo($filename)` – Vollständige Video-Informationen
-- `getBasicInfo($filename)` – Grundlegende Infos für Templates
-- `getDuration($filename)` – Nur Video-Dauer (schnell)
-- `getAspectRatio($filename)` – Nur Seitenverhältnis
-- `getOptimizationStatus($filename)` – Web-Optimierung mit Score
-- `isMobileOptimized($filename)` – Mobile-Kompatibilität prüfen
+- `getInfo($filename)` – complete video information
+- `getBasicInfo($filename)` – basic information for templates
+- `getDuration($filename)` – duration only (fast)
+- `getAspectRatio($filename)` – aspect ratio only
+- `getOptimizationStatus($filename)` – web optimization with score
+- `isMobileOptimized($filename)` – mobile compatibility
+- `hasFaststart($filename)` – does the video start instantly (index at the start of the file)?
+- `tracks($filename)` / `trackTags($filename, $defaultLang)` – subtitles and chapters for the website
 
-## ✨ Neueste Verbesserungen
-- Moderne Vorschau-Modal mit Loop-Option für schnelle Prüfungen
-- Trimmer-UI mit direkt eingebetteten Controls, Scrubber und Bereichstest
-- Theme-optimierte Darstellung für Light-, Dark- und Auto-Theme
-- Zuverlässige Initialisierung im REDAXO-Backend auch nach Navigation ohne kompletten Reload
+### Subtitles on the website
 
-## ⚙️ Installation & Konfiguration
+```php
+use FriendsOfRedaxo\FFmpeg\VideoInfo;
 
-### FFmpeg Installation
+echo '<video controls src="' . rex_url::media('film.mp4') . '">'
+    . VideoInfo::trackTags('film.mp4', 'en')   // <track> elements, English subtitles on by default
+    . '</video>';
+
+foreach (VideoInfo::tracks('film.mp4') as $track) {
+    // ['file' => 'film-en.vtt', 'url' => '/index.php?rex-api-call=ffmpeg_track&…', 'lang' => 'en', 'kind' => 'subtitles', 'label' => 'English']
+}
+```
+
+The URL delivers the track as `text/vtt` – many web servers do not know the `.vtt` extension and send `text/plain`,
+which browsers reject for `<track>`.
+
+## 🧩 Your own workflows (extension points and queue)
+
+With a small project add-on (or in the `boot.php` of your project add-on) you can build your own workflows – e.g.
+several versions after every upload. Only one conversion runs at a time; further jobs go into the **queue** and run one
+after another (continued after every finished job, by the cronjob and with `php redaxo/bin/console ffmpeg:optimize --wait`).
+
+### Example: three versions after every upload
+
+```php
+use FriendsOfRedaxo\FFmpeg\Presets;
+use FriendsOfRedaxo\FFmpeg\Queue;
+use FriendsOfRedaxo\FFmpeg\VideoInfo;
+
+rex_extension::register('MEDIA_ADDED', static function (rex_extension_point $ep): void {
+    $file = (string) $ep->getParam('filename');
+    if (!VideoInfo::isSupportedVideoFile($file)) {
+        return;
+    }
+    $name = pathinfo($file, PATHINFO_FILENAME);
+    foreach (['480p', '720p', '1080p'] as $size) {
+        // Presets::build(size, quality, audio) – never scaled up, H.264/AAC, fast start
+        Queue::add($file, Presets::build($size, 'balanced', 'keep'), $name . '-' . $size . '.mp4', ['size' => $size]);
+    }
+});
+```
+
+`Queue::add(string $video, string $command, ?string $output = null, array $extra = [])`
+
+| Parameter | Meaning |
+| --- | --- |
+| `$video` | file name in the media pool |
+| `$command` | ffmpeg command with the placeholders `INPUT` and `OUTPUT.<ext>` – easiest with `Presets::build()` |
+| `$output` | file name of the new version in the media pool (title, description and copyright are copied); `null` replaces the original |
+| `$extra` | your own data, returned with the job and in `FFMPEG_JOB_DONE` |
+
+The source is never deleted for queued jobs. More methods: `Queue::pending()`, `Queue::remove($id)`.
+
+`Presets::build($size, $quality, $audio)`: `$size` = `original`, `1080p`, `720p`, `480p`, `360p` · `$quality` =
+`high`, `balanced`, `small` · `$audio` = `keep`, `normalize` (−16 LUFS), `remove`. `Presets::FASTSTART_REMUX`
+rearranges losslessly.
+
+### Extension points
+
+| Extension point | When | Subject / parameters |
+| --- | --- | --- |
+| `FFMPEG_JOB_COMMAND` | before every job (buttons, automatic optimization, cut, queue) | subject: command (changeable, placeholders stay) · `video`, `mode` (`new_file`/`overwrite`), `extra` |
+| `FFMPEG_JOB_DONE` | after every job, done or failed | `job` (`VideoJob`), `video`, `result` (file name of the result), `status` (`done`/`error`), `mode`, `extra` |
+| `FFMPEG_AUTO_OPTIMIZE` | before the automatic optimization processes a video | subject: `[reason, not web-compatible, rearrange only]` or `null`; return `null` to skip · `media`, `preset` |
+
+Example: react to a finished version and exclude a category from the automatic optimization:
+
+```php
+rex_extension::register('FFMPEG_JOB_DONE', static function (rex_extension_point $ep): void {
+    if ('done' === $ep->getParam('status') && ($ep->getParam('extra')['size'] ?? '') === '1080p') {
+        // e.g. notification, your own link, another Queue::add() …
+    }
+});
+
+rex_extension::register('FFMPEG_AUTO_OPTIMIZE', static function (rex_extension_point $ep) {
+    return 12 === $ep->getParam('media')->getCategoryId() ? null : $ep->getSubject();
+});
+```
+
+## 🔒 Security
+
+- All backend endpoints (`ffmpeg_convert`, `ffmpeg_editor`, `ffmpeg_stream`) are reachable **in the backend only**,
+  require a **CSRF token** and check the permission `ffmpeg[]` plus the **media pool permission for the category** of the
+  video. Up to 4.9, `ffmpeg_convert` was callable via the frontend and without a token.
+- Only `ffmpeg_track` is public: it delivers nothing but `.vtt` files linked as subtitle tracks (which are in the media
+  pool anyway) and respects `rex_media::isPermitted()` (e.g. YCom media protection).
+- ffmpeg commands are built only from fixed settings or PHP code; every argument is escaped. There is no input field for
+  commands any more.
+
+## ⚙️ Installation & configuration
+
+### Installing FFmpeg
 
 **Ubuntu/Debian:**
 ```bash
@@ -297,94 +395,79 @@ sudo yum install ffmpeg
 brew install ffmpeg
 ```
 
-**Test der Installation:**
+**Test:**
 ```bash
 ffmpeg -version
 ffprobe -version
 ```
 
-### REDAXO-Konfiguration
+### REDAXO configuration
 
-1. **Addon installieren** über den Installer oder manuell
-2. **Einstellungen** unter Video-Tools → Einstellungen: Größe, Qualität und Ton für „Optimieren“ und
-   „Webversion erstellen“, automatische Optimierung, Auto-Cleanup
+1. **Install the add-on** via the installer or manually
+2. **Settings** under Video tools → Settings: size, quality and audio for "Optimize" and "Create web version",
+   automatic optimization, auto cleanup
 
-Eigene FFmpeg-Kommandos lassen sich seit 4.10 nicht mehr eingeben: sie waren fehleranfällig und für Redakteure
-unverständlich. Frühere Einstellungen werden beim Update auf die passenden Optionen übertragen.
+Since 5.0, custom FFmpeg commands can no longer be entered: they were error-prone and hard to understand for editors.
+Previous settings are mapped to the matching options on update.
 
-## 🎛️ Keyboard-Shortcuts (Video-Trimmer)
+## 🎛️ Keyboard shortcuts
 
-- **Strg + S** – Aktuelle Position als Startzeit setzen
-- **Strg + E** – Aktuelle Position als Endzeit setzen  
-- **Leertaste** – Video pausieren/fortsetzen
+**Video trimmer (cut editor)**
+- **Space** – play / pause
+- **← / →** – one frame back / forward (with **⇧** one second), **Home / End** – start / end
+- **S** – split at the playhead
+- **I / O** or **Ctrl + S / Ctrl + E** – start / end of the selected segment here
+- **Del** – remove segment, **Ctrl + Z** – undo
 
-## 🔧 Technische Details
+**Subtitles**
+- **N** – new entry at the playhead, **Space** – play, **← / →** – one frame (with **⇧** one second)
 
-### Unterstützte Video-Formate
+## 🔧 Technical details
+
+### Supported formats
 - MP4, AVI, MOV, WMV, WebM, MKV
-- Alle von FFmpeg unterstützten Formate
+- Everything FFmpeg supports
 
-### Naming-Konventionen
-- **Konvertierte Videos:** `web_originalname.mp4`
-- **Zusätzliche Varianten:** `web_originalname_2.mp4`, `_3.mp4`, … (nächster freier Name)
-- **Getrimmte Videos:** `web_trimmed_originalname.mp4`
-- **Poster-Bilder:** `originalname_poster.jpg`
-- **Duplikate:** Automatischer Counter-Suffix
-
-### Performance-Optimierungen
-- **Stream-Copy** für verlustfreies Trimming
-- **Lazy Loading** der Video-Informationen
-- **Caching** von FFprobe-Ergebnissen
-- **Background Processing** für Konvertierungen
+### Naming
+- **Converted videos:** `web_originalname.mp4`
+- **Additional variants:** `web_originalname_2.mp4`, `_3.mp4`, … (next free name)
+- **Trimmed videos:** `web_trimmed_originalname.mp4` (ping-pong: `…_loop.mp4`)
+- **Subtitles:** `originalname-en.vtt`, `originalname-en-cc.vtt`, `originalname-en-chapters.vtt`
+- **Poster images:** `originalname_poster.jpg`
+- **Duplicates:** automatic counter suffix
 
 ## 🐛 Troubleshooting
 
-### "FFmpeg ist nicht verfügbar"
-- FFmpeg Installation prüfen: `which ffmpeg`
-- PATH-Variable korrekt gesetzt?
-- PHP `exec()` Funktion verfügbar?
+### "FFmpeg is not available"
+- Check the installation: `which ffmpeg`
+- Is the PATH set correctly?
+- Is one of the PHP functions `exec`, `shell_exec` or `proc_open` allowed?
 
-### "Konflikt mit VideoPreview-Addon"
-- Das VideoPreview-Addon muss deinstalliert werden
-- Alle Thumbnail-Funktionen sind jetzt im FFmpeg-Addon integriert
-- Media Manager Effekt "Video-Vorschau" bleibt unverändert funktional
+### "Conflict with the VideoPreview add-on"
+- Uninstall the VideoPreview add-on – its thumbnail features are part of this add-on
 
-### Konvertierung startet nicht
-- PHP-Zeitlimits erhöhen
-- Disk-Space prüfen
-- Dateiberechtigungen kontrollieren
+### Conversion does not start
+- Check disk space and file permissions
+- Is a job still running? Only one job runs at a time; others wait in the queue
 
-### Videos werden nicht angezeigt
-- MIME-Types in der Datenbank prüfen
-- Browser-Unterstützung für Video-Format
+### Videos are not shown
+- Check the MIME types in the database
+- Browser support for the video format
 
-## 📝 Changelog v4.0
+## 📝 Changelog
 
-### Neue Features
-- ✅ **Video-Konverter Presets** – Vorgefertigte Konvertierungsvorlagen (Web, Mobile, Archive, Standard)
-- ✅ **Command-Vorschau** – Echtzeit-Anzeige des generierten FFmpeg-Kommandos
-- ✅ **Verbesserte UI** – Direkte Command-Eingabe ohne separate Textarea
-- ✅ **Type Hints & Statische Analyse** – Vollständige PHPStan/PSalm-Kompatibilität
-- ✅ **Bugfixes** – Preset-Override, Video-Mapping, Transparenzen behoben
+See [CHANGELOG.md](CHANGELOG.md).
 
-### Verbesserungen
-- ✅ Code-Qualität mit REDAXO Core Methods (`rex_file`, `rex_media_service`, `rex_logger`)
-- ✅ Performance-Optimierungen in VideoInfo-Klasse
-- ✅ Erweiterte Fehlerbehandlung und Logging
-- ✅ Debug-Endpunkt für Konvertierungsprozesse
+## 📄 License
 
-## 📄 Lizenz
-
-Dieses Addon steht unter der MIT-Lizenz. Beiträge sind willkommen!
-
----
-
-**Entwickelt für REDAXO CMS** – Weil gute Videos eine gute Plattform verdienen! 🎬
+MIT license. Contributions are welcome!
 
 ## 👥 Credits
 
-- **Lead Development:** Thomas Skerbis ([@skerbis](https://github.com/skerbis))
-- **Original Version:** Joachim Dörr ([@joachimdoerr](https://github.com/joachimdoerr))
+- **Lead development:** Thomas Skerbis ([@skerbis](https://github.com/skerbis))
+- **Original version:** Joachim Dörr ([@joachimdoerr](https://github.com/joachimdoerr))
 - **Community:** Friends Of REDAXO
+- Cut and subtitle editor modeled on the add-on [video_editor](https://github.com/FriendsOfREDAXO/video_editor) for REDAXO 6
+- Sample video in the screenshots: [Kitten](https://pixabay.com/videos/kitten-game-pets-4216/) from Pixabay
 
 **Friends Of REDAXO** - https://github.com/FriendsOfREDAXO

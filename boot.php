@@ -9,8 +9,17 @@ if (rex_addon::get('media_manager')->isAvailable()) {
     rex_media_manager::addEffect('rex_effect_video_to_preview');
 }
 
-// Converter-API bereitstellen
+// APIs – alle nur im Backend und mit Rechteprüfung; einzige Ausnahme ffmpeg_track (Untertitel für <track> auf der
+// Website, liefert nur als Spur verknüpfte .vtt-Dateien, die ohnehin im Medienpool liegen, und prüft isPermitted())
 rex_api_function::register('ffmpeg_convert', Converter::class);
+rex_api_function::register('ffmpeg_editor', \FriendsOfRedaxo\FFmpeg\Api\Editor::class);
+rex_api_function::register('ffmpeg_stream', \FriendsOfRedaxo\FFmpeg\Api\Stream::class);
+rex_api_function::register('ffmpeg_track', \FriendsOfRedaxo\FFmpeg\Api\Track::class);
+
+// Gelöschte Medien: Verknüpfungen (Untertitel) aufräumen
+rex_extension::register('MEDIA_DELETED', static function (rex_extension_point $ep): void {
+    \FriendsOfRedaxo\FFmpeg\Links::forget((string) $ep->getParam('filename'));
+});
 
 // Automatische Optimierung (Video-Tools → Einstellungen): Cronjob-Typ und sofortiger Start nach dem
 // Hochladen -- der Cronjob arbeitet den Rest ab und übernimmt fertige Konvertierungen
@@ -27,6 +36,18 @@ if (\FriendsOfRedaxo\FFmpeg\AutoOptimizer::isEnabled()) {
 
 
 if (rex::isBackend() && rex::getUser()) {
+    // Hilfe in der Sprache des Backends (README.de.md / README.md)
+    rex_extension::register('PAGES_PREPARED', static function (): void {
+        $page = rex_be_controller::getPageObject('mediapool/ffmpeg/help');
+        if ($page && str_starts_with(rex_i18n::getLanguage(), 'de')) {
+            $page->setSubPath(rex_path::addon('ffmpeg', 'README.de.md'));
+        }
+    });
+    // CSRF-Token für die Aufrufe aus dem Backend (script.js, Medienpool-Formular, Editoren)
+    if (rex::getUser()->hasPerm('ffmpeg[]')) {
+        rex_view::setJsProperty('ffmpeg_api', Converter::getUrlParams());
+        rex_view::setJsProperty('ffmpeg_editor', \FriendsOfRedaxo\FFmpeg\Api\Editor::getUrlParams());
+    }
     // Add JavaScript to ffmpeg page
     if (rex_be_controller::getCurrentPagePart(2) == 'ffmpeg') {
         $addon = rex_addon::get('ffmpeg');
@@ -60,6 +81,10 @@ if (rex::isBackend() && rex::getUser()) {
         rex_view::addCssFile($cssUrl);
         rex_view::addJsFile($trimmerJsUrl);
         rex_view::addCssFile($trimmerCssUrl);
+        // Schnitt- und Untertitel-Editor
+        foreach (['js/editor.js' => 'addJsFile', 'css/editor.css' => 'addCssFile'] as $asset => $method) {
+            rex_view::$method($addon->getAssetsUrl($asset) . '?v=' . (string) @filemtime($addon->getAssetsPath($asset)));
+        }
     }
     
     // Sicherstellen, dass die Datenverzeichnisse existieren
@@ -110,11 +135,16 @@ if (rex::isBackend() && rex::getUser()) {
         // (Original ersetzen) bleibt bewusst nur fuer mp4-Quellen angeboten,
         // die Ausgabe-Extension ist beim Ueberschreiben-Modus zwingend
         // identisch zur Quelle.
-        if ('mp4' !== strtolower(pathinfo($filename, PATHINFO_EXTENSION))) {
+        if (!\FriendsOfRedaxo\FFmpeg\VideoInfo::isSupportedVideoFile($filename) || !\FriendsOfRedaxo\FFmpeg\VideoInfo::isAvailable()) {
             return;
         }
-        if (!\FriendsOfRedaxo\FFmpeg\VideoInfo::isAvailable()) {
-            return;
+        // Schneiden und Untertitel für alle Videos
+        $tools = '<p class="ffmpeg-media-form-tools">'
+            . '<a class="btn btn-default btn-sm" href="' . rex_url::backendPage('mediapool/ffmpeg/trimmer', ['video' => $filename]) . '"><i class="rex-icon fa-cut" aria-hidden="true"></i> ' . rex_i18n::msg('ffmpeg_trimmer_cut_video') . '</a> '
+            . '<a class="btn btn-default btn-sm" href="' . rex_url::backendPage('mediapool/ffmpeg/subtitles', ['video' => $filename]) . '"><i class="rex-icon fa-cc" aria-hidden="true"></i> ' . rex_i18n::msg('ffmpeg_subtitles') . '</a>'
+            . '</p>';
+        if ('mp4' !== strtolower(pathinfo($filename, PATHINFO_EXTENSION))) {
+            return $ep->getSubject() . $tools;
         }
 
         $media = rex_media::get($filename);
@@ -154,7 +184,7 @@ if (rex::isBackend() && rex::getUser()) {
             function setStatus(html) { status.innerHTML = html; }
             function fail(msg) { setStatus(\'<span style="color:#c0392b">\' + msg + "</span>"); btn.disabled = false; }
             function poll(jobId) {
-                fetch("index.php?rex-api-call=ffmpeg_convert&func=job_status&job=" + encodeURIComponent(jobId), { credentials: "same-origin", headers: { "X-Requested-With": "XMLHttpRequest" } })
+                fetch("index.php?" + new URLSearchParams(Object.assign({}, rex.ffmpeg_api, { func: "job_status", job: jobId })), { credentials: "same-origin", headers: { "X-Requested-With": "XMLHttpRequest" } })
                     .then(function (r) { return r.json(); })
                     .then(function (data) {
                         if ("done" === data.status) {
@@ -172,7 +202,7 @@ if (rex::isBackend() && rex::getUser()) {
             btn.addEventListener("click", function () {
                 btn.disabled = true;
                 setStatus(' . json_encode(rex_i18n::rawMsg('ffmpeg_optimize_video_starting_short')) . ');
-                fetch("index.php?rex-api-call=ffmpeg_convert&func=start&video=" + encodeURIComponent(filename) + "&mode=overwrite", { credentials: "same-origin", headers: { "X-Requested-With": "XMLHttpRequest" } })
+                fetch("index.php?" + new URLSearchParams(Object.assign({}, rex.ffmpeg_api, { func: "start", video: filename, mode: "overwrite" })), { credentials: "same-origin", headers: { "X-Requested-With": "XMLHttpRequest" } })
                     .then(function (r) { return r.json(); })
                     .then(function (data) {
                         if (data.error) { fail(data.error); return; }
@@ -184,6 +214,6 @@ if (rex::isBackend() && rex::getUser()) {
         })();
         </script>';
 
-        return $ep->getSubject() . $html;
+        return $ep->getSubject() . $tools . $html;
     });
 }
