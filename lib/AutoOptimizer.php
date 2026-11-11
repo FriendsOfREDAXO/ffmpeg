@@ -23,7 +23,8 @@ use rex_sql;
  *    Browsern nicht zuverlässig ab (Codec/Farbformat), dann zählt die Abspielbarkeit; Titel und
  *    Metadaten bleiben
  *  - ein Video nach dem anderen (gleiche Sperre wie die manuellen Buttons, VideoJob::findActive())
- *  - jedes Video wird nur einmal geprüft; ändert sich die Datei (neuer Upload), erneut
+ *  - jedes Video wird nur einmal geprüft; ändert sich die Datei (neuer Upload) oder die
+ *    Standardgröße, erneut
  *  - nur mp4/m4v/mov: beim Ersetzen bleibt der Dateiname gleich, andere Container (webm) können
  *    nicht verlustfrei als H.264 unter demselben Namen gespeichert werden
  */
@@ -217,6 +218,8 @@ final class AutoOptimizer
     {
         rex_file::put(self::checkedPath($media->getFileName()), (string) json_encode([
             'result' => $result,
+            // geprüft gegen diese Standardgröße -- wird sie geändert, wird neu geprüft
+            'preset' => self::preset(),
             'filesize' => $media->getSize(),
             'updatedate' => $media->getUpdateDate(),
         ]));
@@ -229,7 +232,7 @@ final class AutoOptimizer
         if (!is_array($data)) {
             return null;
         }
-        if ((int) ($data['filesize'] ?? -1) !== $media->getSize() || (int) ($data['updatedate'] ?? -1) !== $media->getUpdateDate()) {
+        if ((int) ($data['filesize'] ?? -1) !== $media->getSize() || (int) ($data['updatedate'] ?? -1) !== $media->getUpdateDate() || ($data['preset'] ?? '') !== self::preset()) {
             @unlink($path);
 
             return null;
