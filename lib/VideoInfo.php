@@ -33,6 +33,82 @@ class VideoInfo
     }
 
     /**
+     * Untertitel und Kapitel eines Videos für die Website (im Video-Tools-Editor gepflegt)
+     *
+     * @return list<array{file: string, url: string, lang: string, kind: string, label: string}>
+     */
+    public static function tracks(string $filename): array
+    {
+        return array_map(static fn (array $t) => ['file' => $t['file'], 'url' => $t['url'], 'lang' => $t['lang'], 'kind' => $t['role'], 'label' => $t['name']],
+            Tracks::of($filename));
+    }
+
+    /**
+     * Fertige <track>-Elemente für ein <video>, z. B. echo VideoInfo::trackTags('film.mp4', 'de');
+     * $default: Sprache, deren Untertitel voreingeschaltet sind (null = keine)
+     */
+    public static function trackTags(string $filename, ?string $default = null): string
+    {
+        $html = '';
+        $done = false;
+        foreach (self::tracks($filename) as $track) {
+            $on = !$done && null !== $default && 'chapters' !== $track['kind'] && str_starts_with($track['lang'], $default);
+            $done = $done || $on;
+            $html .= '<track kind="' . rex_escape($track['kind']) . '" src="' . rex_escape($track['url']) . '" srclang="' . rex_escape($track['lang']) . '" label="' . rex_escape($track['label']) . '"' . ($on ? ' default' : '') . '>';
+        }
+
+        return $html;
+    }
+
+    /**
+     * Startet das Video im Browser sofort ("Fast Start")? Liegt der Index (moov) vor den Videodaten
+     * (mdat), muss der Browser nicht erst große Teile der Datei laden. Prüft nur die obersten
+     * MP4/MOV-Boxen (liest wenige Bytes, kein ffprobe). null = kein MP4/MOV oder nicht lesbar.
+     */
+    public static function hasFaststart(string $filename): ?bool
+    {
+        $path = rex_path::media($filename);
+        if (!in_array(strtolower(pathinfo($filename, PATHINFO_EXTENSION)), ['mp4', 'm4v', 'mov'], true) || !is_file($path)) {
+            return null;
+        }
+        $handle = @fopen($path, 'rb');
+        if (!$handle) {
+            return null;
+        }
+        $size = (int) filesize($path);
+        $offset = 0;
+        $result = null;
+        while ($offset + 8 <= $size && null === $result) {
+            fseek($handle, $offset);
+            $header = (string) fread($handle, 16);
+            if (strlen($header) < 8) {
+                break;
+            }
+            $length = unpack('N', substr($header, 0, 4))[1];
+            $type = substr($header, 4, 4);
+            if (1 === $length && strlen($header) >= 16) {
+                // 64-Bit-Länge
+                $parts = unpack('N2', substr($header, 8, 8));
+                $length = ($parts[1] << 32) | $parts[2];
+            } elseif (0 === $length) {
+                $length = $size - $offset;
+            }
+            if ('moov' === $type) {
+                $result = true;
+            } elseif ('mdat' === $type) {
+                $result = false;
+            }
+            if ($length < 8) {
+                break;
+            }
+            $offset += $length;
+        }
+        fclose($handle);
+
+        return $result;
+    }
+
+    /**
      * @param string $filename Dateiname im Medienpool
      */
     public static function isSupportedVideoFile($filename): bool

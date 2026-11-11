@@ -1,5 +1,5 @@
 package: ffmpeg
-version: '4.9.0'
+version: '5.0.0'
 author: Friends Of REDAXO
 supportpage: https://github.com/FriendsOfREDAXO/
 
@@ -18,6 +18,10 @@ pages:
                 title: 'translate:ffmpeg_trimmer'
                 perm: ffmpeg[]
                 icon: rex-icon fa-cut
+            subtitles:
+                title: 'translate:ffmpeg_subtitles'
+                perm: ffmpeg[]
+                icon: rex-icon fa-cc
             info:
                 title: 'translate:ffmpeg_info'
                 perm: ffmpeg[]
@@ -31,9 +35,14 @@ pages:
                 title: 'translate:ffmpeg_video_config'
                 perm: ffmpeg[config]
                 icon: rex-icon fa-wrench
+console_commands:
+    ffmpeg:optimize: FriendsOfRedaxo\FFmpeg\Command\OptimizeCommand
+
 default_config:
-    command: 'ffmpeg -y -i INPUT -vcodec h264 OUTPUT.mp4'
     category_id: 0
+    auto_enabled: false
+    auto_preset: '1080p'
+    auto_scope: 'new'
 
 requires:
     redaxo: '^5.18.1'

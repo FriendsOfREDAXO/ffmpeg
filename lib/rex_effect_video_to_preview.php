@@ -183,7 +183,8 @@ class rex_effect_video_to_preview extends rex_effect_abstract
         }
         
         // Base scaling with high quality
-        $filters[] = sprintf('scale=%d:-1:flags=lanczos+accurate_rnd', $width);
+        // nie vergroessern: kleinere Videos behalten ihre Breite
+        $filters[] = sprintf("scale='min(%d,iw)':-2:flags=lanczos+accurate_rnd", $width);
         
         // Text optimization through slight sharpening
         $filters[] = 'eq=contrast=1.1';

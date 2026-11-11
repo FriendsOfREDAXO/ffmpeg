@@ -126,7 +126,18 @@ class VideoJob
      */
     public function isStale(): bool
     {
-        return !$this->isTerminal() && (time() - $this->updatedAt) > self::STALE_SECONDS;
+        // Lebenszeichen ist auch das ffmpeg-Log: ffmpeg schreibt laufend Fortschritt hinein.
+        // Nur nach updatedAt zu gehen hiess, eine lange Konvertierung (> 30 min), die niemand im
+        // Browser verfolgt (kein Polling -> kein save()), galt als verwaist, obwohl sie lief.
+        $lastSign = max($this->updatedAt, '' !== $this->logPath && is_file($this->logPath) ? (int) filemtime($this->logPath) : 0);
+
+        return !$this->isTerminal() && !$this->hasExited() && (time() - $lastSign) > self::STALE_SECONDS;
+    }
+
+    /** ffmpeg ist beendet (Exit-Code-Datei liegt vor), der Job aber evtl. noch nicht abgeschlossen */
+    public function hasExited(): bool
+    {
+        return '' !== $this->exitCodePath && is_file($this->exitCodePath);
     }
 
     /**

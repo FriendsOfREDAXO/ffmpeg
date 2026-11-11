@@ -1,5 +1,35 @@
 # Changelog
 
+## 5.0.0 - 2026-11-12
+
+### Neue Features
+- **Schnitt-Editor** statt des bisherigen Trimmers (nach dem Vorbild des AddOns video_editor für REDAXO 6): Zeitleiste mit Vorschaubildern, teilen, Abschnitte entfernen, Ränder ziehen, rückgängig, mehrere Teile auf einmal herausschneiden; **schnell** (ohne Neuberechnung, ab Schlüsselbild – die Zeitleiste zeigt, was mitkommt) oder **genau** (bildgenau); Ergebnis als neue Datei oder anstelle des Originals; läuft als Hintergrund-Auftrag. Alle bisherigen Funktionen bleiben: Ton entfernen, Ping-Pong-Schleife (und Ping-Pong-Vorschau), Bereichstest, Schleifen-Vorschau, Poster-Bild, Strg+S/Strg+E, Dateinamen `web_trimmed_…`.
+- **Untertitel und Kapitel**: neue Seite „Untertitel“ mit Editor und Live-Vorschau, Import von WebVTT/SRT, alle Einträge verschieben; mehrere Spuren je Video (Untertitel, Untertitel für Gehörlose, Kapitel, je Sprache), gespeichert als gesäubertes WebVTT im Medienpool und mit dem Video verknüpft. Beim Schneiden werden sie mitgeschnitten. Für die Website: `VideoInfo::tracks()` / `VideoInfo::trackTags()`, Auslieferung als `text/vtt`.
+- **Automatische Optimierung**: Neue Videos werden direkt nach dem Hochladen und per Cronjob auf eine Standardgröße (Full HD, HD oder Klein) gebracht und webtauglich gemacht. Bearbeitet wird nur, was es nötig hat (zu groß, zu hohe Datenrate, Codec/Farbformat, fehlender Fast Start). Ersetzt wird nur, wenn die Datei kleiner wird oder das Original in Browsern nicht zuverlässig abspielt; fehlt nur Fast Start, wird verlustfrei umsortiert. Der Cronjob wird beim Einschalten automatisch angelegt; Konsolenbefehl `ffmpeg:optimize [--wait]`.
+- **Eigene Workflows**: Warteschlange `Queue::add()` (Aufträge laufen nacheinander) und Erweiterungspunkte `FFMPEG_JOB_COMMAND`, `FFMPEG_JOB_DONE`, `FFMPEG_AUTO_OPTIMIZE` – z. B. mehrere Fassungen nach jedem Upload, siehe README.
+- **Einfache Einstellungen statt FFmpeg-Kommandos**: Größe, Qualität und Ton je Modus („Optimieren“ / „Webversion erstellen“), neue Ton-Option „Lautstärke angleichen“ (−16 LUFS). Frühere Einstellungen werden übernommen.
+- Links „Video schneiden“ und „Untertitel“ in der Detailansicht jedes Videos im Medienpool.
+- README auf Deutsch (`README.de.md`) und Englisch (`README.md`), die Hilfe im Backend zeigt die Sprache des Backends.
+
+### Nicht mehr enthalten (Breaking Changes)
+- Das Eingabefeld für eigene FFmpeg-Kommandos entfällt; gespeicherte Kommandos werden durch die passenden Optionen ersetzt.
+- `Presets::all()` entfällt (`Presets::build()`, `Presets::command()`, `Presets::settings()` statt dessen).
+- Die API `ffmpeg_convert` ist nur noch im Backend und mit CSRF-Token erreichbar (siehe Sicherheit). Eigene Aufrufe aus dem Backend brauchen `rex.ffmpeg_api` bzw. `Converter::getUrlParams()`; `Converter::startOverwriteJob()`/`pollJob()` (MediaPlace) bleiben unverändert.
+- Benötigt ffmpeg ab 4.3.
+
+### Sicherheit
+- `ffmpeg_convert` war über das Frontend erreichbar und ohne CSRF-Schutz: Eine fremde Webseite hätte im Namen eines angemeldeten Redakteurs Konvertierungen starten und Originale überschreiben können. Jetzt: nur Backend, CSRF-Token, Recht `ffmpeg[]` und Medienpool-Recht für die Kategorie. Dasselbe gilt für die neuen APIs `ffmpeg_editor` und `ffmpeg_stream`; öffentlich ist nur `ffmpeg_track` (nur verknüpfte `.vtt`-Dateien, beachtet `rex_media::isPermitted()`).
+
+### Verbesserungen
+- **Videos werden nie vergrößert**: Die Auflösungs-Presets haben kleinere Videos bisher hochskaliert (z. B. 720p → 1080p), ebenso die Media-Manager-Effekte „Video zu Vorschau“ und „Video zu WebP“. Hochformat wird richtig begrenzt (1080 × 1920 statt 607 × 1080).
+- **Fast Start immer**: alle Umwandlungen und der Schnitt schreiben den Index an den Dateianfang – Videos starten im Browser sofort.
+- Immer browsertaugliches Farbformat (yuv420p), Stereo-Ton, nur die erste Bild- und Tonspur (Smartphone-Videos mit Metadaten-Spuren scheiterten sonst), H.264 High Profile, Lanczos-Skalierung; Argumente einzeln maskiert.
+
+### Bugfixes
+- Wurde der Browser während einer Konvertierung geschlossen, wurde das Ergebnis nie übernommen und der Auftrag nach 30 Minuten als „verwaist“ abgebrochen. Fertige Aufträge werden jetzt bei jedem Backend-Aufruf, vom Cronjob und vom Konsolenbefehl übernommen.
+- Lange Konvertierungen (über 30 Minuten), die niemand im Browser verfolgte, galten als verwaist, obwohl ffmpeg noch lief.
+- Poster-Bild: Der Eintrag in den Medienpool scheiterte ab REDAXO 5.18 (Pflichtfeld `revision`); das Bild landet jetzt in der Kategorie des Videos.
+
 ## 4.9.0 - 2026-11-06
 
 ### Neue Features

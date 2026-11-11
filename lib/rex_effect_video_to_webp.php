@@ -216,7 +216,8 @@ class rex_effect_video_to_webp extends rex_effect_abstract
         $filters = [];
         
         // Base scaling with appropriate quality
-        $filters[] = sprintf('scale=%d:-1:flags=lanczos', $params['width']);
+        // nie vergroessern: kleinere Videos behalten ihre Breite
+        $filters[] = sprintf("scale='min(%d,iw)':-2:flags=lanczos", $params['width']);
         
         // Browser-specific optimizations
         if ($this->isSafari()) {

@@ -8,20 +8,9 @@ $buttons = '';
 
 $csrfToken = rex_csrf_token::factory('ffmpeg');
 
-// Aktuell konfiguriertes Preset je Modus als Anzeigename fuer die
-// Button-Hinweise (siehe Usability-Review: vorher unklar, welches Preset
-// ein Klick auf "Optimieren"/"Webversion erstellen" tatsaechlich
-// verwendet). 'custom' oder ein fehlender/unbekannter Preset-Name zeigt
-// "Benutzerdefiniert" -- siehe Settings-Seite fuer dieselbe Fallback-Logik.
-$presetLabelFor = function (string $presetKey) {
-    $knownPresets = ['standard', 'web', 'mobile', 'archive', '1080p', '720p', '480p', '360p'];
-    if (in_array($presetKey, $knownPresets, true)) {
-        return $this->i18n('config_preset_' . $presetKey);
-    }
-    return $this->i18n('config_preset_custom');
-};
-$activePresetOverwrite = $presetLabelFor((string) $this->getConfig('preset_overwrite', 'archive'));
-$activePresetNewFile = $presetLabelFor((string) $this->getConfig('preset_new_file', '' !== (string) $this->getConfig('command', '') ? 'custom' : 'web'));
+// Aktuelle Einstellung je Modus als Hinweis an den Buttons (z. B. „Full HD · Ausgewogen · mit Ton“)
+$activePresetOverwrite = \FriendsOfRedaxo\FFmpeg\Presets::label('overwrite');
+$activePresetNewFile = \FriendsOfRedaxo\FFmpeg\Presets::label('new_file');
 
 // Ohne erlaubte Shell-Funktion (disable_functions) kann nichts konvertiert werden (Issue #18)
 if (!\FriendsOfRedaxo\FFmpeg\Shell::canRun()) {
@@ -366,14 +355,11 @@ if (empty($allVideos)) {
                     <div class="form-group">
                         <label for="ffmpeg-overwrite-choice-preset">' . $this->i18n('ffmpeg_overwrite_choice_preset_label') . '</label>
                         <select id="ffmpeg-overwrite-choice-preset" class="form-control">
-                            <option value="standard">' . $this->i18n('config_preset_standard') . '</option>
-                            <option value="web">' . $this->i18n('config_preset_web') . '</option>
-                            <option value="mobile">' . $this->i18n('config_preset_mobile') . '</option>
-                            <option value="archive">' . $this->i18n('config_preset_archive') . '</option>
-                            <option value="1080p">' . $this->i18n('config_preset_1080p') . '</option>
-                            <option value="720p">' . $this->i18n('config_preset_720p') . '</option>
-                            <option value="480p">' . $this->i18n('config_preset_480p') . '</option>
-                            <option value="360p">' . $this->i18n('config_preset_360p') . '</option>
+                            <option value="original">' . $this->i18n('size_original') . '</option>
+                            <option value="1080p">' . $this->i18n('size_1080p') . '</option>
+                            <option value="720p">' . $this->i18n('size_720p') . '</option>
+                            <option value="480p">' . $this->i18n('size_480p') . '</option>
+                            <option value="360p">' . $this->i18n('size_360p') . '</option>
                         </select>
                         <p class="help-block">' . $this->i18n('ffmpeg_overwrite_choice_preset_help') . '</p>
                     </div>
