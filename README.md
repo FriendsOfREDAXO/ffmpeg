@@ -4,8 +4,9 @@ Vollständige Video-Management-Lösung für REDAXO CMS – Konvertierung, Trimmi
 
 ## 🔧 Voraussetzungen
 
-- PHP-Funktion `exec` aktiviert (für FFmpeg-Kommandos)
-- FFmpeg und FFprobe installiert und im PATH verfügbar
+- PHP-Funktion `exec`, `shell_exec` oder `proc_open` aktiviert
+- FFmpeg und FFprobe ab Version 4.3 installiert und im PATH verfügbar
+- Für die automatische Optimierung empfohlen: das AddOn **Cronjob**
 - REDAXO 5.18.1 oder höher
 - PHP 8.1 oder höher
 - **Wichtig:** Das VideoPreview-Addon muss deinstalliert werden (Funktionalität ist integriert)
@@ -13,17 +14,16 @@ Vollständige Video-Management-Lösung für REDAXO CMS – Konvertierung, Trimmi
 ## 🚀 Features im Überblick
 
 ### Video-Konverter
-- **Hintergrundverarbeitung** – Browser schließen während der Konvertierung möglich
+- **Automatische Optimierung** (neu in 4.10) – neue Videos werden nach dem Hochladen und per Cronjob auf eine Standardgröße heruntergerechnet, siehe unten
+- **Hintergrundverarbeitung** – Browser schließen während der Konvertierung möglich; das Ergebnis wird beim nächsten Backend-Aufruf oder Cronjob übernommen
 - **Intelligente Medienpool-Integration** mit `web_`-Prefix
 - **Metadaten-Erhaltung** (Titel, Beschreibung, Copyright)
 - **Kompressionsanzeige** zeigt eingesparten Speicherplatz, getrennt ausgewiesen für Webversion und Optimieren
 - **Auto-Cleanup** für Originaldateien nach erfolgreicher Konvertierung (nur Webversion-Modus)
-- **Getrennte Presets** für „Optimieren“ (Original ersetzen) und „Webversion erstellen“ (neue Datei) – beides hat unterschiedliche Ziele und verdient eigene Einstellungen
-- **Vorgefertigte Presets**: Web, Mobile, Archive, Standard sowie Auflösungs-Presets 1080p/720p/480p/360p
-- **Mehrere Varianten pro Video**: existiert bereits eine Webversion, bietet ein Dialog neben „Überschreiben“ auch „Zusätzliche Variante anlegen“ mit eigener Preset-Wahl (`web_<name>_2.mp4`, `_3.mp4`, …)
-- **Command-Vorschau** zeigt das generierte FFmpeg-Kommando in Echtzeit
-- **Direkte Command-Eingabe** ohne separate Textarea
-- **Preset-Hinweis** direkt an den Buttons, welches Preset ein Klick tatsächlich verwendet
+- **Einfache Einstellungen statt FFmpeg-Kommandos**: Größe (Original, Full HD, HD, 480p, 360p), Qualität (hoch, ausgewogen, kleine Datei) und Ton (behalten, Lautstärke angleichen, entfernen) – getrennt für „Optimieren“ (Original ersetzen) und „Webversion erstellen“ (neue Datei)
+- **Immer enthalten**: H.264/AAC, browsertaugliches Farbformat (yuv420p), Fast Start (Video startet sofort), nur die erste Bild- und Tonspur. **Videos werden nie vergrößert**, Hochformat bleibt Hochformat (Full HD: höchstens 1920 × 1080 bzw. 1080 × 1920)
+- **Mehrere Varianten pro Video**: existiert bereits eine Webversion, bietet ein Dialog neben „Überschreiben“ auch „Zusätzliche Variante anlegen“ mit eigener Größe (`web_<name>_2.mp4`, `_3.mp4`, …)
+- **Einstellungs-Hinweis** direkt an den Buttons, z. B. „Full HD · Ausgewogen · mit Ton“
 
 ### Video-Trimmer
 - **Präzises Schneiden** direkt im Browser
@@ -61,7 +61,37 @@ Vollständige Video-Management-Lösung für REDAXO CMS – Konvertierung, Trimmi
 3. Direkt am Eintrag auf **"Dieses Video konvertieren"** klicken
 4. **Browser schließen möglich** – Konvertierung läuft weiter
 5. Fortschritt direkt am Eintrag verfolgen (Donut + optionales Protokoll)
-6. Später "Status prüfen" → Fertig optimiertes Video im Medienpool
+6. Fertig: Das Ergebnis wird übernommen, sobald die Seite wieder geöffnet wird, beim nächsten Backend-Aufruf oder beim nächsten Cronjob
+
+### Automatische Optimierung
+1. **Video-Tools → Einstellungen → Automatische Optimierung** einschalten
+2. **Standardgröße** wählen: Full HD (empfohlen), HD oder Klein (z. B. für Hintergrundvideos)
+3. Festlegen, ob nur neue oder auch alle vorhandenen Videos bearbeitet werden
+
+Danach wird jedes neu hochgeladene Video sofort im Hintergrund geprüft; der Cronjob „FFmpeg: Videos automatisch
+optimieren“ (wird beim Einschalten automatisch angelegt, alle 10 Minuten) arbeitet weitere Videos nacheinander ab und
+übernimmt fertige Ergebnisse.
+
+Bearbeitet wird nur, was es nötig hat:
+
+| Befund | Was passiert |
+| --- | --- |
+| größer als die Standardgröße | heruntergerechnet (nie vergrößert) |
+| Datenrate zu hoch | neu berechnet – ersetzt nur, wenn die Datei kleiner wird |
+| Codec nicht H.264 (z. B. HEVC vom iPhone) oder Farbformat nicht yuv420p | neu berechnet – ersetzt auch, wenn die Datei größer wird, denn sonst spielt das Video in vielen Browsern nicht |
+| nur Fast Start fehlt | verlustfrei umsortiert (Sekunden, keine Neuberechnung) |
+| alles in Ordnung | bleibt unverändert |
+
+Dateiname, Titel, Kategorie und alle Verwendungen bleiben erhalten. Bearbeitet werden MP4, M4V und MOV (bei anderen
+Formaten müsste sich der Dateiname ändern). Jedes Video wird nur einmal geprüft; wird es ersetzt (neuer Upload),
+erneut.
+
+Für einen System-Cronjob oder um den Bestand auf einmal abzuarbeiten:
+
+```bash
+php redaxo/bin/console ffmpeg:optimize          # ein Durchgang wie der Cronjob
+php redaxo/bin/console ffmpeg:optimize --wait   # alle wartenden Videos nacheinander, wartet auf jedes
+```
 
 ### Video-Trimmer
 1. **Medienpool → Video-Tools → Video-Trimmer** aufrufen
@@ -276,14 +306,11 @@ ffprobe -version
 ### REDAXO-Konfiguration
 
 1. **Addon installieren** über den Installer oder manuell
-2. **Einstellungen konfigurieren** unter Video-Tools → Einstellungen:
-   - FFmpeg-Kommando anpassen (falls nötig)
-   - Auto-Cleanup aktivieren/deaktivieren
+2. **Einstellungen** unter Video-Tools → Einstellungen: Größe, Qualität und Ton für „Optimieren“ und
+   „Webversion erstellen“, automatische Optimierung, Auto-Cleanup
 
-### Standard-Kommando
-```bash
-ffmpeg -y -i INPUT -vcodec h264 OUTPUT.mp4
-```
+Eigene FFmpeg-Kommandos lassen sich seit 4.10 nicht mehr eingeben: sie waren fehleranfällig und für Redakteure
+unverständlich. Frühere Einstellungen werden beim Update auf die passenden Optionen übertragen.
 
 ## 🎛️ Keyboard-Shortcuts (Video-Trimmer)
 

@@ -12,6 +12,19 @@ if (rex_addon::get('media_manager')->isAvailable()) {
 // Converter-API bereitstellen
 rex_api_function::register('ffmpeg_convert', Converter::class);
 
+// Automatische Optimierung (Video-Tools → Einstellungen): Cronjob-Typ und sofortiger Start nach dem
+// Hochladen -- der Cronjob arbeitet den Rest ab und übernimmt fertige Konvertierungen
+if (rex_addon::get('cronjob')->isAvailable()) {
+    rex_cronjob_manager::registerType(\FriendsOfRedaxo\FFmpeg\Cronjob\AutoOptimizeCronjob::class);
+}
+if (\FriendsOfRedaxo\FFmpeg\AutoOptimizer::isEnabled()) {
+    rex_extension::register('MEDIA_ADDED', static function (rex_extension_point $ep): void {
+        if (\FriendsOfRedaxo\FFmpeg\VideoInfo::isSupportedVideoFile((string) $ep->getParam('filename'))) {
+            \FriendsOfRedaxo\FFmpeg\AutoOptimizer::run();
+        }
+    }, rex_extension::LATE);
+}
+
 
 if (rex::isBackend() && rex::getUser()) {
     // Add JavaScript to ffmpeg page
@@ -60,6 +73,16 @@ if (rex::isBackend() && rex::getUser()) {
     // FriendsOfRedaxo\FFmpeg\Job\VideoJob. Die alten status_*/log*-Dateien
     // sowie die session-basierte Wiederherstellung entfallen damit komplett.
     \FriendsOfRedaxo\FFmpeg\Job\VideoJob::cleanupOld(7 * 24 * 60 * 60);
+
+    // Fertige Konvertierung übernehmen, auch wenn niemand sie mehr im Browser verfolgt (Tab
+    // geschlossen, vom Cronjob gestartet) -- sonst blieb das Ergebnis liegen, siehe
+    // Converter::finalizePending(). Nicht bei den Polling-Aufrufen selbst (die schließen ohnehin ab).
+    // Erst nach dem Laden aller AddOns: die Übernahme löst MEDIA_UPDATED aus.
+    if ('ffmpeg_convert' !== rex_request('rex-api-call', 'string', '')) {
+        rex_extension::register('PACKAGES_INCLUDED', static function (): void {
+            \FriendsOfRedaxo\FFmpeg\Api\Converter::finalizePending();
+        });
+    }
 
     // "Optimieren"-Button auch im KLASSISCHEN Medienpool-Bearbeiten-Formular
     // (nicht nur in ffmpeg's eigener Video-Tools-Seite oder im MediaPlace-

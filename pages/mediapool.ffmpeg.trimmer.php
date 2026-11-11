@@ -84,25 +84,30 @@ if ($action === 'trim' && $csrf->isValid() && $videoFile && $videoInfo) {
         // Dauer berechnen
         $duration = $endSeconds - $startSeconds;
         
+        // Fast Start immer (Index an den Dateianfang -> Video startet im Browser sofort)
+        $faststart = in_array(strtolower(pathinfo($newFilename, PATHINFO_EXTENSION)), ['mp4', 'm4v', 'mov'], true) ? ' -movflags +faststart' : '';
+
         // FFmpeg-Befehl für Trimming
         if ($createLoop) {
             // Ping-Pong-Loop: Ausschnitt vorwaerts + rueckwaerts aneinanderhaengen.
             // Fuer die Reverse-Operation ist Re-Encoding erforderlich.
             $ffmpegCmd = sprintf(
-                'ffmpeg -y -ss %.3F -t %.3F -i %s -filter_complex "[0:v]split[vf][vr];[vr]reverse[rev];[vf][rev]concat=n=2:v=1:a=0[v]" -map "[v]" -c:v libx264 -preset medium -crf 23 -an %s',
+                'ffmpeg -y -ss %.3F -t %.3F -i %s -filter_complex "[0:v]split[vf][vr];[vr]reverse[rev];[vf][rev]concat=n=2:v=1:a=0[v]" -map "[v]" -c:v libx264 -preset medium -crf 23 -pix_fmt yuv420p -an%s %s',
                 $startSeconds,
                 $duration,
                 escapeshellarg($videoPath),
+                $faststart,
                 escapeshellarg($outputPath)
             );
         } else {
             $audioArguments = $removeAudio ? ' -an' : ' -c copy';
             $ffmpegCmd = sprintf(
-                'ffmpeg -y -ss %.3F -t %.3F -i %s%s %s',
+                'ffmpeg -y -ss %.3F -t %.3F -i %s%s%s %s',
                 $startSeconds,
                 $duration,
                 escapeshellarg($videoPath),
                 $audioArguments,
+                $faststart,
                 escapeshellarg($outputPath)
             );
         }

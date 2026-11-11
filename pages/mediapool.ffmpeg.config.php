@@ -1,115 +1,90 @@
 <?php
 
-$buttons = '';
+use FriendsOfRedaxo\FFmpeg\Presets;
 
-$csrfToken = rex_csrf_token::factory('ffmpeg');
 /** @var rex_addon $this */
 
-// Preset mapping for UI (available both when saving and when rendering) --
-// zentrale Definition in FriendsOfRedaxo\FFmpeg\Presets, auch von
-// Api\Converter genutzt (Preset-Wahl beim Anlegen einer zusaetzlichen
-// Variante, siehe Issue #20).
-$presets = \FriendsOfRedaxo\FFmpeg\Presets::all();
-// 'custom' allows keeping the command field as-is for manual editing
-$presets['custom'] = '';
+$csrfToken = rex_csrf_token::factory('ffmpeg');
 
 // Einstellungen speichern
 if (rex_post('formsubmit', 'string') == '1' && !$csrfToken->isValid()) {
     echo rex_view::error(rex_i18n::msg('csrf_token_invalid'));
 } elseif (rex_post('formsubmit', 'string') == '1') {
     $config = rex_post('config', [
-        ['command_overwrite', 'string'],
-        ['command_new_file', 'string'],
         ['delete', 'string'],
-        ['preset_overwrite', 'string'],
-        ['preset_new_file', 'string'],
         ['category_id', 'int'],
+        ['overwrite_size', 'string'],
+        ['overwrite_quality', 'string'],
+        ['overwrite_audio', 'string'],
+        ['new_file_size', 'string'],
+        ['new_file_quality', 'string'],
+        ['new_file_audio', 'string'],
+        ['auto_enabled', 'bool'],
+        ['auto_preset', 'string'],
+        ['auto_scope', 'string'],
     ]);
-
-    // Preset (falls nicht 'custom'/'none') ueberschreibt das jeweilige
-    // Kommandofeld -- getrennt pro Modus, siehe Issue #20/#21-Diskussion:
-    // "Original ueberschreiben" und "Webversion erstellen" hatten bisher
-    // ein gemeinsames Preset, obwohl beide fachlich unterschiedliche Ziele
-    // haben (Original ersetzen vs. schlanke Web-Variante).
-    if (!empty($config['preset_overwrite']) && 'custom' !== $config['preset_overwrite'] && 'none' !== $config['preset_overwrite'] && isset($presets[$config['preset_overwrite']])) {
-        $config['command_overwrite'] = $presets[$config['preset_overwrite']];
+    foreach (['overwrite', 'new_file'] as $mode) {
+        foreach (['size' => Presets::SIZES, 'quality' => Presets::QUALITIES, 'audio' => Presets::AUDIO] as $key => $allowed) {
+            if (!in_array($config[$mode . '_' . $key], $allowed, true)) {
+                $config[$mode . '_' . $key] = Presets::settings($mode)[$key];
+            }
+        }
     }
-    if (!empty($config['preset_new_file']) && 'custom' !== $config['preset_new_file'] && 'none' !== $config['preset_new_file'] && isset($presets[$config['preset_new_file']])) {
-        $config['command_new_file'] = $presets[$config['preset_new_file']];
+
+    // Automatische Optimierung: "neu" heißt "ab dem Einschalten hochgeladen"
+    if ($config['auto_enabled'] && !$this->getConfig('auto_enabled', false)) {
+        $config['auto_since'] = time();
+    }
+    $config['auto_preset'] = in_array($config['auto_preset'], \FriendsOfRedaxo\FFmpeg\AutoOptimizer::PRESETS, true) ? $config['auto_preset'] : '1080p';
+    $config['auto_scope'] = 'all' === $config['auto_scope'] ? 'all' : 'new';
+    $cronjob = \FriendsOfRedaxo\FFmpeg\Cronjob\AutoOptimizeCronjob::ensure((bool) $config['auto_enabled']);
+
+    // Einstellungen bis 4.9 (frei eingegebene Kommandos, Preset-Namen) sind jetzt übernommen
+    foreach (['command', 'command_overwrite', 'command_new_file', 'preset', 'preset_overwrite', 'preset_new_file'] as $legacy) {
+        $this->removeConfig($legacy);
     }
 
     $this->setConfig($config);
 
     echo rex_view::success($this->i18n('config_saved'));
+    if ($config['auto_enabled'] && null === $cronjob) {
+        echo rex_view::warning($this->i18n('auto_no_cronjob_addon'));
+    }
 }
 
-// Abwaertskompatibilitaet: vor der Trennung gab es nur ein gemeinsames
-// config['command']/config['preset'] -- das war der bisher einzige
-// tatsaechlich variabel genutzte Pfad (Webversion), siehe
-// Converter::resolveBaseCommand(). Als Vorbelegung nur anzeigen, wenn noch
-// keine eigene Webversion-Einstellung existiert.
-$legacyCommand = (string) $this->getConfig('command', '');
-$commandOverwrite = (string) $this->getConfig('command_overwrite', (string) ($presets['archive'] ?? ''));
-$commandNewFile = (string) $this->getConfig('command_new_file', '' !== $legacyCommand ? $legacyCommand : (string) ($presets['web'] ?? ''));
-$presetOverwrite = (string) $this->getConfig('preset_overwrite', 'archive');
-$presetNewFile = (string) $this->getConfig('preset_new_file', '' !== $legacyCommand ? 'custom' : 'web');
-
-/**
- * Baut einen Preset+Kommando+Vorschau-Block fuer einen Modus (overwrite
- * oder new_file). Beide Bloecke sind strukturell identisch, nur Feldnamen/
- * Labels/Defaults unterscheiden sich -- siehe Issue #20/#21: der fruehere,
- * einzelne Block liess unklar, wofuer die Einstellung eigentlich gilt.
- *
- * @return string
- */
-$renderModeBlock = static function (rex_addon $addon, array $presets, string $idPrefix, string $fieldSuffix, string $introKey, string $command, string $preset) {
-    $block = '<p class="text-muted">' . $addon->i18n($introKey) . '</p>';
-
-    $formElements = [];
-    $n = [];
-    $n['label'] = '<label for="ffmpeg-config-preset-' . $idPrefix . '">' . $addon->i18n('config_preset') . '</label>';
-    $select = new rex_select();
-    $select->setId('ffmpeg-config-preset-' . $idPrefix);
-    $select->setAttribute('class', 'form-control');
-    $select->setName('config[preset_' . $fieldSuffix . ']');
-    $select->addOption($addon->i18n('config_preset_standard'), 'standard');
-    $select->addOption($addon->i18n('config_preset_web'), 'web');
-    $select->addOption($addon->i18n('config_preset_mobile'), 'mobile');
-    $select->addOption($addon->i18n('config_preset_archive'), 'archive');
-    $select->addOption($addon->i18n('config_preset_1080p'), '1080p');
-    $select->addOption($addon->i18n('config_preset_720p'), '720p');
-    $select->addOption($addon->i18n('config_preset_480p'), '480p');
-    $select->addOption($addon->i18n('config_preset_360p'), '360p');
-    $select->addOption($addon->i18n('config_preset_custom'), 'custom');
-    $select->setSelected($preset);
-    $n['field'] = $select->get();
-    $formElements[] = $n;
+// Ein Formularfeld (Label + Feld + Hilfetext) im Backend-Layout
+$field = static function (string $id, string $label, string $field, string $help = ''): string {
     $fragment = new rex_fragment();
-    $fragment->setVar('elements', $formElements, false);
-    $block .= $fragment->parse('core/form/container.php');
-    $block .= '<p class="help-block">' . $addon->i18n('config_preset_help') . '</p>';
+    $fragment->setVar('elements', [[
+        'label' => '<label for="' . $id . '">' . $label . '</label>',
+        'field' => $field . ('' !== $help ? '<p class="help-block" id="' . $id . '-help">' . $help . '</p>' : ''),
+    ]], false);
 
-    $formElements = [];
-    $n = [];
-    $n['label'] = '<label for="ffmpeg-config-command-' . $idPrefix . '">' . $addon->i18n('command') . '</label>';
-    $n['field'] = '<input class="form-control" type="text" id="ffmpeg-config-command-' . $idPrefix . '" name="config[command_' . $fieldSuffix . ']" value="' . htmlspecialchars($command) . '"/>';
-    $formElements[] = $n;
-    $fragment = new rex_fragment();
-    $fragment->setVar('elements', $formElements, false);
-    $block .= $fragment->parse('core/form/container.php');
-    $block .= '<p class="help-block">' . $addon->i18n('config_command_help') . '</p>';
-
-    $block .= '<div class="form-group"><label>' . $addon->i18n('config_preview_label') . '</label><div id="ffmpeg-config-preview-' . $idPrefix . '" class="well well-sm" style="white-space:pre-wrap;">' . htmlspecialchars($command) . '</div></div>';
-
-    return $block;
+    return $fragment->parse('core/form/container.php');
 };
 
-// Jeder inhaltliche Abschnitt ist ein eigenes Panel (core/page/section.php),
-// nicht ein gemeinsamer Fieldset-String in einem einzigen Panel -- rohe
-// <fieldset>-Grenzen bekommen in diesem Backend-Theme kein eigenes
-// Panel-Styling (siehe juwel_garagen/pages/performance.php als Vorbild fuer
-// mehrere Panels auf einer Seite). Alle Felder bleiben in EINEM
-// umschliessenden <form>, damit ein Klick auf "Speichern" alles sichert.
+// Auswahl Größe / Qualität / Ton für einen Modus -- feste, erprobte Einstellungen statt frei
+// eingegebener ffmpeg-Kommandos (siehe FriendsOfRedaxo\FFmpeg\Presets)
+$modeBlock = function (string $mode, string $intro) use ($field): string {
+    $current = Presets::settings($mode);
+    $html = '<p class="text-muted">' . $intro . '</p>';
+    foreach (['size' => Presets::SIZES, 'quality' => Presets::QUALITIES, 'audio' => Presets::AUDIO] as $key => $values) {
+        $id = 'ffmpeg-config-' . $mode . '-' . $key;
+        $select = new rex_select();
+        $select->setId($id);
+        $select->setName('config[' . $mode . '_' . $key . ']');
+        $select->setAttribute('class', 'form-control');
+        $select->setAttribute('aria-describedby', $id . '-help');
+        foreach ($values as $value) {
+            $select->addOption($this->i18n($key . '_' . $value), $value);
+        }
+        $select->setSelected($current[$key]);
+        $html .= $field($id, $this->i18n('option_' . $key), $select->get(), $this->i18n('option_' . $key . '_help'));
+    }
+
+    return $html;
+};
+
 $sections = '';
 
 // Allgemein (Medien-Kategorie)
@@ -135,98 +110,97 @@ $fragment->setVar('title', $this->i18n('config_legend_general'), false);
 $fragment->setVar('body', $general, false);
 $sections .= $fragment->parse('core/page/section.php');
 
-// Original ueberschreiben ("Optimieren")
-$fragment = new rex_fragment();
-$fragment->setVar('title', $this->i18n('config_legend_overwrite'), false);
-$fragment->setVar('body', $renderModeBlock($this, $presets, 'overwrite', 'overwrite', 'config_intro_overwrite', $commandOverwrite, $presetOverwrite), false);
-$sections .= $fragment->parse('core/page/section.php');
-
-// Webversion erstellen (neue Datei) + "Quell-Datei loeschen"-Checkbox --
-// die Checkbox gilt NUR hier (siehe Converter::finalizeNewFile()): beim
-// Ueberschreiben gibt es keine separate Quelldatei zu loeschen, das
-// Original IST die Ausgabedatei.
-$newFile = $renderModeBlock($this, $presets, 'new-file', 'new_file', 'config_intro_new_file', $commandNewFile, $presetNewFile);
+// Automatische Optimierung (Cronjob) -- siehe FriendsOfRedaxo\FFmpeg\AutoOptimizer
+$auto = '<p class="text-muted">' . $this->i18n('auto_intro') . '</p>';
 $formElements = [];
 $n = [];
-$n['label'] = '<label for="ffmpeg-config-delete">' . $this->i18n('config_delete') . '</label>';
-$n['field'] = '<input type="checkbox" id="ffmpeg-config-delete" name="config[delete]"' . (!empty($this->getConfig('delete')) && $this->getConfig('delete') == '1' ? ' checked="checked"' : '') . ' value="1" />';
+$n['label'] = '<label for="ffmpeg-config-auto-enabled">' . $this->i18n('auto_enabled') . '</label>';
+$n['field'] = '<input type="checkbox" id="ffmpeg-config-auto-enabled" name="config[auto_enabled]" value="1"' . ($this->getConfig('auto_enabled', false) ? ' checked="checked"' : '') . ' />';
 $formElements[] = $n;
 $fragment = new rex_fragment();
 $fragment->setVar('elements', $formElements, false);
+$auto .= $fragment->parse('core/form/checkbox.php');
+
+$formElements = [];
+$n = [];
+$n['label'] = '<label for="ffmpeg-config-auto-preset">' . $this->i18n('auto_preset') . '</label>';
+$select = new rex_select();
+$select->setId('ffmpeg-config-auto-preset');
+$select->setAttribute('class', 'form-control');
+$select->setAttribute('aria-describedby', 'ffmpeg-config-auto-preset-help');
+$select->setName('config[auto_preset]');
+foreach (\FriendsOfRedaxo\FFmpeg\AutoOptimizer::PRESETS as $autoPreset) {
+    $select->addOption($this->i18n('auto_preset_' . $autoPreset), $autoPreset);
+}
+$select->setSelected(\FriendsOfRedaxo\FFmpeg\AutoOptimizer::preset());
+$n['field'] = $select->get() . '<p class="help-block" id="ffmpeg-config-auto-preset-help">' . $this->i18n('auto_preset_help') . '</p>';
+$formElements[] = $n;
+
+$n = [];
+$n['label'] = '<label for="ffmpeg-config-auto-scope">' . $this->i18n('auto_scope') . '</label>';
+$select = new rex_select();
+$select->setId('ffmpeg-config-auto-scope');
+$select->setAttribute('class', 'form-control');
+$select->setName('config[auto_scope]');
+$select->addOption($this->i18n('auto_scope_new'), 'new');
+$select->addOption($this->i18n('auto_scope_all'), 'all');
+$select->setSelected((string) $this->getConfig('auto_scope', 'new'));
+$n['field'] = $select->get();
+$formElements[] = $n;
+$fragment = new rex_fragment();
+$fragment->setVar('elements', $formElements, false);
+$auto .= $fragment->parse('core/form/container.php');
+
+// Status: wartende Videos, laufende Konvertierung, Cronjob
+if ($this->getConfig('auto_enabled', false)) {
+    $status = [];
+    $active = \FriendsOfRedaxo\FFmpeg\Job\VideoJob::findActive();
+    if ($active) {
+        $status[] = $this->i18n('auto_status_running', $active->inputFile, (int) $active->progress);
+    }
+    $status[] = $this->i18n('auto_status_pending', \FriendsOfRedaxo\FFmpeg\AutoOptimizer::pending());
+    if (!rex_addon::get('cronjob')->isAvailable()) {
+        $status[] = '<strong>' . $this->i18n('auto_no_cronjob_addon') . '</strong>';
+    } elseif (rex::getUser()?->isAdmin()) {
+        $status[] = '<a href="' . rex_url::backendPage('cronjob/cronjobs') . '">' . $this->i18n('auto_cronjob_link') . '</a>';
+    }
+    $status[] = $this->i18n('auto_console_hint');
+    $auto .= '<div class="alert alert-info" role="status"><ul class="list-unstyled" style="margin:0"><li>' . implode('</li><li>', $status) . '</li></ul></div>';
+}
+
+$fragment = new rex_fragment();
+$fragment->setVar('title', $this->i18n('auto_legend'), false);
+$fragment->setVar('body', $auto, false);
+$sections .= $fragment->parse('core/page/section.php');
+
+// Original ersetzen („Optimieren“)
+$fragment = new rex_fragment();
+$fragment->setVar('title', $this->i18n('config_legend_overwrite'), false);
+$fragment->setVar('body', $modeBlock('overwrite', $this->i18n('config_intro_overwrite')), false);
+$sections .= $fragment->parse('core/page/section.php');
+
+// Webversion erstellen (neue Datei) + "Quell-Datei löschen" -- gilt nur hier: beim Ersetzen gibt es
+// keine separate Quelldatei (siehe Converter::finalizeNewFile())
+$newFile = $modeBlock('new_file', $this->i18n('config_intro_new_file'));
+$fragment = new rex_fragment();
+$fragment->setVar('elements', [[
+    'label' => '<label for="ffmpeg-config-delete">' . $this->i18n('config_delete') . '</label>',
+    'field' => '<input type="checkbox" id="ffmpeg-config-delete" name="config[delete]" value="1"' . ('1' == $this->getConfig('delete') ? ' checked="checked"' : '') . ' />',
+]], false);
 $newFile .= $fragment->parse('core/form/checkbox.php');
 $newFile .= '<p class="help-block">' . $this->i18n('config_delete_help') . '</p>';
-
 $fragment = new rex_fragment();
 $fragment->setVar('title', $this->i18n('config_legend_new_file'), false);
 $fragment->setVar('body', $newFile, false);
 $sections .= $fragment->parse('core/page/section.php');
 
-// Preset-Uebersicht als aufklappbares Akkordeon statt dauerhaft sichtbarer
-// Liste -- reine Referenz/Nachschlagehilfe, muss nicht permanent Platz auf
-// der Seite beanspruchen. Bootstrap-Panel-Muster 1:1 vom snippets-Addon
-// uebernommen (panel > header.panel-heading > a.panel-title + panel-body).
-$presetReference = '<div class="panel panel-default">
-    <header class="panel-heading">
-        <a data-toggle="collapse" href="#ffmpeg-preset-reference" class="collapsed panel-title">
-            <i class="rex-icon fa-solid fa-chevron-right"></i> ' . $this->i18n('config_legend_preset_reference') . '
-        </a>
-    </header>
-    <div id="ffmpeg-preset-reference" class="panel-collapse collapse">
-        <div class="panel-body">
-            <ul class="list-unstyled small">';
-$presetReference .= '<li><strong>' . $this->i18n('config_preset_web') . ':</strong> ' . $this->i18n('config_preset_web_desc') . '</li>';
-$presetReference .= '<li><strong>' . $this->i18n('config_preset_mobile') . ':</strong> ' . $this->i18n('config_preset_mobile_desc') . '</li>';
-$presetReference .= '<li><strong>' . $this->i18n('config_preset_archive') . ':</strong> ' . $this->i18n('config_preset_archive_desc') . '</li>';
-$presetReference .= '<li><strong>' . $this->i18n('config_preset_standard') . ':</strong> ' . $this->i18n('config_preset_standard_desc') . '</li>';
-$presetReference .= '<li><strong>' . $this->i18n('config_preset_1080p') . ':</strong> ' . $this->i18n('config_preset_1080p_desc') . '</li>';
-$presetReference .= '<li><strong>' . $this->i18n('config_preset_720p') . ':</strong> ' . $this->i18n('config_preset_720p_desc') . '</li>';
-$presetReference .= '<li><strong>' . $this->i18n('config_preset_480p') . ':</strong> ' . $this->i18n('config_preset_480p_desc') . '</li>';
-$presetReference .= '<li><strong>' . $this->i18n('config_preset_360p') . ':</strong> ' . $this->i18n('config_preset_360p_desc') . '</li>';
-$presetReference .= '<li><strong>' . $this->i18n('config_preset_custom') . ':</strong> ' . $this->i18n('config_preset_custom_desc') . '</li>';
-$presetReference .= '</ul>
-        </div>
-    </div>
-</div>';
-$sections .= $presetReference;
+// Immer enthalten (Hinweis statt Einstellung)
+$sections .= '<p class="text-muted"><i class="rex-icon fa-info-circle" aria-hidden="true"></i> ' . $this->i18n('config_always') . '</p>';
 
-// Preset-Auswahl -> Kommandofeld + Vorschau live aktualisieren, getrennt
-// pro Block (Suffixe 'overwrite'/'new-file'). Vorschau nur sichtbar bzw.
-// aktualisiert, wenn tatsaechlich ein Preset gewaehlt ist -- bei 'custom'
-// zeigt sie einfach den manuell eingegebenen Befehl.
-$script = '<script>' . PHP_EOL;
-$script .= 'const ffmpegPresets = ' . json_encode($presets) . ';' . PHP_EOL;
-$script .= "jQuery(document).on('rex:ready', function () {" . PHP_EOL;
-$script .= "  ['overwrite', 'new-file'].forEach(function (idPrefix) {" . PHP_EOL;
-$script .= "    var sel = document.getElementById('ffmpeg-config-preset-' + idPrefix);" . PHP_EOL;
-$script .= "    var cmd = document.getElementById('ffmpeg-config-command-' + idPrefix);" . PHP_EOL;
-$script .= "    var preview = document.getElementById('ffmpeg-config-preview-' + idPrefix);" . PHP_EOL;
-$script .= "    if (!sel || !cmd) { return; }" . PHP_EOL;
-$script .= "    function updatePreview() {" . PHP_EOL;
-$script .= "      if (preview) { preview.textContent = cmd.value; }" . PHP_EOL;
-$script .= "    }" . PHP_EOL;
-$script .= "    function onChange() {" . PHP_EOL;
-$script .= "      var val = sel.value;" . PHP_EOL;
-$script .= "      if (val !== 'custom' && val in ffmpegPresets) { cmd.value = ffmpegPresets[val]; }" . PHP_EOL;
-$script .= "      updatePreview();" . PHP_EOL;
-$script .= "    }" . PHP_EOL;
-$script .= "    jQuery(sel).off('change.ffmpeg').on('change.ffmpeg', onChange);" . PHP_EOL;
-$script .= "    jQuery(cmd).off('input.ffmpeg').on('input.ffmpeg', updatePreview);" . PHP_EOL;
-$script .= "    updatePreview();" . PHP_EOL;
-$script .= "  });" . PHP_EOL;
-$script .= "});" . PHP_EOL;
-$script .= '</script>' . PHP_EOL;
-$sections .= $script;
-
-// Save-Button
-$formElements = [];
-$n = [];
-$n['field'] = '<button class="btn btn-save rex-form-aligned" type="submit" name="save" value="' . $this->i18n('config_save') . '">' . $this->i18n('config_save') . '</button>';
-$formElements[] = $n;
-
+// Speichern
 $fragment = new rex_fragment();
-$fragment->setVar('elements', $formElements, false);
-$buttons = $fragment->parse('core/form/submit.php');
-$buttons = '<fieldset class="rex-form-action">' . $buttons . '</fieldset>';
+$fragment->setVar('elements', [['field' => '<button class="btn btn-save rex-form-aligned" type="submit" name="save" value="1">' . $this->i18n('config_save') . '</button>']], false);
+$buttons = '<fieldset class="rex-form-action">' . $fragment->parse('core/form/submit.php') . '</fieldset>';
 
 echo '
 <form action="' . rex_url::currentBackendPage() . '" method="post">

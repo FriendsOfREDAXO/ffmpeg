@@ -1,5 +1,21 @@
 # Changelog
 
+## 4.10.0 - 2026-11-12
+
+### Neue Features
+- **Automatische Optimierung**: Neue Videos werden direkt nach dem Hochladen und per Cronjob auf eine Standardgröße (Full HD, HD oder Klein) heruntergerechnet und webtauglich gemacht. Bearbeitet wird nur, was es nötig hat (zu groß, zu hohe Datenrate, Codec/Farbformat, fehlender Fast Start). Das Original wird nur ersetzt, wenn die Datei kleiner wird oder das Original in Browsern nicht zuverlässig abspielt; fehlt nur Fast Start, wird verlustfrei umsortiert. Der Cronjob wird beim Einschalten automatisch angelegt; neuer Konsolenbefehl `ffmpeg:optimize [--wait]`.
+- **Einfache Einstellungen statt FFmpeg-Kommandos**: Größe, Qualität und Ton je Modus („Optimieren“ / „Webversion erstellen“). Das Eingabefeld für eigene Kommandos entfällt; frühere Einstellungen werden übernommen.
+- **Ton: Lautstärke angleichen** (−16 LUFS) als neue Option.
+
+### Verbesserungen
+- **Videos werden nie vergrößert**: Die Auflösungs-Presets haben kleinere Videos bisher hochskaliert (z. B. 720p → 1080p), ebenso die Media-Manager-Effekte „Video zu Vorschau“ und „Video zu WebP“. Hochformat wird jetzt richtig begrenzt (1080 × 1920 statt 607 × 1080).
+- **Fast Start immer**: alle Umwandlungen und der Video-Trimmer schreiben den Index an den Dateianfang – Videos starten im Browser sofort.
+- Immer browsertaugliches Farbformat (yuv420p), Stereo-Ton, nur die erste Bild- und Tonspur (Smartphone-Videos mit Metadaten-Spuren scheiterten sonst), H.264 High Profile, Lanczos-Skalierung. Argumente werden einzeln maskiert. Anregungen aus dem AddOn video_editor (REDAXO 6).
+
+### Bugfixes
+- Wurde der Browser während einer Konvertierung geschlossen, wurde das Ergebnis nie übernommen und der Auftrag nach 30 Minuten als „verwaist“ abgebrochen. Fertige Aufträge werden jetzt bei jedem Backend-Aufruf, vom Cronjob und vom Konsolenbefehl übernommen.
+- Lange Konvertierungen (über 30 Minuten), die niemand im Browser verfolgte, galten als verwaist, obwohl ffmpeg noch lief – das ffmpeg-Protokoll zählt jetzt als Lebenszeichen.
+
 ## 4.9.0 - 2026-11-06
 
 ### Neue Features
