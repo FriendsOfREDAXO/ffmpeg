@@ -324,3 +324,4 @@ ffmpeg_track_keys = Tasten: N neuer Eintrag am Abspielkopf, Leertaste abspielen,
 ffmpeg_track_lang_invalid = Bitte ein Sprachkürzel angeben, z. B. de oder en.
 ffmpeg_track_parse_error = Die Datei enthält keine lesbaren Untertitel (WebVTT oder SRT).
 ffmpeg_track_empty = Es gibt keinen Eintrag mit Text.
+ffmpeg_optimize_kept = Original beibehalten: Die optimierte Fassung wäre nicht kleiner gewesen. Das Video gilt als optimiert.

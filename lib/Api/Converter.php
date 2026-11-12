@@ -299,6 +299,12 @@ class Converter extends rex_api_function
             $outputPath = rex_path::media((string) $outputFilename);
         }
 
+        // Optimieren (Original ersetzen): spielt das Original nicht zuverlässig im Browser, wird es auch ersetzt, wenn das
+        // Ergebnis größer ist – sonst nur, wenn es kleiner wird (finalizeOverwrite()). Schnitt und Warteschlange ersetzen
+        // immer, die automatische Optimierung bringt ihre eigene Einschätzung mit.
+        if ('overwrite' === $mode && empty($extra['cut']) && empty($extra['queue']) && !array_key_exists('compat', $extra)) {
+            $extra['compat'] = false === \FriendsOfRedaxo\FFmpeg\VideoInfo::isWebCompatible($video);
+        }
         $job = VideoJob::create($mode, $video, $outputPath, $user instanceof \rex_user ? (string) $user->getLogin() : $user);
         $job->extra = $extra;
         $job->save();
@@ -653,14 +659,15 @@ class Converter extends rex_api_function
         $filetype = rex_file::mimeType($job->outputPath, $job->inputFile) ?: $media->getType();
         $originalSize = $media->getSize();
 
-        // Automatische Optimierung: nur ersetzen, wenn die Datei wirklich kleiner wird -- sonst
-        // bleibt das Original (bei manuellem "Optimieren" entscheidet der Nutzer selbst). Ausnahme
-        // 'compat': das Original spielt in Browsern nicht zuverlaessig ab (Codec/Farbformat).
-        if (!empty($job->extra['auto']) && empty($job->extra['compat']) && (int) filesize($job->outputPath) >= $originalSize) {
+        // Optimieren (Button, MediaPlace, automatisch): nur ersetzen, wenn die Datei wirklich kleiner wird -- sonst
+        // bleibt das Original und gilt als optimiert. Ausnahme 'compat': das Original spielt in Browsern nicht
+        // zuverlaessig ab (Codec/Farbformat/Fast Start). Schnitt ("Original ersetzen") und Warteschlange ersetzen immer.
+        if (empty($job->extra['cut']) && empty($job->extra['queue']) && empty($job->extra['compat']) && (int) filesize($job->outputPath) >= $originalSize) {
             @unlink($job->outputPath);
+            \FriendsOfRedaxo\FFmpeg\Job\OptimizedVideoRegistry::markOptimized($job->inputFile, $originalSize, $originalSize, (int) $media->getUpdateDate());
             $job->status = VideoJob::STATUS_DONE;
             $job->progress = 100;
-            $job->message = 'Original beibehalten (Ergebnis wäre nicht kleiner).';
+            $job->message = \rex_i18n::rawMsg('ffmpeg_optimize_kept');
             $job->extra['result'] = ['filename' => $job->inputFile, 'kept' => true];
             $job->save();
 
