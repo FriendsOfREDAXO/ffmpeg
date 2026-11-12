@@ -325,3 +325,4 @@ ffmpeg_track_keys = Keys: N new entry at the playhead, Space play, ← → one f
 ffmpeg_track_lang_invalid = Please enter a language code, e.g. de or en.
 ffmpeg_track_parse_error = The file contains no readable subtitles (WebVTT or SRT).
 ffmpeg_track_empty = There is no entry with text.
+ffmpeg_optimize_kept = Original kept: the optimized version would not have been smaller. The video counts as optimized.

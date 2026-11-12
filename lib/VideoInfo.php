@@ -61,6 +61,23 @@ class VideoInfo
     }
 
     /**
+     * Spielt das Video in allen Browsern zuverlässig und sofort ab? H.264, Farbformat yuv420p und Fast Start.
+     * null = nicht ermittelbar (kein ffprobe, keine Datei)
+     */
+    public static function isWebCompatible(string $filename): ?bool
+    {
+        $info = self::getInfo($filename);
+        $video = $info['video'] ?? null;
+        if (!is_array($video)) {
+            return null;
+        }
+
+        return 'h264' === ($video['codec_name'] ?? '')
+            && in_array($video['pix_fmt'] ?? '', ['yuv420p', 'yuvj420p'], true)
+            && false !== self::hasFaststart($filename);
+    }
+
+    /**
      * Startet das Video im Browser sofort ("Fast Start")? Liegt der Index (moov) vor den Videodaten
      * (mdat), muss der Browser nicht erst große Teile der Datei laden. Prüft nur die obersten
      * MP4/MOV-Boxen (liest wenige Bytes, kein ffprobe). null = kein MP4/MOV oder nicht lesbar.

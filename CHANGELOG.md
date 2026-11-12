@@ -1,5 +1,12 @@
 # Changelog
 
+## 5.0.1 - 2026-11-12
+
+### Verbesserungen
+- **Optimieren macht Videos nicht mehr größer**: Wie bei der automatischen Optimierung wird das Original beim „Optimieren“ (Button im Video-Konverter, im Medienpool und in MediaPlace) nur ersetzt, wenn die Datei kleiner wird. Sonst bleibt es unverändert und gilt als optimiert. Ausnahme: Das Original spielt in Browsern nicht zuverlässig ab (kein H.264, Farbformat nicht yuv420p oder ohne Fast Start) – dann wird es auch ersetzt, wenn es etwas größer wird. Schneiden mit „Original ersetzen“ und Aufträge aus der Warteschlange ersetzen weiterhin immer.
+- Voreinstellung für „Optimieren“: Qualität **ausgewogen** statt hoch (von der Vorlage kaum zu unterscheiden, deutlich kleinere Dateien). Gespeicherte Einstellungen bleiben unverändert.
+- Neu: `VideoInfo::isWebCompatible($filename)`.
+
 ## 5.0.0 - 2026-11-12
 
 ### Neue Features

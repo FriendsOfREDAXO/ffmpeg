@@ -36,7 +36,9 @@ class Presets
 
     /** Voreinstellungen je Modus: Optimieren (Original ersetzen) / Webversion (neue Datei) */
     private const DEFAULTS = [
-        'overwrite' => ['size' => 'original', 'quality' => 'high', 'audio' => 'keep'],
+        // „ausgewogen“: von der Vorlage kaum zu unterscheiden, deutlich kleiner (bis 5.0.0 „hoch“ – das machte manche
+        // Videos beim Optimieren größer)
+        'overwrite' => ['size' => 'original', 'quality' => 'balanced', 'audio' => 'keep'],
         'new_file' => ['size' => '1080p', 'quality' => 'balanced', 'audio' => 'keep'],
     ];
 
