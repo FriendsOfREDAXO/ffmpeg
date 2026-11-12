@@ -354,10 +354,16 @@
                 pingPong = null;
             }
         };
+        // Die Vorschau („Ergebnis abspielen“, Schleife, Ping-Pong) spielt immer genau die Markierung – auch beim
+        // schnellen Schnitt, der ab dem Schlüsselbild davor beginnt (das zeigt der gelbe Bereich und der Hinweis).
+        var marked = function () {
+            return segs;
+        };
+
         // Ping-Pong-Vorschau: rückwärts durch Zurückspringen in kleinen Schritten (Browser spielen nicht rückwärts)
         var reverse = function () {
             video.pause();
-            var eff = effective();
+            var eff = marked();
             var from = eff[0][0];
             var step = 1 / 25;
             pingPong = setInterval(function () {
@@ -448,13 +454,13 @@
                     return;
                 }
                 previewing = 'result';
-                video.currentTime = effective()[0][0];
+                video.currentTime = marked()[0][0];
                 video.play();
             },
             pingpong: function () {
                 stopPingPong();
                 previewing = 'pingpong';
-                video.currentTime = effective()[0][0];
+                video.currentTime = marked()[0][0];
                 video.play();
             },
         };
@@ -469,7 +475,7 @@
         var raf = 0;
         var tick = function () {
             if (previewing) {
-                var eff = effective();
+                var eff = marked();
                 var cur = video.currentTime;
                 var i = eff.findIndex(function (s) {
                     return cur >= s[0] && cur < s[1];

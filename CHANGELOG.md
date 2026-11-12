@@ -1,5 +1,10 @@
 # Changelog
 
+## 5.0.2 - 2026-11-12
+
+### Bugfix
+- Schnitt-Editor: **„Ergebnis abspielen“, „Schleife“ und „Ping-Pong testen“ spielen jetzt genau die Markierung.** Beim schnellen Schnitt begann die Vorschau bisher am Schlüsselbild vor der Markierung (im gelben Bereich) und sprang in der Schleife auch dorthin zurück. Was der schnelle Schnitt zusätzlich mitnimmt, zeigen weiterhin der gelbe Bereich und der Hinweis unter der Zeitleiste; „Neue Länge“ nennt die tatsächliche Länge.
+
 ## 5.0.1 - 2026-11-12
 
 ### Verbesserungen
