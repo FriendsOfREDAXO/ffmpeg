@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.0.3 - 2026-11-12
+
+### Bugfix
+- Schnitt-Editor: **Das Video folgt beim Ziehen der roten Linie** (und der Abschnittsränder). Bisher stauten sich die Sprünge im Video, das Bild hinkte hinterher – vor allem bei größeren Videos, langsameren Servern und in Safari. Jetzt läuft immer nur ein Sprung, danach direkt zum zuletzt gewünschten Ziel (während des Ziehens per `fastSeek`, wo verfügbar); beim Loslassen springt das Video bildgenau an die gewählte Stelle.
+- Schnitt- und Untertitel-Editor laden das Video direkt vom Webserver (Sprünge ohne PHP). Der PHP-Stream bleibt als Ausweg, falls `/media` nicht ausgeliefert wird, und gibt die Session sofort frei – vorher warteten alle Sprung-Anfragen aufeinander.
+
 ## 5.0.2 - 2026-11-12
 
 ### Bugfix

@@ -83,6 +83,21 @@
         });
     };
 
+    // Video zuerst direkt vom Webserver laden, bei einem Fehler über den PHP-Stream (data.streamFallback)
+    var useFallback = function (video, data) {
+        if (!data.streamFallback) {
+            return;
+        }
+        video.addEventListener('error', function () {
+            if (video.dataset.fallback) {
+                return;
+            }
+            video.dataset.fallback = '1';
+            video.src = data.streamFallback;
+            video.load();
+        });
+    };
+
     var btn = function (label, iconName, attrs) {
         var b = el('button', Object.assign({ type: 'button', class: 'btn btn-default btn-sm' }, attrs || {}));
         if (iconName) {
@@ -123,6 +138,7 @@
         var keyframes = [];
 
         var video = el('video', { class: 'ffmpeg-cut-video', src: data.stream, preload: 'auto', playsinline: true });
+            useFallback(video, data);
         var strip = el('div', { class: 'ffmpeg-cut-strip', 'aria-hidden': 'true' });
         var ticks = el('div', { class: 'ffmpeg-cut-ticks', 'aria-hidden': 'true' });
         var layer = el('div', { class: 'ffmpeg-cut-layer' });
@@ -232,10 +248,44 @@
             var r = timeline.getBoundingClientRect();
             return Math.max(0, Math.min(duration, ((clientX - r.left) / r.width) * duration));
         };
-        var seek = function (s) {
-            video.currentTime = Math.max(0, Math.min(duration, s));
-            draw();
+        // Springen beim Ziehen: immer nur ein Sprung gleichzeitig, danach gleich zum zuletzt gewünschten Ziel –
+        // sonst stauen sich die Sprünge, und das Bild hinkt der roten Linie hinterher. Während des Ziehens schnell
+        // (fastSeek, nächstes Schlüsselbild, wo der Browser es kann), beim Loslassen bildgenau.
+        var pendingSeek = null;
+        var seekBusy = false;
+        var seekFast = false;
+        var applySeek = function () {
+            if (null === pendingSeek) {
+                seekBusy = false;
+                return;
+            }
+            seekBusy = true;
+            var t = pendingSeek;
+            pendingSeek = null;
+            if (seekFast && typeof video.fastSeek === 'function') {
+                video.fastSeek(t);
+            } else {
+                video.currentTime = t;
+            }
         };
+        video.addEventListener('seeked', function () {
+            seekBusy = false;
+            applySeek();
+            draw();
+        });
+        var seek = function (s, fast) {
+            pendingSeek = Math.max(0, Math.min(duration, s));
+            seekFast = !!fast;
+            draw();
+            if (!seekBusy) {
+                applySeek();
+            }
+        };
+        // aktuelle Stelle – auch wenn ein Sprung noch aussteht
+        var position = function () {
+            return null !== pendingSeek ? pendingSeek : (video.currentTime || 0);
+        };
+        var scrubTarget = null;
         var remember = function () {
             history.push(JSON.stringify(segs));
             if (history.length > 50) {
@@ -283,7 +333,7 @@
         };
 
         var draw = function () {
-            var cur = video.currentTime || 0;
+            var cur = null !== scrubTarget ? scrubTarget : position();
             head.style.left = pct(cur);
             now.textContent = clock(cur) + ' / ' + clock(duration);
             timeline.setAttribute('aria-valuenow', String(Math.round(cur * 10) / 10));
@@ -397,7 +447,7 @@
 
         var ops = {
             split: function () {
-                var cur = video.currentTime;
+                var cur = position();
                 var i = indexAt(cur);
                 if (i < 0 || cur - segs[i][0] < MIN || segs[i][1] - cur < MIN) {
                     return;
@@ -410,13 +460,13 @@
                 var b = segs[sel][1];
                 var prev = sel > 0 ? segs[sel - 1][1] : 0;
                 remember();
-                segs[sel] = [Math.max(prev, Math.min(video.currentTime, b - MIN)), b];
+                segs[sel] = [Math.max(prev, Math.min(position(), b - MIN)), b];
             },
             out: function () {
                 var a = segs[sel][0];
                 var next = sel < segs.length - 1 ? segs[sel + 1][0] : duration;
                 remember();
-                segs[sel] = [a, Math.min(next, Math.max(video.currentTime, a + MIN))];
+                segs[sel] = [a, Math.min(next, Math.max(position(), a + MIN))];
             },
             remove: function () {
                 if (segs.length < 2) {
@@ -551,11 +601,13 @@
                     if (edge === 0) {
                         var prev = sel > 0 ? segs[sel - 1][1] : 0;
                         segs[sel] = [Math.max(prev, Math.min(v, b - MIN)), b];
-                        video.currentTime = segs[sel][0];
+                        scrubTarget = segs[sel][0];
+                        seek(scrubTarget, true);
                     } else {
                         var next = sel < segs.length - 1 ? segs[sel + 1][0] : duration;
                         segs[sel] = [a, Math.min(next, Math.max(v, a + MIN))];
-                        video.currentTime = segs[sel][1];
+                        scrubTarget = segs[sel][1];
+                        seek(scrubTarget, true);
                     }
                     render();
                 };
@@ -565,7 +617,8 @@
                     render();
                 }
                 move = function (x) {
-                    seek(at(x));
+                    scrubTarget = at(x);
+                    seek(scrubTarget, true);
                 };
                 move(e.clientX);
             }
@@ -573,6 +626,12 @@
                 move(ev.clientX);
             };
             var onUp = function () {
+                // beim Loslassen bildgenau auf die gewählte Stelle
+                if (null !== scrubTarget) {
+                    var target = scrubTarget;
+                    scrubTarget = null;
+                    seek(target, false);
+                }
                 timeline.removeEventListener('pointermove', onMove);
                 timeline.removeEventListener('pointerup', onUp);
                 timeline.removeEventListener('pointercancel', onUp);
@@ -602,7 +661,7 @@
             if (b.dataset.step) {
                 stopPingPong();
                 video.pause();
-                seek(video.currentTime + Number(b.dataset.step));
+                seek(position() + Number(b.dataset.step));
             } else if (b.dataset.cut) {
                 run(b.dataset.cut);
             }
@@ -657,7 +716,7 @@
             } else if ((key === 'arrowleft' || key === 'arrowright') && !onButton) {
                 e.preventDefault();
                 video.pause();
-                seek(video.currentTime + (key === 'arrowleft' ? -1 : 1) * (e.shiftKey ? 1 : frame));
+                seek(position() + (key === 'arrowleft' ? -1 : 1) * (e.shiftKey ? 1 : frame));
             } else if ((key === 'home' || key === 'end') && !onButton) {
                 e.preventDefault();
                 seek(key === 'home' ? 0 : duration);
@@ -722,7 +781,7 @@
         });
         posterBtn.addEventListener('click', function () {
             posterBtn.disabled = true;
-            api(cfg.file, 'poster', { time: String(video.currentTime) }).then(function (json) {
+            api(cfg.file, 'poster', { time: String(position()) }).then(function (json) {
                 var box = alertBox('success', fill(t.poster_done, json.poster) + ' ');
                 if (cfg.mediaUrl) {
                     box.append(el('a', { href: cfg.mediaUrl + encodeURIComponent(json.poster), text: t.open }));
@@ -810,6 +869,7 @@
                 }))
                 : el('p', { class: 'text-muted', text: t.none });
             var preview = el('video', { class: 'ffmpeg-track-preview', src: data.stream, controls: true, preload: 'metadata', playsinline: true });
+            useFallback(preview, data);
             data.tracks.forEach(function (tr) {
                 preview.append(el('track', { kind: tr.role, src: tr.url, srclang: tr.lang, label: tr.name }));
             });
@@ -840,6 +900,7 @@
             var duration = (data.duration || 0) * 1000;
             var frame = 1 / (data.fps || 25);
             var video = el('video', { class: 'ffmpeg-track-video', src: data.stream, preload: 'auto', playsinline: true, controls: true });
+            useFallback(video, data);
             var textTrack = video.addTextTrack('subtitles', t.title, (existing && existing.lang) || data.lang || 'de');
             textTrack.mode = 'showing';
             var preview = function () {

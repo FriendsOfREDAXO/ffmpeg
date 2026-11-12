@@ -153,7 +153,10 @@ class Editor extends rex_api_function
             'file' => $media->getFileName(),
             'title' => $media->getTitle(),
             'extension' => strtolower($media->getExtension()),
-            'stream' => Stream::url($media),
+            // direkt vom Webserver: springt sofort (Range-Anfragen ohne PHP); der PHP-Stream nur als Ausweg, falls der
+            // Server /media nicht ausliefert (z. B. geschützte Medien)
+            'stream' => \rex_url::media($media->getFileName()) . '?v=' . $media->getUpdateDate(),
+            'streamFallback' => Stream::url($media),
             'duration' => (float) ($info['duration'] ?? 0),
             'fps' => (float) ($info['framerate'] ?? 0) ?: 25.0,
             'width' => (int) ($video['width'] ?? 0),

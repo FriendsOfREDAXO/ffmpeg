@@ -26,6 +26,10 @@ class Stream extends rex_api_function
             rex_response::sendContent('', 'text/plain');
             exit;
         }
+        // Session sofort freigeben: sonst warten alle weiteren Anfragen (jeder Sprung im Video ist eine) aufeinander
+        if (PHP_SESSION_ACTIVE === session_status()) {
+            session_write_close();
+        }
         rex_response::setHeader('Cache-Control', 'private, max-age=3600');
         rex_response::sendFile(rex_path::media($media->getFileName()), (string) $media->getType());
         exit;
