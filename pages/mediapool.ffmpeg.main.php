@@ -127,6 +127,7 @@ if (empty($allVideos)) {
         . '<div class="bounce3"></div>'
         . '</div>'
         . '<span id="progress-text">' . ($conversionActive ? 'Konvertierung läuft…' : '0%') . '</span>'
+        . '<span id="ffmpeg-queue-summary" class="ffmpeg-queue-summary text-muted" aria-live="polite"></span>'
         . '</div>'
         . '</div>'
         . '<div id="log" class="log" style="padding:15px;margin:5px 0;display:none;"><pre style="height:200px;overflow-y: auto">'
@@ -213,14 +214,14 @@ if (empty($allVideos)) {
             if ($video['isMp4']) {
                 $optimizeLabel = $video['isOptimizedInPlace'] ? $this->i18n('ffmpeg_reoptimize_this_video') : $this->i18n('ffmpeg_optimize_this_video');
                 $optimizeClass = $video['isOptimizedInPlace'] ? 'btn-default ffmpeg-start-conversion-secondary' : 'btn-primary';
-                $item .= '<button class="btn btn-xs ' . $optimizeClass . ' ffmpeg-start-conversion" type="button" data-video="' . rex_escape($video['filename']) . '" data-mode="overwrite" title="' . rex_escape($this->i18n('ffmpeg_preset_hint') . ' ' . $activePresetOverwrite) . '"' . ($conversionActive ? ' disabled' : '') . '><i class="fa-solid fa-arrows-rotate" aria-hidden="true"></i> ' . $optimizeLabel . '</button>';
+                $item .= '<button class="btn btn-xs ' . $optimizeClass . ' ffmpeg-start-conversion" type="button" data-video="' . rex_escape($video['filename']) . '" data-mode="overwrite" title="' . rex_escape($this->i18n('ffmpeg_preset_hint') . ' ' . $activePresetOverwrite) . '"><i class="fa-solid fa-arrows-rotate" aria-hidden="true"></i> ' . $optimizeLabel . '</button>';
             }
 
             // "Webversion erstellen" (separate "web_"-Datei, Original bleibt
             // unangetastet) -- immer verfuegbar, unabhaengig vom Quellformat.
             $webLabel = $video['isAlreadyConverted'] ? $this->i18n('ffmpeg_recreate_web_version') : $this->i18n('ffmpeg_create_web_version');
             $webClass = $video['isMp4'] ? 'btn-default ffmpeg-start-conversion-secondary' : ($video['isAlreadyConverted'] ? 'btn-default ffmpeg-start-conversion-secondary' : 'btn-primary');
-            $item .= '<button class="btn btn-xs ' . $webClass . ' ffmpeg-start-conversion" type="button" data-video="' . rex_escape($video['filename']) . '" data-mode="new_file" title="' . rex_escape($this->i18n('ffmpeg_preset_hint') . ' ' . $activePresetNewFile) . '"' . ($conversionActive ? ' disabled' : '') . '><i class="fa-solid fa-globe" aria-hidden="true"></i> ' . $webLabel . '</button>';
+            $item .= '<button class="btn btn-xs ' . $webClass . ' ffmpeg-start-conversion" type="button" data-video="' . rex_escape($video['filename']) . '" data-mode="new_file" title="' . rex_escape($this->i18n('ffmpeg_preset_hint') . ' ' . $activePresetNewFile) . '"><i class="fa-solid fa-globe" aria-hidden="true"></i> ' . $webLabel . '</button>';
 
             $item .= '</div>';
             // Sichtbarer Preset-Hinweis unter den Buttons -- Tooltip (title)
@@ -280,6 +281,9 @@ if (empty($allVideos)) {
                 : $this->i18n('ffmpeg_status_optimized');
             $item .= '<span class="video-inline-status-static is-converted" style="display:inline-flex;"><i class="fa fa-arrows-rotate" aria-hidden="true"></i> ' . rex_escape($this->i18n('ffmpeg_status_optimized_prefix')) . ' ' . $optimizeStatusText . '</span>';
         }
+        // Platz in der Warteschlange (füllt script.js aus window.ffmpegQueue bzw. den Antworten der API)
+        $item .= '<div class="video-queue-state" hidden><span class="video-inline-status-static is-queued"><i class="fa fa-hourglass-half" aria-hidden="true"></i> <span class="video-queue-text"></span></span>'
+            . '<button type="button" class="btn btn-xs btn-link ffmpeg-queue-remove">' . $this->i18n('ffmpeg_queue_remove') . '</button></div>';
         $item .= '</div>';
 
         $item .= '<div class="video-inline-log video-inline-log-row" style="display:none;"><pre>' . $inlineLog . '</pre></div>';
@@ -310,7 +314,13 @@ if (empty($allVideos)) {
     $output = $fragment->parse('core/page/section.php');
 
     $output = '
-    <form action="' . rex_url::currentBackendPage() . '" method="post" class="ffmpeg-converter-ui">
+    <form action="' . rex_url::currentBackendPage() . '" method="post" class="ffmpeg-converter-ui"'
+        . ' data-queue-badge="' . rex_escape(rex_i18n::rawMsg('ffmpeg_queue_badge', '{0}')) . '"'
+        . ' data-queue-summary-one="' . rex_escape(rex_i18n::rawMsg('ffmpeg_queue_summary_one')) . '"'
+        . ' data-queue-summary="' . rex_escape(rex_i18n::rawMsg('ffmpeg_queue_summary', '{0}')) . '"'
+        . ' data-queue-added="' . rex_escape(rex_i18n::rawMsg('ffmpeg_queue_added', '{0}')) . '"'
+        . ' data-user="' . rex_escape((string) rex::requireUser()->getLogin()) . '"'
+        . ' data-admin="' . (rex::requireUser()->isAdmin() ? '1' : '0') . '">
         <input type="hidden" name="formsubmit" value="1" />
         ' . $csrfToken->getHiddenField() . '
         ' . $output . '
@@ -379,6 +389,6 @@ if (empty($allVideos)) {
     // Aktiven Job (falls vorhanden) direkt einbetten, damit script.js beim
     // Laden nicht erst per AJAX danach fragen muss (ersetzt die bisherigen
     // checkStatus()/checkAllVideoStatus()-Requests).
-    echo '<script>window.ffmpegActiveJob = ' . json_encode($activeJob) . ';</script>';
+    echo '<script>window.ffmpegActiveJob = ' . json_encode($activeJob) . '; window.ffmpegQueue = ' . json_encode(\FriendsOfRedaxo\FFmpeg\Queue::overview()) . ';</script>';
 }
 ?>

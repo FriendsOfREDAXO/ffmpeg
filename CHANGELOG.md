@@ -1,5 +1,17 @@
 # Changelog
 
+## 5.1.0 - 2026-11-16
+
+### Neue Features
+- **Warteschlange im Video-Konverter**: Läuft gerade eine Konvertierung, werden weitere Klicks auf „Optimieren“ oder „Webversion erstellen“ nicht mehr mit „Es läuft bereits eine Konvertierung“ abgelehnt, sondern eingereiht. Die Liste zeigt „Wartet · Platz n“ am Video und oben die Zahl der wartenden Aufträge; ist ein Auftrag fertig, startet der nächste von selbst und die Seite folgt seinem Fortschritt. Eigene Aufträge lassen sich wieder herausnehmen (Admins: alle). Derselbe Klick steht höchstens einmal in der Warteschlange.
+- Auch „Optimieren“ in der Detailansicht des Medienpools reiht ein, statt abzubrechen.
+- Die Warteschlange geht auch weiter, wenn niemand die Seite offen hat: bei jedem Backend-Aufruf und per Cronjob „FFmpeg: Videos automatisch optimieren“ (wird beim ersten Einreihen angelegt bzw. aktiviert).
+- Neu für Entwickler: `Queue::addRequest()`, `Queue::overview()`, `Queue::position()`, `Queue::get()`, `Converter::startRequest()`. Die API `ffmpeg_convert` kennt `queue=1` (bei `func=start`) und `func=queue_remove`. Ohne `queue=1` (z. B. MediaPlace) bleibt es bei `busy`.
+
+### Verbesserungen
+- Während einer Konvertierung bleiben die Buttons der anderen Videos bedienbar; gesperrt ist nur das laufende Video.
+- Zwei gleichzeitige Anfragen (Polling, Cronjob) starten nicht mehr zwei Aufträge aus der Warteschlange auf einmal (Sperrdatei).
+
 ## 5.0.3 - 2026-11-12
 
 ### Bugfix

@@ -28,6 +28,10 @@ use rex_string;
  *
  * Kommandos enthalten die Platzhalter INPUT und OUTPUT.<endung> (siehe Presets::build()). Sie kommen nur aus PHP-Code,
  * nie aus Formularen.
+ *
+ * Auch die Buttons im Backend („Optimieren“, „Webversion erstellen“) reihen ein, solange eine Konvertierung läuft
+ * ({@see self::addRequest()}). Gespeichert wird dann nur, was angeklickt wurde (Modus, Variante, Größe) – das Kommando
+ * entsteht erst beim Start aus den Einstellungen, genau wie bei einem direkten Klick.
  */
 final class Queue
 {
@@ -59,7 +63,72 @@ final class Queue
         return $id;
     }
 
-    /** @return list<array{id: string, video: string, command: string, output: ?string, extra: array<string, mixed>, login: string}> */
+    /**
+     * Klick im Backend vormerken, während eine Konvertierung läuft. Derselbe Klick (Video, Modus, Variante, Größe)
+     * steht höchstens einmal in der Warteschlange.
+     *
+     * @param string $mode new_file | overwrite
+     * @return string Kennung des Auftrags
+     */
+    public static function addRequest(string $video, string $mode, bool $createNew, string $preset, string $login): string
+    {
+        $request = ['mode' => $mode, 'create_new' => $createNew, 'preset' => $createNew ? $preset : ''];
+        foreach (self::pending() as $item) {
+            if ($item['video'] === $video && ($item['request'] ?? null) == $request) {
+                return $item['id'];
+            }
+        }
+        $id = sprintf('%.6F', microtime(true)) . '_' . bin2hex(random_bytes(4));
+        rex_file::put(self::path($id), (string) json_encode([
+            'id' => $id, 'video' => $video, 'request' => $request, 'output' => null, 'extra' => [], 'login' => $login,
+        ]));
+        AutoOptimizeCronjob::ensure(true);
+
+        return $id;
+    }
+
+    /** Position in der Warteschlange (1 = als Nächstes), 0 = nicht (mehr) enthalten */
+    public static function position(string $id): int
+    {
+        foreach (self::pending() as $i => $item) {
+            if ($item['id'] === $id) {
+                return $i + 1;
+            }
+        }
+
+        return 0;
+    }
+
+    /**
+     * Wartende Aufträge für die Anzeige im Backend
+     *
+     * @return list<array{id: string, video: string, mode: string, position: int, login: string}>
+     */
+    public static function overview(): array
+    {
+        $list = [];
+        foreach (self::pending() as $i => $item) {
+            $list[] = [
+                'id' => $item['id'],
+                'video' => $item['video'],
+                'mode' => (string) ($item['request']['mode'] ?? (null === $item['output'] ? 'overwrite' : 'new_file')),
+                'position' => $i + 1,
+                'login' => $item['login'],
+            ];
+        }
+
+        return $list;
+    }
+
+    /** @return array{id: string, video: string, command?: string, request?: array{mode: string, create_new: bool, preset: string}, output: ?string, extra: array<string, mixed>, login: string}|null */
+    public static function get(string $id): ?array
+    {
+        $item = is_file(self::path($id)) ? json_decode((string) rex_file::get(self::path($id)), true) : null;
+
+        return is_array($item) ? $item : null;
+    }
+
+    /** @return list<array{id: string, video: string, command?: string, request?: array{mode: string, create_new: bool, preset: string}, output: ?string, extra: array<string, mixed>, login: string}> */
     public static function pending(): array
     {
         $files = glob(rex_addon::get('ffmpeg')->getDataPath('queue_*.json')) ?: [];
@@ -87,6 +156,25 @@ final class Queue
      */
     public static function run(): ?array
     {
+        if ([] === self::pending()) {
+            return null;
+        }
+        // nicht zwei Aufträge gleichzeitig starten, wenn zwei Anfragen (Polling, Cronjob) zugleich hier ankommen
+        $lock = fopen(rex_addon::get('ffmpeg')->getDataPath('queue.lock'), 'c');
+        if (false === $lock || !flock($lock, LOCK_EX | LOCK_NB)) {
+            return null;
+        }
+        try {
+            return self::runLocked();
+        } finally {
+            flock($lock, LOCK_UN);
+            fclose($lock);
+        }
+    }
+
+    /** @return array{status: string, message: string, video?: string, job?: string}|null */
+    private static function runLocked(): ?array
+    {
         foreach (self::pending() as $item) {
             if (VideoJob::findActive()) {
                 return null;
@@ -96,9 +184,15 @@ final class Queue
                 continue;
             }
             try {
-                $result = Converter::startJobWithCommand(
+                $result = isset($item['request']) ? Converter::startRequest(
                     $item['video'],
-                    $item['command'],
+                    (string) $item['request']['mode'],
+                    (bool) $item['request']['create_new'],
+                    (string) $item['request']['preset'],
+                    $item['login'],
+                ) : Converter::startJobWithCommand(
+                    $item['video'],
+                    (string) $item['command'],
                     $item['login'],
                     // Quelle nie löschen (Einstellung „Quell-Datei löschen“ gilt nur für die Webversion-Buttons)
                     ['queue' => $item['id'], 'keep_source' => true, 'output' => $item['output']] + (array) $item['extra'],

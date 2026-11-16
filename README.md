@@ -21,6 +21,7 @@ all in one add-on.
 ### Video converter
 - **Automatic optimization** (new in 5.0) – new videos are scaled down to a standard size after the upload and via cronjob, see below
 - **Background processing** – you may close the browser; the result is taken over on the next backend request or cronjob
+- **Queue** (new in 5.1) – while a conversion is running you can still start more videos; they wait with their position in the list and run one after another
 - **Media pool integration** with `web_` prefix
 - **Keeps metadata** (title, description, copyright)
 - **Savings display** for web versions and optimized originals
@@ -74,6 +75,17 @@ all in one add-on.
 4. **You may close the browser** – the conversion continues
 5. Follow the progress at the entry
 6. Done: the result is taken over when the page is opened again, on the next backend request or cronjob
+
+**Several videos:** only one conversion runs at a time so the server isn't overloaded. Further clicks (including
+“Optimize” in the media pool detail view) go into the **queue**: the video shows “Waiting · position 2”, the top shows
+the number of waiting jobs. When a job is done the next one starts by itself and the page follows its progress. You can
+remove your own jobs again (admins: all). Questions asked on click (e.g. whether an existing web version is overwritten)
+are answered right away; the settings at the time of the start apply.
+
+The queue moves on after every finished job, on every backend request and via the cronjob “FFmpeg: optimize videos
+automatically” (created or activated when the first job is queued). For the queue to run reliably without an open
+backend, trigger the cronjob from a system cron (cronjob add-on, environment “script”). Queued jobs run before the
+automatic optimization.
 
 ### Automatic optimization
 1. Enable **Video tools → Settings → Automatic optimization**

@@ -202,10 +202,12 @@ if (rex::isBackend() && rex::getUser()) {
             btn.addEventListener("click", function () {
                 btn.disabled = true;
                 setStatus(' . json_encode(rex_i18n::rawMsg('ffmpeg_optimize_video_starting_short')) . ');
-                fetch("index.php?" + new URLSearchParams(Object.assign({}, rex.ffmpeg_api, { func: "start", video: filename, mode: "overwrite" })), { credentials: "same-origin", headers: { "X-Requested-With": "XMLHttpRequest" } })
+                fetch("index.php?" + new URLSearchParams(Object.assign({}, rex.ffmpeg_api, { func: "start", video: filename, mode: "overwrite", queue: 1 })), { credentials: "same-origin", headers: { "X-Requested-With": "XMLHttpRequest" } })
                     .then(function (r) { return r.json(); })
                     .then(function (data) {
                         if (data.error) { fail(data.error); return; }
+                        // läuft schon eine Konvertierung: eingereiht, startet von selbst
+                        if ("queued" === data.status) { status.textContent = data.message || ""; return; }
                         if ("busy" === data.status) { fail(data.message || ' . json_encode(rex_i18n::rawMsg('ffmpeg_optimize_video_busy_short')) . '); return; }
                         poll(data.job);
                     })

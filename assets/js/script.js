@@ -21,8 +21,75 @@
         $('#log pre').scrollTop($('#log pre')[0].scrollHeight);
     }
 
+    function getVideoItem(video) {
+        return $('.video-item').filter(function () {
+            return $(this).attr('data-video-item') === video;
+        }).first();
+    }
+
     function getCurrentVideoItem() {
-        return $('.video-item[data-video-item="' + currentVideoName + '"]').first();
+        return getVideoItem(currentVideoName);
+    }
+
+    function setItemButtons(video, enabled) {
+        getVideoItem(video).find('.ffmpeg-start-conversion').prop('disabled', !enabled).toggleClass('disabled', !enabled);
+    }
+
+    function fill(template, value) {
+        return String(template || '').replace('{0}', value);
+    }
+
+    // Warteschlange: Platz je Video und Zusammenfassung oben (Liste kommt von der API bzw. window.ffmpegQueue)
+    function renderQueue(list) {
+        if (!Array.isArray(list)) {
+            return;
+        }
+        var $form = $('.ffmpeg-converter-ui');
+        var user = String($form.data('user') || '');
+        var admin = '1' === String($form.data('admin'));
+        var byVideo = {};
+        list.forEach(function (entry) {
+            (byVideo[entry.video] = byVideo[entry.video] || []).push(entry);
+        });
+
+        $('.video-item').each(function () {
+            var $item = $(this);
+            var entries = byVideo[$item.attr('data-video-item')] || [];
+            var $state = $item.find('.video-queue-state');
+            if (!entries.length) {
+                $state.prop('hidden', true);
+                return;
+            }
+            var removable = entries.filter(function (entry) {
+                return admin || entry.login === user;
+            });
+            $state.find('.video-queue-text').text(fill($form.data('queueBadge'), entries.map(function (entry) {
+                return entry.position;
+            }).join(', ')));
+            $state.find('.ffmpeg-queue-remove')
+                .data('ids', removable.map(function (entry) { return entry.id; }))
+                .prop('hidden', !removable.length);
+            $state.prop('hidden', false);
+        });
+
+        var count = list.length;
+        $('#ffmpeg-queue-summary').text(0 === count ? '' : (1 === count ? $form.data('queueSummaryOne') : fill($form.data('queueSummary'), count)));
+        if (count) {
+            $('.progress-section').show();
+        }
+    }
+
+    // Der laufende Auftrag ist fertig, der nächste aus der Warteschlange läuft schon: ihm folgen
+    function followNext(data) {
+        renderQueue(data.queue);
+        if (!data.next || !data.next.id) {
+            return;
+        }
+        setTimeout(function () {
+            currentVideoName = data.next.video || '';
+            updateUIForConversion(true);
+            startPolling(data.next.id);
+        }, 1200);
     }
 
     function activateInlineStatus(videoName) {
@@ -31,7 +98,6 @@
         }
 
         currentVideoName = videoName;
-        $('.video-inline-status').hide();
         $('.video-item').removeClass('has-inline-status processing');
 
         var $item = getCurrentVideoItem();
@@ -118,8 +184,9 @@
 
     function updateUIForConversion(active) {
         if (active) {
+            // nur das laufende Video sperren -- die anderen lassen sich weiter starten (Warteschlange)
             $('.progress-section').show();
-            $('.ffmpeg-start-conversion').addClass('disabled').prop('disabled', true);
+            setItemButtons(currentVideoName, false);
             $('.spinner').show();
             $('#progress-text').removeClass('text-success').html('0%');
             updateGlobalProgress(0);
@@ -171,14 +238,17 @@
                 if (data.video) {
                     currentVideoName = data.video;
                 }
+                renderQueue(data.queue);
                 $('#log pre').html(data.log || '');
                 scrolllog();
                 updateInlineLog(data.log || '');
 
                 if ('done' === data.status) {
                     showCompleted(data.mode);
+                    followNext(data);
                 } else if ('error' === data.status) {
                     showError(data.message || 'Konvertierung fehlgeschlagen');
+                    followNext(data);
                 } else {
                     var progress = 'finalizing' === data.status ? 99 : (parseInt(data.progress, 10) || 0);
                     var label = 'finalizing' === data.status ? 'Importiere...' : progress + '%';
@@ -211,7 +281,8 @@
     }
 
     function startConversion(video, mode, confirmOverwrite, createNew, preset) {
-        var url = ffmpegApiUrl({ func: 'start', video: video, mode: mode || 'new_file' });
+        // queue=1: läuft schon etwas, reiht der Server den Auftrag ein, statt ihn abzulehnen
+        var url = ffmpegApiUrl({ func: 'start', video: video, mode: mode || 'new_file', queue: 1 });
         if (confirmOverwrite) {
             url += '&confirm_overwrite=1';
         }
@@ -229,31 +300,44 @@
         })
             .fail(function (jqXHR, textStatus) {
                 $('.progress-section').show();
-                $('#log pre').html('Request failed: ' + textStatus);
-                updateUIForConversion(false);
+                $('#log pre').text('Request failed: ' + textStatus);
+                setItemButtons(video, true);
             })
             .done(function (data) {
                 if (data.error) {
                     $('.progress-section').show();
-                    $('#log pre').html('Error: ' + data.error);
-                    updateUIForConversion(false);
+                    $('#log pre').text('Error: ' + data.error);
+                    setItemButtons(video, true);
                     return;
                 }
 
                 if ('confirm_overwrite' === data.status) {
-                    updateUIForConversion(false);
+                    setItemButtons(video, true);
                     showOverwriteChoiceModal(video, mode, data.existing_filename || '');
                     return;
                 }
 
                 if ('busy' === data.status) {
-                    updateUIForConversion(false);
+                    setItemButtons(video, true);
                     alert(data.message || 'Es läuft bereits eine Konvertierung.');
                     return;
                 }
 
-                $('.progress-section').show();
-                updateGlobalProgress(0);
+                if ('queued' === data.status) {
+                    setItemButtons(video, true);
+                    renderQueue(data.queue);
+                    // Seite kannte den laufenden Auftrag noch nicht (z. B. vom Cronjob gestartet): ihm folgen
+                    if (!doPoll && data.active && data.active.id) {
+                        currentVideoName = data.active.video || '';
+                        updateUIForConversion(true);
+                        startPolling(data.active.id);
+                    }
+                    return;
+                }
+
+                currentVideoName = video;
+                updateUIForConversion(true);
+                renderQueue(data.queue);
                 $('#log pre').html('Konvertierung gestartet...');
                 activateInlineStatus(video);
                 updateInlineProgress(0, '0%');
@@ -311,6 +395,29 @@
         converterInitialized = true;
 
         resumeActiveJobIfAny();
+        renderQueue(window.ffmpegQueue || []);
+
+        $(document).on('click', '.ffmpeg-queue-remove', function () {
+            var $button = $(this);
+            var ids = $button.data('ids') || [];
+            $button.prop('disabled', true);
+            var removeNext = function () {
+                if (!ids.length) {
+                    $button.prop('disabled', false);
+                    return;
+                }
+                $.ajax({ type: 'get', url: ffmpegApiUrl({ func: 'queue_remove', id: ids.shift() }), dataType: 'json' })
+                    .done(function (data) {
+                        renderQueue(data.queue);
+                        removeNext();
+                    })
+                    .fail(function () {
+                        $button.prop('disabled', false);
+                    });
+            };
+            removeNext();
+            return false;
+        });
 
         $(document).on('click', '.ffmpeg-start-conversion', function () {
             var video = $(this).data('video');
@@ -319,8 +426,7 @@
             }
             var mode = $(this).data('mode') || 'new_file';
 
-            currentVideoName = video;
-            updateUIForConversion(true);
+            setItemButtons(video, false);
             startConversion(video, mode);
 
             return false;
@@ -336,7 +442,7 @@
             var video = $modal.data('video');
             var mode = $modal.data('mode');
             $modal.modal('hide');
-            updateUIForConversion(true);
+            setItemButtons(video, false);
             startConversion(video, mode, true, false);
             return false;
         });
@@ -347,7 +453,7 @@
             var mode = $modal.data('mode');
             var preset = $modal.find('#ffmpeg-overwrite-choice-preset').val();
             $modal.modal('hide');
-            updateUIForConversion(true);
+            setItemButtons(video, false);
             startConversion(video, mode, false, true, preset);
             return false;
         });
