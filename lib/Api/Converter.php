@@ -156,13 +156,38 @@ class Converter extends rex_api_function
      * Converter selbst gekapselt, statt Aufrufer dazu zu zwingen, das
      * Konstruktor-Detail dieser Klasse zu kennen.
      *
+     * Mit $queue = true wird der Auftrag eingereiht, falls gerade ein anderer läuft (Antwort status=queued mit
+     * queue_id und position, siehe queueState()), statt mit status=busy abgelehnt zu werden.
+     *
      * @return array<string, mixed>
      */
-    public static function startOverwriteJob(string $video, \rex_user $user): array
+    public static function startOverwriteJob(string $video, \rex_user $user, bool $queue = false): array
     {
         $instance = (new \ReflectionClass(self::class))->newInstanceWithoutConstructor();
 
-        return $instance->handleStart($video, 'overwrite', false, $user);
+        return $instance->handleStart($video, 'overwrite', false, $user, queue: $queue);
+    }
+
+    /**
+     * Stand eines eingereihten Auftrags (queue_id aus status=queued), z. B. für Oberflächen anderer AddOns:
+     * - status=queued mit position: wartet noch
+     * - status=started mit job: läuft jetzt -- weiter mit pollJob()
+     * - status=gone: weder wartend noch laufend (fertig, herausgenommen oder fehlgeschlagen)
+     *
+     * @return array{status: string, position?: int, job?: string}
+     */
+    public static function queueState(string $queueId, string $video): array
+    {
+        $position = \FriendsOfRedaxo\FFmpeg\Queue::position($queueId);
+        if ($position > 0) {
+            return ['status' => 'queued', 'position' => $position];
+        }
+        $active = self::getActiveJobInfo();
+        if (null !== $active && $active['video'] === $video) {
+            return ['status' => 'started', 'job' => $active['id']];
+        }
+
+        return ['status' => 'gone'];
     }
 
     /**

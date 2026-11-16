@@ -1,5 +1,10 @@
 # Changelog
 
+## 5.2.0 - 2026-11-16
+
+### Neue Features
+- Für andere AddOns (z. B. MediaPlace): `Converter::startOverwriteJob($video, $user, queue: true)` reiht ein, statt `busy` zu melden; `Converter::queueState($queueId, $video)` sagt, ob der Auftrag noch wartet (`queued`, Platz), läuft (`started`, Job-ID für `pollJob()`) oder erledigt ist (`gone`). Ohne den neuen Parameter bleibt alles wie bisher.
+
 ## 5.1.0 - 2026-11-16
 
 ### Neue Features

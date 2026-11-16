@@ -362,6 +362,10 @@ rex_extension::register('MEDIA_ADDED', static function (rex_extension_point $ep)
 Die Quelle wird bei Aufträgen aus der Warteschlange nie gelöscht. Weitere Methoden: `Queue::pending()`,
 `Queue::remove($id)`.
 
+Eigene Buttons in anderen AddOns (wie MediaPlace) reihen mit `Converter::startOverwriteJob($video, $user, queue: true)`
+ein; die Antwort `status=queued` enthält `queue_id` und `position`. `Converter::queueState($queueId, $video)` liefert dann
+`queued` (mit `position`), `started` (mit `job` für `Converter::pollJob()`) oder `gone`.
+
 `Presets::build($size, $quality, $audio)`: `$size` = `original`, `1080p`, `720p`, `480p`, `360p` · `$quality` =
 `high`, `balanced`, `small` · `$audio` = `keep`, `normalize` (−16 LUFS), `remove`. `Presets::FASTSTART_REMUX` sortiert
 verlustfrei um.
