@@ -350,6 +350,10 @@ rex_extension::register('MEDIA_ADDED', static function (rex_extension_point $ep)
 
 The source is never deleted for queued jobs. More methods: `Queue::pending()`, `Queue::remove($id)`.
 
+Buttons in other add-ons (like MediaPlace) queue with `Converter::startOverwriteJob($video, $user, queue: true)`; the
+answer `status=queued` contains `queue_id` and `position`. `Converter::queueState($queueId, $video)` then returns
+`queued` (with `position`), `started` (with `job` for `Converter::pollJob()`) or `gone`.
+
 `Presets::build($size, $quality, $audio)`: `$size` = `original`, `1080p`, `720p`, `480p`, `360p` · `$quality` =
 `high`, `balanced`, `small` · `$audio` = `keep`, `normalize` (−16 LUFS), `remove`. `Presets::FASTSTART_REMUX`
 rearranges losslessly.
