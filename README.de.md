@@ -21,6 +21,7 @@ detaillierte Video-Analyse, alles in einem Addon!
 ### Video-Konverter
 - **Automatische Optimierung** (neu in 5.0) – neue Videos werden nach dem Hochladen und per Cronjob auf eine Standardgröße heruntergerechnet, siehe unten
 - **Hintergrundverarbeitung** – Browser schließen während der Konvertierung möglich; das Ergebnis wird beim nächsten Backend-Aufruf oder Cronjob übernommen
+- **Warteschlange** (neu in 5.1) – läuft gerade eine Konvertierung, lassen sich weitere Videos trotzdem starten; sie warten mit ihrem Platz in der Liste und laufen nacheinander
 - **Intelligente Medienpool-Integration** mit `web_`-Prefix
 - **Metadaten-Erhaltung** (Titel, Beschreibung, Copyright)
 - **Kompressionsanzeige** zeigt eingesparten Speicherplatz, getrennt ausgewiesen für Webversion und Optimieren
@@ -78,6 +79,18 @@ detaillierte Video-Analyse, alles in einem Addon!
 4. **Browser schließen möglich** – Konvertierung läuft weiter
 5. Fortschritt direkt am Eintrag verfolgen (Donut + optionales Protokoll)
 6. Fertig: Das Ergebnis wird übernommen, sobald die Seite wieder geöffnet wird, beim nächsten Backend-Aufruf oder beim nächsten Cronjob
+
+**Mehrere Videos:** Es läuft immer nur eine Konvertierung, damit der Server nicht überlastet wird. Weitere Klicks
+(auch „Optimieren“ in der Detailansicht des Medienpools) kommen in die **Warteschlange**: Am Video steht „Wartet · Platz 2“,
+oben die Zahl der wartenden Aufträge. Ist ein Auftrag fertig, startet der nächste von selbst, und die Seite zeigt seinen
+Fortschritt. Eigene Aufträge lassen sich wieder herausnehmen (Admins: alle). Was beim Klick nachgefragt wird (z. B. ob eine
+vorhandene Webversion überschrieben wird), wird gleich beim Klick beantwortet; die Einstellungen gelten zum Zeitpunkt des
+Starts.
+
+Weiter geht es nach jedem fertigen Auftrag, bei jedem Backend-Aufruf und per Cronjob „FFmpeg: Videos automatisch
+optimieren“ (wird beim ersten Einreihen angelegt bzw. aktiviert). Damit die Warteschlange auch ohne offenes Backend
+zuverlässig durchläuft, sollte der Cronjob über einen System-Cron laufen (Cronjob-AddOn, Umgebung „Skript“).
+Vorgemerkte Aufträge laufen vor der automatischen Optimierung.
 
 ### Automatische Optimierung
 1. **Video-Tools → Einstellungen → Automatische Optimierung** einschalten
@@ -472,6 +485,7 @@ unverständlich. Frühere Einstellungen werden beim Update auf die passenden Opt
 - Media Manager Effekt "Video-Vorschau" bleibt unverändert funktional
 
 ### Konvertierung startet nicht
+- Läuft noch ein anderer Auftrag? Es läuft immer nur einer, die übrigen warten in der Warteschlange
 - PHP-Zeitlimits erhöhen
 - Disk-Space prüfen
 - Dateiberechtigungen kontrollieren

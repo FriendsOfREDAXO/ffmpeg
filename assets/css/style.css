@@ -13,6 +13,7 @@
     --ffmpeg-track-dark: #10161d;
     --ffmpeg-log-bg: #0f1722;
     --ffmpeg-log-text: #dce8f6;
+    --ffmpeg-waiting: #8a5a00;
 }
 
 body.rex-theme-dark .ffmpeg-converter-ui {
@@ -30,6 +31,7 @@ body.rex-theme-dark .ffmpeg-converter-ui {
     --ffmpeg-track-dark: #0a0d12;
     --ffmpeg-log-bg: #0b1118;
     --ffmpeg-log-text: #d7e4f2;
+    --ffmpeg-waiting: #f5c26b;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -48,6 +50,7 @@ body.rex-theme-dark .ffmpeg-converter-ui {
         --ffmpeg-track-dark: #0a0d12;
         --ffmpeg-log-bg: #0b1118;
         --ffmpeg-log-text: #d7e4f2;
+        --ffmpeg-waiting: #f5c26b;
     }
 }
 
@@ -265,6 +268,29 @@ body.rex-theme-dark .ffmpeg-converter-ui {
     color: var(--ffmpeg-success);
     background: rgba(var(--ffmpeg-success-rgb), 0.12);
     border-color: rgba(var(--ffmpeg-success-rgb), 0.25);
+}
+
+.ffmpeg-converter-ui .video-inline-status-static.is-queued {
+    color: var(--ffmpeg-waiting);
+    background: rgba(240, 173, 78, 0.16);
+    border-color: rgba(240, 173, 78, 0.4);
+}
+
+.ffmpeg-converter-ui .video-queue-state {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px;
+    margin-top: 6px;
+}
+
+.ffmpeg-converter-ui .video-queue-state[hidden],
+.ffmpeg-converter-ui .ffmpeg-queue-remove[hidden] {
+    display: none;
+}
+
+.ffmpeg-converter-ui .ffmpeg-queue-summary {
+    margin-left: 6px;
 }
 
 .ffmpeg-converter-ui .video-inline-main {

@@ -39,9 +39,11 @@ use rex_sql;
  *   Datenbank-Zeile, nur die Datei wird ausgetauscht), siehe finalizeOverwrite().
  *
  * Nur ein Job gleichzeitig (VideoJob::findActive(), global -- nicht mehr nur
- * pro Session): ein zweiter Start-Versuch waehrend ein Job laeuft wird mit
- * status=busy abgelehnt, nicht eingereiht (bewusst kein echtes Queueing,
- * siehe VideoJob-Klassenkommentar).
+ * pro Session). Ein zweiter Start waehrend ein Job laeuft wird abgelehnt
+ * (status=busy) -- ausser die Anfrage kommt mit queue=1 aus dem Backend
+ * (Buttons im Video-Konverter und im Medienpool): dann landet sie in der
+ * Warteschlange (status=queued, siehe Queue::addRequest()) und startet
+ * automatisch, sobald der laufende Job fertig ist.
  */
 class Converter extends rex_api_function
 {
@@ -81,9 +83,20 @@ class Converter extends rex_api_function
                         $user,
                         (bool) rex_request('create_new', 'boolean', false),
                         rex_request('preset', 'string', ''),
+                        queue: (bool) rex_request('queue', 'boolean', false),
                     );
                     rex_response::cleanOutputBuffers();
                     rex_response::sendJson($result);
+                    exit;
+
+                case 'queue_remove':
+                    $item = \FriendsOfRedaxo\FFmpeg\Queue::get(rex_request('id', 'string', ''));
+                    // eigene Aufträge darf jeder herausnehmen, fremde nur Admins
+                    if ($item && ($user->isAdmin() || $item['login'] === $user->getLogin())) {
+                        \FriendsOfRedaxo\FFmpeg\Queue::remove($item['id']);
+                    }
+                    rex_response::cleanOutputBuffers();
+                    rex_response::sendJson(['status' => 'ok', 'queue' => \FriendsOfRedaxo\FFmpeg\Queue::overview()]);
                     exit;
 
                 case 'job_status':
@@ -177,7 +190,15 @@ class Converter extends rex_api_function
     public static function finalizePending(): ?VideoJob
     {
         $job = VideoJob::findActive();
-        if (!$job || !$job->hasExited()) {
+        if (!$job) {
+            // nichts läuft, aber etwas wartet (z. B. Job abgebrochen oder Polling weg) -- weiter in der Warteschlange
+            if (Shell::canRunInBackground()) {
+                \FriendsOfRedaxo\FFmpeg\Queue::run();
+            }
+
+            return null;
+        }
+        if (!$job->hasExited()) {
             return null;
         }
         self::pollJob($job->id);
@@ -200,14 +221,26 @@ class Converter extends rex_api_function
     }
 
     /**
+     * Startet einen vorgemerkten Klick aus dem Backend (Queue::addRequest()) -- wie der Klick selbst, nur ohne
+     * Rückfrage: eine vorhandene Webversion wird ersetzt, „neue Variante“ bekommt den dann nächsten freien Namen.
+     *
      * @return array<string, mixed>
      */
+    public static function startRequest(string $video, string $mode, bool $createNew, string $preset, string $login): array
+    {
+        $instance = (new \ReflectionClass(self::class))->newInstanceWithoutConstructor();
+
+        return $instance->handleStart($video, $mode, true, $login, $createNew, $preset);
+    }
+
     /**
      * @param \rex_user|string $user Backend-Benutzer oder (Cronjob/Konsole) nur ein Login-Name fuers Protokoll
      * @param string|null $commandOverride Kommando statt der Einstellung (AutoOptimizer)
      * @param array<string, mixed> $extra
+     * @param bool $queue läuft schon ein Job: einreihen statt ablehnen (nur Klicks aus dem Backend)
+     * @return array<string, mixed>
      */
-    protected function handleStart(string $video, string $mode, bool $confirmOverwrite, \rex_user|string $user, bool $createNew = false, string $preset = '', ?string $commandOverride = null, array $extra = []): array
+    protected function handleStart(string $video, string $mode, bool $confirmOverwrite, \rex_user|string $user, bool $createNew = false, string $preset = '', ?string $commandOverride = null, array $extra = [], bool $queue = false): array
     {
         if ('' === $video) {
             throw new rex_api_exception('No video file selected');
@@ -216,8 +249,11 @@ class Converter extends rex_api_function
             $mode = 'new_file';
         }
 
+        // Einreihen erst nach der Rückfrage „Webversion existiert bereits“ (unten) -- die beantwortet der Klickende jetzt,
+        // nicht der spätere Start
+        $queueable = $queue && $user instanceof \rex_user && null === $commandOverride && [] === $extra;
         $activeJob = VideoJob::findActive();
-        if ($activeJob) {
+        if ($activeJob && !$queueable) {
             return [
                 'status' => 'busy',
                 'message' => 'Es laeuft bereits eine Konvertierung (' . $activeJob->inputFile . '). Bitte warten.',
@@ -257,6 +293,20 @@ class Converter extends rex_api_function
                     ];
                 }
             }
+        }
+
+        if ($activeJob && $user instanceof \rex_user) {
+            $id = \FriendsOfRedaxo\FFmpeg\Queue::addRequest($video, $mode, $createNew, $preset, (string) $user->getLogin());
+            $position = \FriendsOfRedaxo\FFmpeg\Queue::position($id);
+
+            return [
+                'status' => 'queued',
+                'queue_id' => $id,
+                'position' => $position,
+                'message' => rex_i18n::rawMsg('ffmpeg_queue_added', (string) $position),
+                'queue' => \FriendsOfRedaxo\FFmpeg\Queue::overview(),
+                'active' => self::getActiveJobInfo(),
+            ];
         }
 
         // Kommando aus den Einstellungen (Presets: Groesse/Qualitaet/Ton -- keine frei eingegebenen
@@ -336,7 +386,7 @@ class Converter extends rex_api_function
             return ['status' => 'error', 'message' => rex_i18n::msg('ffmpeg_shell_disabled'), 'job' => $job->id];
         }
 
-        return ['status' => 'started', 'job' => $job->id];
+        return ['status' => 'started', 'job' => $job->id, 'queue' => \FriendsOfRedaxo\FFmpeg\Queue::overview()];
     }
 
     /**
@@ -459,7 +509,12 @@ class Converter extends rex_api_function
      */
     private function jobResponse(VideoJob $job): array
     {
+        // fertig: der nächste Auftrag aus der Warteschlange läuft evtl. schon -- damit die Seite ihm folgen kann
+        $next = $job->isTerminal() ? self::getActiveJobInfo() : null;
+
         return [
+            'next' => null !== $next && $next['id'] !== $job->id ? $next : null,
+            'queue' => \FriendsOfRedaxo\FFmpeg\Queue::overview(),
             'status' => $job->status,
             'progress' => $job->isTerminal() && VideoJob::STATUS_DONE === $job->status ? 100 : $job->progress,
             'message' => $job->message,
